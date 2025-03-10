@@ -17,7 +17,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(amount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -42,7 +42,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), authorizedAmount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(authorizedAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -82,7 +82,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), authorizedAmount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(authorizedAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         // Void the authorization
         vm.prank(operator);
@@ -118,7 +118,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), authorizedAmount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(authorizedAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentAuthorized(paymentDetailsHash, valueToConfirm);
@@ -139,7 +139,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), totalAmount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(totalAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
@@ -177,7 +177,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(amount, paymentDetails1);
+        paymentEscrow.registerApproval(paymentDetails1);
 
         // Try to authorize against different payment details
         vm.prank(operator);
@@ -201,7 +201,7 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         mockERC3009Token.approve(address(paymentEscrow), totalAmount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(totalAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
         // First authorization succeeds
         vm.prank(operator);

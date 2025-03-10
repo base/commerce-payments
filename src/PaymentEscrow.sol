@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
 import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
 
 import {IERC3009} from "./IERC3009.sol";
@@ -156,30 +159,30 @@ contract PaymentEscrow {
         _pullTokens(auth, value, paymentDetailsHash, signature);
 
         // Update authorized amount to only what we're keeping
-        _authorized[paymentDetailsHash] = value;
+        _authorized[paymentDetailsHash] += value;
         emit PaymentAuthorized(paymentDetailsHash, value);
     }
 
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
-    /// @param value Amount of tokens approved
+    /// @dev Verifies that buyer has approved at least the payment amount to this contract
     /// @param paymentDetails Encoded Authorization struct
-    function registerApproval(uint256 value, bytes calldata paymentDetails) external {
+    function registerApproval(bytes calldata paymentDetails) external {
         Authorization memory auth = abi.decode(paymentDetails, (Authorization));
         bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
 
         // Only buyer can register approval
         if (msg.sender != auth.buyer) revert InvalidSender(msg.sender);
 
-        // Validate value
-        if (value > auth.value) revert ValueLimitExceeded(value);
-        if (value == 0) revert ZeroValue();
-
         // Check if authorization has been voided
         if (_voided[paymentDetailsHash]) revert VoidAuthorization(paymentDetailsHash);
 
-        _approved[paymentDetailsHash] = value;
-        emit PaymentApproved(paymentDetailsHash, value);
+        // Verify ERC20 approval exists
+        uint256 allowance = IERC20(auth.token).allowance(auth.buyer, address(this));
+        if (allowance < auth.value) revert InsufficientApproval(paymentDetailsHash, allowance, auth.value);
+
+        _approved[paymentDetailsHash] = auth.value;
+        emit PaymentApproved(paymentDetailsHash, auth.value);
     }
 
     /// @notice Transfers pre-approved tokens from buyer to escrow

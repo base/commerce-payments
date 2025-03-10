@@ -13,11 +13,15 @@ contract RegisterApprovalTest is PaymentEscrowBase {
         bytes memory paymentDetails = abi.encode(auth);
         bytes32 paymentDetailsHash = keccak256(paymentDetails);
 
+        // Set up ERC20 approval first
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentApproved(paymentDetailsHash, amount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(amount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
     }
 
     function test_reverts_whenCalledByNonBuyer() public {
@@ -29,30 +33,7 @@ contract RegisterApprovalTest is PaymentEscrowBase {
 
         vm.prank(nonBuyer);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, nonBuyer));
-        paymentEscrow.registerApproval(amount, paymentDetails);
-    }
-
-    function test_reverts_whenValueExceedsAuthorized(uint256 amount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-        vm.assume(amount > 0 && amount <= buyerBalance);
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
-        bytes memory paymentDetails = abi.encode(auth);
-
-        vm.prank(buyerEOA);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, amount + 1));
-        paymentEscrow.registerApproval(amount + 1, paymentDetails);
-    }
-
-    function test_reverts_whenZeroValue() public {
-        uint256 amount = 100e6;
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
-        bytes memory paymentDetails = abi.encode(auth);
-
-        vm.prank(buyerEOA);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
-        paymentEscrow.registerApproval(0, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
     }
 
     function test_reverts_whenAuthorizationIsVoided() public {
@@ -68,26 +49,65 @@ contract RegisterApprovalTest is PaymentEscrowBase {
 
         vm.prank(buyerEOA);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.VoidAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.registerApproval(amount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
     }
 
-    function test_succeeds_whenRegisteringMultipleTimes() public {
-        uint256 initialAmount = 100e6;
-        uint256 newAmount = 150e6;
+    function test_reverts_whenNoERC20Approval() public {
+        uint256 amount = 100e6;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, newAmount);
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
         bytes memory paymentDetails = abi.encode(auth);
         bytes32 paymentDetailsHash = keccak256(paymentDetails);
 
+        // Don't approve any tokens
+        vm.prank(buyerEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InsufficientApproval.selector, paymentDetailsHash, 0, amount)
+        );
+        paymentEscrow.registerApproval(paymentDetails);
+    }
+
+    function test_reverts_whenInsufficientERC20Approval() public {
+        uint256 amount = 100e6;
+        uint256 approvedAmount = amount - 1; // Approve less than required
+
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        bytes memory paymentDetails = abi.encode(auth);
+        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+
+        // Approve less than the payment amount
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), approvedAmount);
+
+        vm.prank(buyerEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.InsufficientApproval.selector, paymentDetailsHash, approvedAmount, amount
+            )
+        );
+        paymentEscrow.registerApproval(paymentDetails);
+    }
+
+    function test_succeeds_whenRegisteringMultipleTimes() public {
+        uint256 amount = 100e6;
+
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        bytes memory paymentDetails = abi.encode(auth);
+        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+
+        // Set up ERC20 approval
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
         // First registration
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(initialAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
 
-        // Second registration with different amount
+        // Second registration (should succeed with same event)
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentApproved(paymentDetailsHash, newAmount);
+        emit PaymentEscrow.PaymentApproved(paymentDetailsHash, amount);
 
         vm.prank(buyerEOA);
-        paymentEscrow.registerApproval(newAmount, paymentDetails);
+        paymentEscrow.registerApproval(paymentDetails);
     }
 }
