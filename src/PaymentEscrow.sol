@@ -56,6 +56,10 @@ contract PaymentEscrow {
     /// @dev Prevents future authorization and captures for this payment if voided.
     mapping(bytes32 paymentDetailsHash => bool isVoided) internal _voided;
 
+    /// @notice Amount of tokens approved by buyer for a specific payment details hash
+    /// @dev Used to track and validate ERC20 approvals for specific payments
+    mapping(bytes32 paymentDetailsHash => uint256 value) internal _approved;
+
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(bytes32 indexed paymentDetailsHash, uint256 value);
 
@@ -71,7 +75,11 @@ contract PaymentEscrow {
     /// @notice Emitted when captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, address indexed refunder, uint256 value);
 
+    /// @notice Emitted when a buyer registers their token approval for a specific payment
+    event PaymentApproved(bytes32 indexed paymentDetailsHash, uint256 value);
+
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
+    error InsufficientApproval(bytes32 paymentDetailsHash, uint256 approvedValue, uint256 requestedValue);
     error ValueLimitExceeded(uint256 value);
     error PermissionApprovalFailed();
     error InvalidSender(address sender);
@@ -152,8 +160,30 @@ contract PaymentEscrow {
         emit PaymentAuthorized(paymentDetailsHash, value);
     }
 
+    /// @notice Registers buyer's token approval for a specific payment
+    /// @dev Must be called by the buyer specified in the payment details
+    /// @param value Amount of tokens approved
+    /// @param paymentDetails Encoded Authorization struct
+    function registerApproval(uint256 value, bytes calldata paymentDetails) external {
+        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
+        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        // Only buyer can register approval
+        if (msg.sender != auth.buyer) revert InvalidSender(msg.sender);
+
+        // Validate value
+        if (value > auth.value) revert ValueLimitExceeded(value);
+        if (value == 0) revert ZeroValue();
+
+        // Check if authorization has been voided
+        if (_voided[paymentDetailsHash]) revert VoidAuthorization(paymentDetailsHash);
+
+        _approved[paymentDetailsHash] = value;
+        emit PaymentApproved(paymentDetailsHash, value);
+    }
+
     /// @notice Transfers pre-approved tokens from buyer to escrow
-    /// @dev Requires buyer to have approved this contract via ERC20.approve
+    /// @dev Requires buyer to have approved this contract via ERC20.approve and registered the approval via registerApproval
     /// @param value Amount to pull into escrow
     /// @param paymentDetails Encoded Authorization struct
     function authorizeFromApproval(uint256 value, bytes calldata paymentDetails)
@@ -164,8 +194,10 @@ contract PaymentEscrow {
         Authorization memory auth = abi.decode(paymentDetails, (Authorization));
         bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
 
-        // validate value
+        // validate value against authorization and registered approval
         if (value > auth.value) revert ValueLimitExceeded(value);
+        uint256 approvedValue = _approved[paymentDetailsHash];
+        if (approvedValue < value) revert InsufficientApproval(paymentDetailsHash, approvedValue, value);
 
         // validate fees
         if (auth.feeBps > 10_000) revert FeeBpsOverflow(auth.feeBps);
@@ -177,8 +209,9 @@ contract PaymentEscrow {
         // Pull approved tokens from buyer
         SafeTransferLib.safeTransferFrom(auth.token, auth.buyer, address(this), value);
 
-        // Update authorized amount
-        _authorized[paymentDetailsHash] = value;
+        // Update state
+        _approved[paymentDetailsHash] = approvedValue - value;
+        _authorized[paymentDetailsHash] += value;
         emit PaymentAuthorized(paymentDetailsHash, value);
     }
 
