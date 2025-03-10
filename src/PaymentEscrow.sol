@@ -104,15 +104,6 @@ contract PaymentEscrow {
 
     receive() external payable {}
 
-    /// @notice Registers an authorized value for a given payment details hash.
-    /// @dev Used to notify this contract of a token approval granted by the buyer via ERC20.approve.
-    /// @param paymentDetails Encoded Authorization struct
-    function registerAuthorization(bytes calldata paymentDetails) external {
-        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
-        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
-        _authorized[paymentDetailsHash] = auth.value;
-    }
-
     /// @notice Transfers funds from buyer to captureAddress in one step
     /// @dev If value is less than the authorized value, difference is returned to buyer
     /// @dev Reverts if the authorization has been voided or the capture deadline has passed
@@ -157,6 +148,36 @@ contract PaymentEscrow {
         _pullTokens(auth, value, paymentDetailsHash, signature);
 
         // Update authorized amount to only what we're keeping
+        _authorized[paymentDetailsHash] = value;
+        emit PaymentAuthorized(paymentDetailsHash, value);
+    }
+
+    /// @notice Transfers pre-approved tokens from buyer to escrow
+    /// @dev Requires buyer to have approved this contract via ERC20.approve
+    /// @param value Amount to pull into escrow
+    /// @param paymentDetails Encoded Authorization struct
+    function authorizeFromApproval(uint256 value, bytes calldata paymentDetails)
+        external
+        onlyOperator(paymentDetails)
+        validValue(value)
+    {
+        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
+        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        // validate value
+        if (value > auth.value) revert ValueLimitExceeded(value);
+
+        // validate fees
+        if (auth.feeBps > 10_000) revert FeeBpsOverflow(auth.feeBps);
+        if (auth.feeRecipient == address(0) && auth.feeBps != 0) revert ZeroFeeRecipient();
+
+        // check if authorization has been voided
+        if (_voided[paymentDetailsHash]) revert VoidAuthorization(paymentDetailsHash);
+
+        // Pull approved tokens from buyer
+        SafeTransferLib.safeTransferFrom(auth.token, auth.buyer, address(this), value);
+
+        // Update authorized amount
         _authorized[paymentDetailsHash] = value;
         emit PaymentAuthorized(paymentDetailsHash, value);
     }
