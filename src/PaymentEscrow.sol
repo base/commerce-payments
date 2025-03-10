@@ -104,6 +104,15 @@ contract PaymentEscrow {
 
     receive() external payable {}
 
+    /// @notice Registers an authorized value for a given payment details hash.
+    /// @dev Used to notify this contract of a token approval granted by the buyer via ERC20.approve.
+    /// @param paymentDetails Encoded Authorization struct
+    function registerAuthorization(bytes calldata paymentDetails) external {
+        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
+        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+        _authorized[paymentDetailsHash] = auth.value;
+    }
+
     /// @notice Transfers funds from buyer to captureAddress in one step
     /// @dev If value is less than the authorized value, difference is returned to buyer
     /// @dev Reverts if the authorization has been voided or the capture deadline has passed
