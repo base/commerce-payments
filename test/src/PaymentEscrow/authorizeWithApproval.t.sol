@@ -216,4 +216,51 @@ contract AuthorizeFromApprovalTest is PaymentEscrowBase {
         );
         paymentEscrow.authorizeFromApproval(secondAuth, paymentDetails);
     }
+
+    function test_reverts_whenBeforeValidAfter() public {
+        uint256 amount = 100e6;
+        uint256 validAfter = block.timestamp + 1 hours;
+
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        auth.validAfter = validAfter;
+        bytes memory paymentDetails = abi.encode(auth);
+
+        // Set up approval and register it
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
+        vm.prank(buyerEOA);
+        paymentEscrow.registerApproval(paymentDetails);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.BeforeValidAfter.selector, uint48(block.timestamp), uint48(validAfter))
+        );
+        paymentEscrow.authorizeFromApproval(amount, paymentDetails);
+    }
+
+    function test_reverts_whenAfterValidBefore() public {
+        uint256 amount = 100e6;
+
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        // Set validBefore to a timestamp in the past
+        vm.warp(100); // Set block.timestamp to 100
+        auth.validBefore = 50; // Set validBefore to 50 (in the past)
+        bytes memory paymentDetails = abi.encode(auth);
+
+        // Set up approval and register it
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
+        vm.prank(buyerEOA);
+        paymentEscrow.registerApproval(paymentDetails);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterValidBefore.selector, uint48(block.timestamp), uint48(auth.validBefore)
+            )
+        );
+        paymentEscrow.authorizeFromApproval(amount, paymentDetails);
+    }
 }

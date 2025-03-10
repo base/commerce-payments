@@ -93,6 +93,8 @@ contract PaymentEscrow {
     error ZeroFeeRecipient();
     error ZeroValue();
     error VoidAuthorization(bytes32 paymentDetailsHash);
+    error BeforeValidAfter(uint48 timestamp, uint48 validAfter);
+    error AfterValidBefore(uint48 timestamp, uint48 validBefore);
 
     /// @notice Initialize contract with ERC6492 validator
     /// @param _erc6492Validator Address of the validator contract
@@ -196,6 +198,14 @@ contract PaymentEscrow {
     {
         Authorization memory auth = abi.decode(paymentDetails, (Authorization));
         bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        // validate timestamps
+        if (block.timestamp < auth.validAfter) {
+            revert BeforeValidAfter(uint48(block.timestamp), uint48(auth.validAfter));
+        }
+        if (block.timestamp > auth.validBefore) {
+            revert AfterValidBefore(uint48(block.timestamp), uint48(auth.validBefore));
+        }
 
         // validate value against authorization and registered approval
         if (value > auth.value) revert ValueLimitExceeded(value);
