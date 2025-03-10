@@ -4,6 +4,3 @@
 [submodule "lib/spend-permissions"]
 	path = lib/spend-permissions
 	url = https://github.com/coinbase/spend-permissions
-[submodule "lib/solady"]
-	path = lib/solady
-	url = https://github.com/vectorized/solady
