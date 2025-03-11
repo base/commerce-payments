@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {SafeTransferLib} from "../lib/spend-permissions/lib/solady/src/utils/SafeTransferLib.sol";
-import {PublicERC6492Validator} from "../lib/spend-permissions/src/PublicERC6492Validator.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
 
 import {IERC3009} from "./IERC3009.sol";
 
