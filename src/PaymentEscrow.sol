@@ -72,8 +72,6 @@ contract PaymentEscrow {
     error ZeroValue();
     error VoidAuthorization(bytes32 paymentDetailsHash);
     error PaymentNotRegistered(bytes32 paymentHash);
-    error BeforeValidAfter(uint48 timestamp, uint48 validAfter);
-    error AfterValidBefore(uint48 timestamp, uint48 validBefore);
 
     /// @notice Initialize contract with ERC6492 validator
     /// @param _erc6492Validator Address of the validator contract
@@ -91,13 +89,17 @@ contract PaymentEscrow {
 
     /// @dev Computes payment hash and registers details if first time seeing this payment
     /// @return paymentHash The computed hash for this payment
-    /// @return details Storage pointer to payment details (registered or existing)
+    /// @return storedDetails Storage pointer to payment details (registered or existing)
     function _registerPaymentDetails(
         uint256 salt,
         PaymentDetails calldata details,
         uint256 validAfter,
         uint256 validBefore
     ) internal returns (bytes32 paymentHash, PaymentDetails storage storedDetails) {
+        // Validate fee configuration upfront
+        _validateFees(details.feeBps, details.feeRecipient);
+        if (details.operator == address(0)) revert InvalidSender(address(0));
+
         paymentHash = keccak256(
             abi.encode(
                 details.value,
@@ -113,16 +115,70 @@ contract PaymentEscrow {
             )
         );
 
+        // Just store it - ERC3009 ensures we can't use same hash twice
+        _storedPaymentDetails[paymentHash] = details;
         storedDetails = _storedPaymentDetails[paymentHash];
+    }
 
-        if (storedDetails.operator == address(0)) {
-            if (details.feeBps > 10_000) revert FeeBpsOverflow(details.feeBps);
-            if (details.feeRecipient == address(0) && details.feeBps != 0) revert ZeroFeeRecipient();
-            if (details.operator == address(0)) revert InvalidSender(address(0));
+    /// @dev Validates fee configuration
+    function _validateFees(uint16 feeBps, address feeRecipient) internal pure {
+        if (feeBps > 10_000) revert FeeBpsOverflow(feeBps);
+        if (feeRecipient == address(0) && feeBps != 0) revert ZeroFeeRecipient();
+    }
 
-            _storedPaymentDetails[paymentHash] = details;
-            storedDetails = _storedPaymentDetails[paymentHash];
+    /// @dev Validates operator and basic payment configuration
+    function _validatePaymentConfig(PaymentDetails memory details, address sender) internal pure {
+        if (sender != details.operator) revert InvalidSender(sender);
+        if (details.operator == address(0)) revert InvalidSender(address(0));
+    }
+
+    /// @dev Validates capture deadline hasn't passed
+    function _validateCaptureDeadline(uint48 captureDeadline) internal view {
+        if (block.timestamp > captureDeadline) {
+            revert AfterCaptureDeadline(uint48(block.timestamp), captureDeadline);
         }
+    }
+
+    /// @dev Validates payment hasn't been voided
+    function _validateNotVoided(bytes32 paymentHash) internal view {
+        if (_voided[paymentHash]) revert VoidAuthorization(paymentHash);
+    }
+
+    /// @dev Validates payment value against maximum
+    function _validatePaymentValue(uint256 value, uint256 maxValue) internal view {
+        if (value > maxValue) revert ValueLimitExceeded(value);
+    }
+
+    /// @dev Validates sender can refund (operator or captureAddress)
+    function _validateRefundSender(PaymentDetails storage details, address sender) internal view {
+        if (sender != details.operator && sender != details.captureAddress) {
+            revert InvalidSender(sender);
+        }
+    }
+
+    /// @dev Validates sender can void (buyer after deadline, operator, or captureAddress)
+    function _validateVoidSender(PaymentDetails storage details, address sender) internal view {
+        if (sender == details.buyer) {
+            if (block.timestamp < details.captureDeadline) {
+                revert BeforeCaptureDeadline(uint48(block.timestamp), details.captureDeadline);
+            }
+        } else if (sender != details.operator && sender != details.captureAddress) {
+            revert InvalidSender(sender);
+        }
+    }
+
+    /// @dev Validates sufficient authorized value for capture
+    function _validateAuthorizedValue(bytes32 paymentHash, uint256 value) internal view {
+        uint256 authorizedValue = _authorized[paymentHash];
+        if (authorizedValue < value) {
+            revert InsufficientAuthorization(paymentHash, authorizedValue, value);
+        }
+    }
+
+    /// @dev Validates sufficient captured value for refund
+    function _validateRefundValue(bytes32 paymentHash, uint256 value) internal view {
+        uint256 captured = _captured[paymentHash];
+        if (captured < value) revert RefundExceedsCapture(value, captured);
     }
 
     /// @notice Validates buyer signature and transfers funds from buyer to escrow
@@ -140,32 +196,14 @@ contract PaymentEscrow {
         uint256 value,
         bytes calldata signature
     ) external validValue(value) {
+        _validatePaymentConfig(details, msg.sender);
+        if (value > details.value) revert ValueLimitExceeded(value);
+
         bytes32 paymentHash;
         PaymentDetails storage storedDetails;
         (paymentHash, storedDetails) = _registerPaymentDetails(salt, details, validAfter, validBefore);
 
-        if (msg.sender != storedDetails.operator) {
-            revert InvalidSender(msg.sender);
-        }
-
-        // Validate timing constraints during authorization
-        if (block.timestamp < validAfter) {
-            revert BeforeValidAfter(uint48(block.timestamp), uint48(validAfter));
-        }
-        if (block.timestamp > validBefore) {
-            revert AfterValidBefore(uint48(block.timestamp), uint48(validBefore));
-        }
-
-        // Validate value
-        if (value > storedDetails.value) {
-            revert ValueLimitExceeded(value);
-        }
-
-        // Check if authorization has been voided
-        if (_voided[paymentHash]) {
-            revert VoidAuthorization(paymentHash);
-        }
-
+        _validateNotVoided(paymentHash);
         _pullTokens(storedDetails, value, paymentHash, validAfter, validBefore, signature);
 
         _authorized[paymentHash] += value;
@@ -181,25 +219,21 @@ contract PaymentEscrow {
         external
         validValue(value)
     {
+        _validatePaymentConfig(details, msg.sender);
+        _validateCaptureDeadline(details.captureDeadline);
+        if (value > details.value) revert ValueLimitExceeded(value);
+
         bytes32 paymentHash;
         PaymentDetails storage storedDetails;
         (paymentHash, storedDetails) = _registerPaymentDetails(salt, details, 0, 0);
 
-        // check capture deadline
-        if (block.timestamp > details.captureDeadline) {
-            revert AfterCaptureDeadline(uint48(block.timestamp), uint48(details.captureDeadline));
-        }
+        _validateNotVoided(paymentHash);
+        _pullTokens(storedDetails, value, paymentHash, 0, 0, signature);
 
-        // check sufficient escrow to capture
-        uint256 authorizedValue = _authorized[paymentHash];
-        if (authorizedValue < value) revert InsufficientAuthorization(paymentHash, authorizedValue, value);
-
-        // update state
-        _authorized[paymentHash] = authorizedValue - value;
+        _authorized[paymentHash] = 0;
         _captured[paymentHash] += value;
         emit PaymentCharged(paymentHash, value);
 
-        // handle fees only for the actual charged amount
         _distributeTokens(details.token, details.captureAddress, details.feeRecipient, details.feeBps, value);
     }
 
@@ -209,7 +243,6 @@ contract PaymentEscrow {
     function void(bytes32 paymentHash) external {
         PaymentDetails storage details = _storedPaymentDetails[paymentHash];
 
-        // Access control check
         if (msg.sender == details.buyer) {
             if (block.timestamp < details.captureDeadline) {
                 revert BeforeCaptureDeadline(uint48(block.timestamp), details.captureDeadline);
@@ -218,18 +251,14 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // Early return if previously voided
         if (_voided[paymentHash]) return;
 
-        // Mark the authorization as void
         _voided[paymentHash] = true;
         emit PaymentVoided(paymentHash);
 
-        // Early return if no existing authorization escrowed
         uint256 authorizedValue = _authorized[paymentHash];
         if (authorizedValue == 0) return;
 
-        // Return any escrowed funds
         delete _authorized[paymentHash];
         SafeTransferLib.safeTransfer(details.token, details.buyer, authorizedValue);
     }
@@ -241,28 +270,18 @@ contract PaymentEscrow {
     function capture(bytes32 paymentHash, uint256 value) external validValue(value) {
         PaymentDetails storage details = _storedPaymentDetails[paymentHash];
 
-        // Validate operator
-        if (msg.sender != details.operator) {
-            revert InvalidSender(msg.sender);
-        }
+        _validatePaymentConfig(details, msg.sender);
+        _validateCaptureDeadline(details.captureDeadline);
 
-        // Check capture deadline
-        if (block.timestamp > details.captureDeadline) {
-            revert AfterCaptureDeadline(uint48(block.timestamp), details.captureDeadline);
-        }
-
-        // Check sufficient escrow to capture
         uint256 authorizedValue = _authorized[paymentHash];
         if (authorizedValue < value) {
             revert InsufficientAuthorization(paymentHash, authorizedValue, value);
         }
 
-        // Update state
         _authorized[paymentHash] = authorizedValue - value;
         _captured[paymentHash] += value;
         emit PaymentCaptured(paymentHash, value);
 
-        // Handle fees and distribute tokens
         _distributeTokens(details.token, details.captureAddress, details.feeRecipient, details.feeBps, value);
     }
 
@@ -273,19 +292,16 @@ contract PaymentEscrow {
     function refund(bytes32 paymentHash, uint256 value) external validValue(value) {
         PaymentDetails storage details = _storedPaymentDetails[paymentHash];
 
-        // Check sender is operator or captureAddress
         if (msg.sender != details.operator && msg.sender != details.captureAddress) {
             revert InvalidSender(msg.sender);
         }
 
-        // Limit refund value to previously captured
         uint256 captured = _captured[paymentHash];
         if (captured < value) revert RefundExceedsCapture(value, captured);
 
         _captured[paymentHash] = captured - value;
         emit PaymentRefunded(paymentHash, msg.sender, value);
 
-        // Return tokens to buyer
         SafeTransferLib.safeTransferFrom(details.token, msg.sender, details.buyer, value);
     }
 
@@ -318,16 +334,6 @@ contract PaymentEscrow {
         uint256 validBefore,
         bytes calldata signature
     ) internal {
-        // validate value
-        if (value > details.value) revert ValueLimitExceeded(value);
-
-        // validate fees
-        if (details.feeBps > 10_000) revert FeeBpsOverflow(details.feeBps);
-        if (details.feeRecipient == address(0) && details.feeBps != 0) revert ZeroFeeRecipient();
-
-        // check if authorization has been voided
-        if (_voided[paymentHash]) revert VoidAuthorization(paymentHash);
-
         // parse signature to use for 3009 receiveWithAuthorization
         bytes memory innerSignature = signature;
         if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
