@@ -12,15 +12,24 @@ import {IERC3009} from "./IERC3009.sol";
 /// @author Coinbase
 contract PaymentEscrow {
     /// @notice Payment details stored by complete payment data hash
+    /// @dev Struct containing all payment routing and authorization data
+    /// @param operator Address authorized to capture and void payments
+    /// @param buyer The buyer's address authorizing the payment
+    /// @param token The ERC-3009 token contract address
+    /// @param captureAddress Address that receives the captured payment (minus fees)
+    /// @param value The amount of tokens that will be transferred from the buyer to the escrow
+    /// @param captureDeadline Timestamp when the buyer can withdraw authorization from escrow
+    /// @param feeRecipient Address that receives the fee portion of payments
+    /// @param feeBps Fee percentage in basis points (1/100th of a percent)
     struct PaymentDetails {
-        address operator; // Primary actor who can call most functions
-        address buyer; // Source of funds
-        address token; // Token being transferred
-        address captureAddress; // Destination for captured funds
-        uint256 value; // Amount authorized
-        uint48 captureDeadline; // When buyer can void
-        address feeRecipient; // Optional fee destination
-        uint16 feeBps; // Optional fee amount
+        address operator;
+        address buyer;
+        address token;
+        address captureAddress;
+        uint256 value;
+        uint48 captureDeadline;
+        address feeRecipient;
+        uint16 feeBps;
     }
 
     /// @notice Full payment details stored by hash
