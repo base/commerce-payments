@@ -191,8 +191,8 @@ contract PaymentEscrow {
     }
 
     /// @notice Validates buyer signature and transfers funds from buyer to escrow
-    /// @param salt Direct salt parameter
-    /// @param details Full payment details (stored if first time seeing this payment)
+    /// @param salt Uniqueness
+    /// @param details Full payment details
     /// @param validAfter The earliest time the payment can be authorized
     /// @param validBefore The latest time the payment can be authorized
     /// @param value Amount to authorize
@@ -220,8 +220,8 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfers funds from buyer to captureAddress in one step
-    /// @param salt Direct salt parameter
-    /// @param details Full payment details (stored if first time seeing this payment)
+    /// @param salt Uniqueness
+    /// @param details Full payment details
     /// @param value Amount to charge
     /// @param signature Signature of the buyer authorizing the payment
     function charge(uint256 salt, PaymentDetails calldata details, uint256 value, bytes calldata signature)
