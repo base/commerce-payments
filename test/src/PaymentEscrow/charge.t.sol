@@ -92,7 +92,9 @@ contract ChargeTest is PaymentEscrowBase {
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentCharged(paymentDetailsHash, valueToCharge);
+        emit PaymentEscrow.PaymentCharged(
+            paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, valueToCharge
+        );
 
         // Execute charge
         vm.prank(operator);

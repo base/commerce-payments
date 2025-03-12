@@ -57,10 +57,24 @@ contract PaymentEscrow {
     mapping(bytes32 paymentDetailsHash => bool isVoided) internal _voided;
 
     /// @notice Emitted when a payment is charged and immediately captured
-    event PaymentCharged(bytes32 indexed paymentDetailsHash, uint256 value);
+    event PaymentCharged(
+        bytes32 indexed paymentDetailsHash,
+        address operator,
+        address buyer,
+        address captureAddress,
+        address token,
+        uint256 value
+    );
 
     /// @notice Emitted when authorized (escrowed) value is increased
-    event PaymentAuthorized(bytes32 indexed paymentDetailsHash, uint256 value);
+    event PaymentAuthorized(
+        bytes32 indexed paymentDetailsHash,
+        address operator,
+        address buyer,
+        address captureAddress,
+        address token,
+        uint256 value
+    );
 
     /// @notice Emitted when a payment authorization is voided, returning any escrowed funds to the buyer
     event PaymentVoided(bytes32 indexed paymentDetailsHash);
@@ -127,7 +141,7 @@ contract PaymentEscrow {
 
         // Update captured amount for refund tracking
         _captured[paymentDetailsHash] = value;
-        emit PaymentCharged(paymentDetailsHash, value);
+        emit PaymentCharged(paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, value);
 
         // Handle fees only for the actual charged amount
         _distributeTokens(auth.token, auth.captureAddress, auth.feeRecipient, auth.feeBps, value);
@@ -149,7 +163,7 @@ contract PaymentEscrow {
 
         // Update authorized amount to only what we're keeping
         _authorized[paymentDetailsHash] = value;
-        emit PaymentAuthorized(paymentDetailsHash, value);
+        emit PaymentAuthorized(paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, value);
     }
 
     /// @notice Permanently voids a payment authorization

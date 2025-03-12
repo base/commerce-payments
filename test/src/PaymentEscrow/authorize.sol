@@ -144,7 +144,9 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentAuthorized(paymentDetailsHash, valueToConfirm);
+        emit PaymentEscrow.PaymentAuthorized(
+            paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, valueToConfirm
+        );
 
         // Execute confirmation
         vm.prank(operator);
