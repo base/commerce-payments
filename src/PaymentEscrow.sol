@@ -71,7 +71,7 @@ contract PaymentEscrow {
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 value);
+    event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the buyer
     event PaymentVoided(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
@@ -80,7 +80,7 @@ contract PaymentEscrow {
     event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 value);
 
     /// @notice Emitted when captured payment is refunded
-    event PaymentRefunded(bytes32 indexed paymentDetailsHash, address indexed refunder, uint256 value);
+    event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
 
     error InvalidSender(address sender);
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
@@ -199,7 +199,7 @@ contract PaymentEscrow {
         // update state
         _authorized[paymentDetailsHash] = authorizedValue - value;
         _captured[paymentDetailsHash] += value;
-        emit PaymentCaptured(paymentDetailsHash, value);
+        emit PaymentCaptured(paymentDetailsHash, value, msg.sender);
 
         // handle fees only for the actual charged amount
         _distributeTokens(
@@ -272,7 +272,7 @@ contract PaymentEscrow {
         if (captured < value) revert RefundExceedsCapture(value, captured);
 
         _captured[paymentDetailsHash] = captured - value;
-        emit PaymentRefunded(paymentDetailsHash, msg.sender, value);
+        emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
 
         // Return tokens to buyer
         SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.buyer, value);
