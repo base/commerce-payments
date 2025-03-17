@@ -171,7 +171,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         uint256 captureAmount,
         uint48 captureDeadline
     ) public {
-        vm.assume(captureDeadline > 0 && captureDeadline < type(uint40).max);
+        vm.assume(captureDeadline > 1 && captureDeadline < type(uint40).max);
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -179,7 +179,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
         auth.captureDeadline = captureDeadline;
-        vm.warp(captureDeadline + 1);
+        auth.validBefore = captureDeadline;
 
         bytes memory paymentDetails = abi.encode(auth);
         bytes32 paymentDetailsHash = keccak256(paymentDetails);
@@ -194,11 +194,11 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
             BUYER_EOA_PK
         );
 
-        // First confirm the authorization
+        vm.warp(auth.validBefore - 1);
         vm.prank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
 
-        // Try to capture more than authorized
+        vm.warp(captureDeadline + 1);
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.AfterCaptureDeadline.selector, block.timestamp, captureDeadline)

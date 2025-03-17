@@ -84,10 +84,10 @@ contract PaymentEscrow {
     /// @notice Emitted when captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, address indexed refunder, uint256 value);
 
+    error InvalidSender(address sender);
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
     error ValueLimitExceeded(uint256 value);
-    error PermissionApprovalFailed();
-    error InvalidSender(address sender);
+    error AfterAuthorizationDeadline(uint48 timestamp, uint48 deadline);
     error BeforeCaptureDeadline(uint48 timestamp, uint48 deadline);
     error AfterCaptureDeadline(uint48 timestamp, uint48 deadline);
     error RefundExceedsCapture(uint256 refund, uint256 captured);
@@ -133,11 +133,6 @@ contract PaymentEscrow {
         bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
 
         _pullTokens(auth, value, paymentDetailsHash, signature);
-
-        // check capture deadline
-        if (block.timestamp > auth.captureDeadline) {
-            revert AfterCaptureDeadline(uint48(block.timestamp), auth.captureDeadline);
-        }
 
         // Update captured amount for refund tracking
         _captured[paymentDetailsHash] = value;
@@ -271,6 +266,14 @@ contract PaymentEscrow {
     {
         // validate value
         if (value > auth.value) revert ValueLimitExceeded(value);
+
+        // validate deadlines
+        if (block.timestamp >= auth.validBefore) {
+            revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(auth.validBefore));
+        }
+        if (auth.validBefore > auth.captureDeadline) {
+            revert AfterCaptureDeadline(uint48(auth.validBefore), auth.captureDeadline);
+        }
 
         // validate fees
         if (auth.feeBps > 10_000) revert FeeBpsOverflow(auth.feeBps);

@@ -188,16 +188,17 @@ contract ChargeTest is PaymentEscrowBase {
         paymentEscrow.charge(chargeAmount, paymentDetails, "");
     }
 
-    function test_charge_reverts_whenPastCaptureDeadline(uint256 amount) public {
+    function test_charge_reverts_whenAfterAuthorizationDeadline(uint256 amount, uint48 captureDeadline) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
         vm.assume(amount > 0 && amount <= buyerBalance);
+        vm.assume(captureDeadline > 0 && captureDeadline < type(uint48).max);
 
         PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
-        uint48 deadline = 1000; // Set a specific deadline
-        auth.captureDeadline = deadline; // Override the max value so we can add 1 to it
+        auth.captureDeadline = captureDeadline;
+        auth.validBefore = captureDeadline;
 
         // Set time to after the capture deadline
-        vm.warp(deadline + 1);
+        vm.warp(captureDeadline + 1);
 
         bytes memory paymentDetails = abi.encode(auth);
         bytes32 paymentDetailsHash = keccak256(paymentDetails);
@@ -214,7 +215,9 @@ contract ChargeTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.AfterCaptureDeadline.selector, uint48(block.timestamp), deadline)
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterAuthorizationDeadline.selector, uint48(block.timestamp), auth.validBefore
+            )
         );
         paymentEscrow.charge(amount, paymentDetails, signature);
     }
