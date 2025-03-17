@@ -12,26 +12,26 @@ import {IERC3009} from "./IERC3009.sol";
 /// @author Coinbase
 contract PaymentEscrow {
     /// @notice ERC-3009 authorization with additional payment routing data
+    /// @param operator Entity responsible for driving payment flow.
+    /// @param buyer The buyer's address authorizing the payment
+    /// @param captureAddress Address that receives the captured payment (minus fees)
     /// @param token The ERC-3009 token contract address
-    /// @param from The buyer's address authorizing the payment
     /// @param value The amount of tokens that will be transferred from the buyer to the escrow
     /// @param validAfter Timestamp when the authorization becomes valid
     /// @param validBefore Timestamp when the authorization expires
     /// @param captureDeadline Timestamp when the buyer can withdraw authorization from escrow
-    /// @param operator Address authorized to capture and void payments
-    /// @param captureAddress Address that receives the captured payment (minus fees)
     /// @param feeBps Fee percentage in basis points (1/100th of a percent)
     /// @param feeRecipient Address that receives the fee portion of payments
     /// @param salt A source of entropy to ensure unique hashes across different payment details
     struct PaymentDetails {
-        address token;
+        address operator;
         address buyer;
+        address captureAddress;
+        address token;
         uint256 value;
         uint256 validAfter;
         uint256 validBefore;
         uint48 captureDeadline;
-        address operator;
-        address captureAddress;
         uint16 feeBps;
         address feeRecipient;
         uint256 salt;
