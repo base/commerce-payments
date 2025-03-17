@@ -24,7 +24,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             address(smartWalletDeployed),
             captureAddress,
             amount,
-            paymentDetails.validBefore,
+            paymentDetails.authorizeDeadline,
             paymentDetails.captureDeadline,
             DEPLOYED_WALLET_OWNER_PK,
             0
@@ -59,7 +59,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             address(smartWalletCounterfactual),
             captureAddress,
             amount,
-            paymentDetails.validBefore,
+            paymentDetails.authorizeDeadline,
             paymentDetails.captureDeadline,
             COUNTERFACTUAL_WALLET_OWNER_PK,
             0

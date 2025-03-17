@@ -148,13 +148,13 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
         paymentDetails.captureDeadline = captureDeadline;
-        paymentDetails.validBefore = captureDeadline;
+        paymentDetails.authorizeDeadline = captureDeadline;
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
-        vm.warp(paymentDetails.validBefore - 1);
+        vm.warp(paymentDetails.authorizeDeadline - 1);
         vm.prank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
 

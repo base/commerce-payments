@@ -165,7 +165,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
         paymentDetails.captureDeadline = captureDeadline;
-        paymentDetails.validBefore = captureDeadline;
+        paymentDetails.authorizeDeadline = captureDeadline;
 
         // Set time to after the capture deadline
         vm.warp(captureDeadline + 1);
@@ -177,7 +177,9 @@ contract ChargeTest is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PaymentEscrow.AfterAuthorizationDeadline.selector, uint48(block.timestamp), paymentDetails.validBefore
+                PaymentEscrow.AfterAuthorizationDeadline.selector,
+                uint48(block.timestamp),
+                paymentDetails.authorizeDeadline
             )
         );
         paymentEscrow.charge(amount, paymentDetails, signature);

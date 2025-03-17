@@ -38,13 +38,13 @@ contract PaymentEscrowBase is Test {
         returns (PaymentEscrow.PaymentDetails memory)
     {
         return PaymentEscrow.PaymentDetails({
-            token: address(mockERC3009Token),
+            operator: operator,
             buyer: buyer,
             captureAddress: captureAddress,
+            token: address(mockERC3009Token),
             value: value,
-            validBefore: type(uint48).max,
+            authorizeDeadline: type(uint48).max,
             captureDeadline: type(uint48).max,
-            operator: operator,
             feeBps: FEE_BPS,
             feeRecipient: feeRecipient,
             salt: 0
@@ -60,7 +60,7 @@ contract PaymentEscrowBase is Test {
             to: address(paymentEscrow),
             value: paymentDetails.value,
             validAfter: 0,
-            validBefore: paymentDetails.validBefore,
+            validBefore: paymentDetails.authorizeDeadline,
             nonce: keccak256(abi.encode(paymentDetails)),
             signerPk: signerPk
         });

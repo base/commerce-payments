@@ -17,7 +17,7 @@ contract PaymentEscrow {
     /// @param captureAddress Address that receives the captured payment (minus fees)
     /// @param token The ERC-3009 token contract address
     /// @param value The amount of tokens that will be transferred from the buyer to the escrow
-    /// @param validBefore Timestamp when the authorization expires
+    /// @param authorizeDeadline Timestamp when the authorization expires
     /// @param captureDeadline Timestamp when the buyer can withdraw authorization from escrow
     /// @param feeBps Fee percentage in basis points (1/100th of a percent)
     /// @param feeRecipient Address that receives the fee portion of payments
@@ -28,7 +28,7 @@ contract PaymentEscrow {
         address captureAddress;
         address token;
         uint256 value;
-        uint256 validBefore;
+        uint256 authorizeDeadline;
         uint48 captureDeadline;
         uint16 feeBps;
         address feeRecipient;
@@ -288,11 +288,11 @@ contract PaymentEscrow {
         if (value > paymentDetails.value) revert ValueLimitExceeded(value);
 
         // validate deadlines
-        if (block.timestamp >= paymentDetails.validBefore) {
-            revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.validBefore));
+        if (block.timestamp >= paymentDetails.authorizeDeadline) {
+            revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.authorizeDeadline));
         }
-        if (paymentDetails.validBefore > paymentDetails.captureDeadline) {
-            revert AfterCaptureDeadline(uint48(paymentDetails.validBefore), paymentDetails.captureDeadline);
+        if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
+            revert AfterCaptureDeadline(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
         }
 
         // validate fees
@@ -314,7 +314,7 @@ contract PaymentEscrow {
             to: address(this),
             value: paymentDetails.value,
             validAfter: 0,
-            validBefore: paymentDetails.validBefore,
+            validBefore: paymentDetails.authorizeDeadline,
             nonce: paymentDetailsHash,
             signature: innerSignature
         });
