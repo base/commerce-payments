@@ -15,15 +15,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            amount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -48,15 +40,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -79,15 +63,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
@@ -119,15 +95,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First charge the payment
         vm.prank(operator);
@@ -204,15 +172,7 @@ contract ChargeTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            amount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         vm.prank(operator);
         vm.expectRevert(

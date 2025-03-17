@@ -55,7 +55,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         address buyer,
         address captureAddress,
         uint256 value,
-        uint256 validAfter,
         uint256 validBefore,
         uint48 captureDeadline,
         uint256 ownerPk,
@@ -68,7 +67,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     token: address(mockERC3009Token),
                     buyer: buyer,
                     captureAddress: captureAddress,
-                    validAfter: validAfter,
                     validBefore: validBefore,
                     captureDeadline: captureDeadline,
                     value: value,
@@ -81,7 +79,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         );
 
         // This is what needs to be signed by the smart wallet
-        bytes32 erc3009Digest = _getERC3009Digest(buyer, value, validAfter, validBefore, nonce);
+        bytes32 erc3009Digest = _getERC3009Digest(buyer, value, 0, validBefore, nonce);
 
         // Now wrap the ERC3009 digest in the smart wallet's domain
         bytes32 domainSeparator = keccak256(
@@ -132,7 +130,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             buyer: smartWalletCounterfactual, // Use smart wallet address instead of EOA
             captureAddress: captureAddress,
             value: value,
-            validAfter: validAfter,
             validBefore: validBefore,
             captureDeadline: captureDeadline,
             operator: operator,
@@ -147,16 +144,14 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         address buyer,
         address captureAddress,
         uint256 value,
-        uint256 validAfter,
         uint256 validBefore,
         uint48 captureDeadline,
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
         // First get the normal smart wallet signature
-        bytes memory signature = _signSmartWalletERC3009(
-            buyer, captureAddress, value, validAfter, validBefore, captureDeadline, ownerPk, ownerIndex
-        );
+        bytes memory signature =
+            _signSmartWalletERC3009(buyer, captureAddress, value, validBefore, captureDeadline, ownerPk, ownerIndex);
 
         // Prepare the factory call data
         bytes[] memory allInitialOwners = new bytes[](1);

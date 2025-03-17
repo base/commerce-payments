@@ -15,15 +15,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -53,15 +45,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -92,15 +76,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -139,15 +115,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -184,15 +152,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         vm.warp(paymentDetails.validBefore - 1);
         vm.prank(operator);
@@ -217,15 +177,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -262,15 +214,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);

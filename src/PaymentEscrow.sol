@@ -12,12 +12,11 @@ import {IERC3009} from "./IERC3009.sol";
 /// @author Coinbase
 contract PaymentEscrow {
     /// @notice ERC-3009 authorization with additional payment routing data
-    /// @param operator Entity responsible for driving payment flow.
+    /// @param operator Entity responsible for driving payment flow
     /// @param buyer The buyer's address authorizing the payment
     /// @param captureAddress Address that receives the captured payment (minus fees)
     /// @param token The ERC-3009 token contract address
     /// @param value The amount of tokens that will be transferred from the buyer to the escrow
-    /// @param validAfter Timestamp when the authorization becomes valid
     /// @param validBefore Timestamp when the authorization expires
     /// @param captureDeadline Timestamp when the buyer can withdraw authorization from escrow
     /// @param feeBps Fee percentage in basis points (1/100th of a percent)
@@ -29,7 +28,6 @@ contract PaymentEscrow {
         address captureAddress;
         address token;
         uint256 value;
-        uint256 validAfter;
         uint256 validBefore;
         uint48 captureDeadline;
         uint16 feeBps;
@@ -311,15 +309,15 @@ contract PaymentEscrow {
         }
 
         // pull the full authorized amount from the buyer
-        IERC3009(paymentDetails.token).receiveWithAuthorization(
-            paymentDetails.buyer,
-            address(this),
-            paymentDetails.value,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            innerSignature
-        );
+        IERC3009(paymentDetails.token).receiveWithAuthorization({
+            from: paymentDetails.buyer,
+            to: address(this),
+            value: paymentDetails.value,
+            validAfter: 0,
+            validBefore: paymentDetails.validBefore,
+            nonce: paymentDetailsHash,
+            signature: innerSignature
+        });
 
         // send excess funds back to buyer
         uint256 excessFunds = paymentDetails.value - value;

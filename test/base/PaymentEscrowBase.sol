@@ -42,13 +42,27 @@ contract PaymentEscrowBase is Test {
             buyer: buyer,
             captureAddress: captureAddress,
             value: value,
-            validAfter: 0,
             validBefore: type(uint48).max,
             captureDeadline: type(uint48).max,
             operator: operator,
             feeBps: FEE_BPS,
             feeRecipient: feeRecipient,
             salt: 0
+        });
+    }
+
+    function _signPaymentDetails(PaymentEscrow.PaymentDetails memory paymentDetails, uint256 signerPk)
+        internal
+        returns (bytes memory)
+    {
+        return _signERC3009({
+            from: paymentDetails.buyer,
+            to: address(paymentEscrow),
+            value: paymentDetails.value,
+            validAfter: 0,
+            validBefore: paymentDetails.validBefore,
+            nonce: keccak256(abi.encode(paymentDetails)),
+            signerPk: signerPk
         });
     }
 

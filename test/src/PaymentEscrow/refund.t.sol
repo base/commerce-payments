@@ -16,15 +16,7 @@ contract RefundTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm and capture the payment
         vm.startPrank(operator);
@@ -62,15 +54,7 @@ contract RefundTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm and capture the payment
         vm.startPrank(operator);
@@ -109,15 +93,7 @@ contract RefundTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm and capture partial amount
         vm.startPrank(operator);
@@ -158,15 +134,7 @@ contract RefundTest is PaymentEscrowBase {
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            paymentDetails.validAfter,
-            paymentDetails.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm and capture the payment
         vm.startPrank(operator);
