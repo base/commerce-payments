@@ -76,11 +76,14 @@ contract PaymentEscrow {
         uint256 value
     );
 
-    /// @notice Emitted when a payment authorization is voided, returning any escrowed funds to the buyer
-    event PaymentVoided(bytes32 indexed paymentDetailsHash);
-
     /// @notice Emitted when payment is captured from escrow
     event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 value);
+
+    /// @notice Emitted when a payment authorization is voided, returning any escrowed funds to the buyer
+    event PaymentVoided(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
+
+    /// @notice Emitted when a payment authorization is voided, returning any escrowed funds to the buyer
+    event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 value);
 
     /// @notice Emitted when captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, address indexed refunder, uint256 value);
@@ -166,37 +169,6 @@ contract PaymentEscrow {
         emit PaymentAuthorized(paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, value);
     }
 
-    /// @notice Permanently voids a payment authorization
-    /// @dev Returns any escrowed funds to buyer
-    /// @param paymentDetails Encoded Authorization struct
-    function void(bytes calldata paymentDetails) external {
-        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
-        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
-
-        if (msg.sender == auth.buyer) {
-            if (block.timestamp < auth.captureDeadline) {
-                revert BeforeCaptureDeadline(uint48(block.timestamp), auth.captureDeadline);
-            }
-        } else if (msg.sender != auth.operator && msg.sender != auth.captureAddress) {
-            revert InvalidSender(msg.sender);
-        }
-
-        // early return if previously voided
-        if (_voided[paymentDetailsHash]) return;
-
-        // Mark the authorization as void
-        _voided[paymentDetailsHash] = true;
-        emit PaymentVoided(paymentDetailsHash);
-
-        // early return if no existing authorization escrowed
-        uint256 authorizedValue = _authorized[paymentDetailsHash];
-        if (authorizedValue == 0) return;
-
-        // Return any escrowed funds
-        delete _authorized[paymentDetailsHash];
-        SafeTransferLib.safeTransfer(auth.token, auth.buyer, authorizedValue);
-    }
-
     /// @notice Transfer previously-escrowed funds to captureAddress
     /// @dev Can be called multiple times up to cumulative authorized amount
     /// @param value Amount to capture
@@ -225,6 +197,64 @@ contract PaymentEscrow {
 
         // handle fees only for the actual charged amount
         _distributeTokens(auth.token, auth.captureAddress, auth.feeRecipient, auth.feeBps, value);
+    }
+
+    /// @notice Permanently voids a payment authorization
+    /// @dev Returns any escrowed funds to buyer
+    /// @param paymentDetails Encoded Authorization struct
+    function void(bytes calldata paymentDetails) external {
+        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
+        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        if (msg.sender != auth.operator && msg.sender != auth.captureAddress) {
+            revert InvalidSender(msg.sender);
+        }
+
+        // early return if previously voided
+        if (_voided[paymentDetailsHash]) return;
+
+        // Mark the authorization as void
+        _voided[paymentDetailsHash] = true;
+        uint256 authorizedValue = _authorized[paymentDetailsHash];
+        emit PaymentVoided(paymentDetailsHash, authorizedValue, msg.sender);
+
+        // early return if no existing authorization escrowed
+        if (authorizedValue == 0) return;
+
+        // Return any escrowed funds
+        delete _authorized[paymentDetailsHash];
+        SafeTransferLib.safeTransfer(auth.token, auth.buyer, authorizedValue);
+    }
+
+    /// @notice Permanently voids a payment authorization
+    /// @dev Returns any escrowed funds to buyer
+    /// @param paymentDetails Encoded Authorization struct
+    function reclaim(bytes calldata paymentDetails) external {
+        Authorization memory auth = abi.decode(paymentDetails, (Authorization));
+        bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        if (msg.sender != auth.buyer) {
+            revert InvalidSender(msg.sender);
+        }
+
+        if (block.timestamp < auth.captureDeadline) {
+            revert BeforeCaptureDeadline(uint48(block.timestamp), auth.captureDeadline);
+        }
+
+        // early return if previously voided
+        if (_voided[paymentDetailsHash]) return;
+
+        // Mark the authorization as void
+        _voided[paymentDetailsHash] = true;
+        uint256 authorizedValue = _authorized[paymentDetailsHash];
+        emit PaymentReclaimed(paymentDetailsHash, authorizedValue);
+
+        // early return if no existing authorization escrowed
+        if (authorizedValue == 0) return;
+
+        // Return any escrowed funds
+        delete _authorized[paymentDetailsHash];
+        SafeTransferLib.safeTransfer(auth.token, auth.buyer, authorizedValue);
     }
 
     /// @notice Return previously-captured tokens to buyer
