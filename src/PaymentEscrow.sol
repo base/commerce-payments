@@ -173,13 +173,13 @@ contract PaymentEscrow {
     /// @dev Can be called multiple times up to cumulative authorized amount
     /// @param value Amount to capture
     /// @param paymentDetails Encoded Authorization struct
-    function capture(uint256 value, bytes calldata paymentDetails)
-        external
-        onlyOperator(paymentDetails)
-        validValue(value)
-    {
+    function capture(uint256 value, bytes calldata paymentDetails) external validValue(value) {
         Authorization memory auth = abi.decode(paymentDetails, (Authorization));
         bytes32 paymentDetailsHash = keccak256(abi.encode(auth));
+
+        if (msg.sender != auth.operator && msg.sender != auth.captureAddress) {
+            revert InvalidSender(msg.sender);
+        }
 
         // check capture deadline
         if (block.timestamp > auth.captureDeadline) {

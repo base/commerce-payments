@@ -129,6 +129,43 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
+    function test_capture_succeeds_captureAddressSender(uint256 authorizedAmount) public {
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
+
+        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        bytes memory paymentDetails = abi.encode(auth);
+        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+
+        bytes memory signature = _signERC3009(
+            buyerEOA,
+            address(paymentEscrow),
+            authorizedAmount,
+            auth.validAfter,
+            auth.validBefore,
+            paymentDetailsHash,
+            BUYER_EOA_PK
+        );
+
+        // First confirm the authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+
+        uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
+        uint256 captureAddressExpectedBalance = authorizedAmount - feeAmount;
+
+        // Then capture the full amount
+        vm.prank(auth.captureAddress);
+        paymentEscrow.capture(authorizedAmount, paymentDetails);
+
+        // Verify balances
+        assertEq(mockERC3009Token.balanceOf(captureAddress), captureAddressExpectedBalance);
+        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
+    }
+
     function test_capture_reverts_whenAfterCaptureDeadline(
         uint256 authorizedAmount,
         uint256 captureAmount,
@@ -204,16 +241,16 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(captureAmount, paymentDetails);
     }
 
-    function test_capture_reverts_whenNotOperator() public {
+    function test_capture_reverts_whenNotOperator(address sender) public {
         uint256 authorizedAmount = 100e6;
 
         PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.assume(sender != auth.operator);
 
         bytes memory paymentDetails = abi.encode(auth);
 
-        address randomAddress = makeAddr("randomAddress");
-        vm.prank(randomAddress);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress));
+        vm.prank(sender);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
         paymentEscrow.capture(authorizedAmount, paymentDetails);
     }
 
