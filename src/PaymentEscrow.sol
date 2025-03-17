@@ -137,6 +137,7 @@ contract PaymentEscrow {
         // check sender is buyer
         if (msg.sender != paymentDetails.buyer) revert InvalidSender(msg.sender);
 
+        // check status is not authorized
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         if (_status[paymentDetailsHash] == Status.AUTHORIZED) revert PaymentAlreadyAuthorized(paymentDetailsHash);
 
@@ -329,7 +330,7 @@ contract PaymentEscrow {
         if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
 
         if (signature.length == 0) {
-            // check if status is pre-approved
+            // check status is pre-approved
             if (_status[paymentDetailsHash] != Status.PREAPPROVED) revert PaymentNotApproved(paymentDetailsHash);
 
             _status[paymentDetailsHash] = Status.AUTHORIZED;
