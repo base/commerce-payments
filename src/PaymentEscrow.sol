@@ -44,15 +44,15 @@ contract PaymentEscrow {
     /// @notice ERC-6492 magic value
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
-    /// @notice Executor contract for processing ERC-6492 signatures
+    /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
     IMulticall3 public immutable multicall3;
 
-    /// @notice Authorization state for a specific 3009 authorization.
+    /// @notice Authorization state for a specific payment.
     /// @dev Used to track whether an authorization has been voided or expired, and to limit amount that can
     ///      be captured or refunded from escrow.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _authorized;
 
-    /// @notice Amount of tokens captured for a specific 3009 authorization.
+    /// @notice Amount of tokens captured for a specific payment.
     /// @dev Used to limit amount that can be refunded post-capture.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _captured;
 
@@ -289,7 +289,7 @@ contract PaymentEscrow {
     /// @dev Can be called by operator or captureAddress
     /// @param value Amount to refund
     /// @param paymentDetails PaymentDetails struct
-    function refund(uint256 value, PaymentDetails calldata paymentDetails) public validValue(value) {
+    function refund(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // validate refund
