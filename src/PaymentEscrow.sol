@@ -341,7 +341,7 @@ contract PaymentEscrow {
             validAfter: 0,
             validBefore: refundDeadline,
             nonce: keccak256(abi.encode(paymentDetailsHash, refundDeadline)),
-            signature: innerSignature
+            signature: signature
         });
 
         // Return tokens to buyer
