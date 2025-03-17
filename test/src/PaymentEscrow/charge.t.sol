@@ -188,37 +188,6 @@ contract ChargeTest is PaymentEscrowBase {
         paymentEscrow.charge(chargeAmount, paymentDetails, "");
     }
 
-    function test_charge_reverts_whenAuthorizationIsVoided(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        // Assume reasonable values and ensure we don't exceed buyer's balance
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
-
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
-
-        // First void the authorization
-        vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
-
-        // Then try to charge using the voided authorization
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.VoidAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.charge(authorizedAmount, paymentDetails, signature);
-    }
-
     function test_charge_reverts_whenPastCaptureDeadline(uint256 amount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
         vm.assume(amount > 0 && amount <= buyerBalance);

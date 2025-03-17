@@ -52,10 +52,6 @@ contract PaymentEscrow {
     /// @dev Used to limit amount that can be refunded post-capture.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _captured;
 
-    /// @notice Whether or not a payment has been voided.
-    /// @dev Prevents future authorization and captures for this payment if voided.
-    mapping(bytes32 paymentDetailsHash => bool isVoided) internal _voided;
-
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentDetailsHash,
@@ -98,7 +94,8 @@ contract PaymentEscrow {
     error FeeBpsOverflow(uint16 feeBps);
     error ZeroFeeRecipient();
     error ZeroValue();
-    error VoidAuthorization(bytes32 paymentDetailsHash);
+    error AuthorizationVoided(bytes32 paymentDetailsHash);
+    error ZeroAuthorization(bytes32 paymentDetailsHash);
 
     /// @notice Initialize contract with ERC6492 validator
     /// @param _erc6492Validator Address of the validator contract
@@ -210,19 +207,13 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // early return if previously voided
-        if (_voided[paymentDetailsHash]) return;
-
-        // Mark the authorization as void
-        _voided[paymentDetailsHash] = true;
+        // check authorization non-zero
         uint256 authorizedValue = _authorized[paymentDetailsHash];
-        emit PaymentVoided(paymentDetailsHash, authorizedValue, msg.sender);
-
-        // early return if no existing authorization escrowed
-        if (authorizedValue == 0) return;
+        if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // Return any escrowed funds
         delete _authorized[paymentDetailsHash];
+        emit PaymentVoided(paymentDetailsHash, authorizedValue, msg.sender);
         SafeTransferLib.safeTransfer(auth.token, auth.buyer, authorizedValue);
     }
 
@@ -241,19 +232,13 @@ contract PaymentEscrow {
             revert BeforeCaptureDeadline(uint48(block.timestamp), auth.captureDeadline);
         }
 
-        // early return if previously voided
-        if (_voided[paymentDetailsHash]) return;
-
-        // Mark the authorization as void
-        _voided[paymentDetailsHash] = true;
+        // check authorization non-zero
         uint256 authorizedValue = _authorized[paymentDetailsHash];
-        emit PaymentReclaimed(paymentDetailsHash, authorizedValue);
-
-        // early return if no existing authorization escrowed
-        if (authorizedValue == 0) return;
+        if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // Return any escrowed funds
         delete _authorized[paymentDetailsHash];
+        emit PaymentReclaimed(paymentDetailsHash, authorizedValue);
         SafeTransferLib.safeTransfer(auth.token, auth.buyer, authorizedValue);
     }
 
@@ -290,9 +275,6 @@ contract PaymentEscrow {
         // validate fees
         if (auth.feeBps > 10_000) revert FeeBpsOverflow(auth.feeBps);
         if (auth.feeRecipient == address(0) && auth.feeBps != 0) revert ZeroFeeRecipient();
-
-        // check if authorization has been voided
-        if (_voided[paymentDetailsHash]) revert VoidAuthorization(paymentDetailsHash);
 
         // parse signature to use for 3009 receiveWithAuthorization
         bytes memory innerSignature = signature;

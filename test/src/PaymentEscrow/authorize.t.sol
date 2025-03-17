@@ -95,34 +95,6 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.authorize(confirmAmount, paymentDetails, signature);
     }
 
-    function test_authorize_reverts_whenAuthorizationIsVoided(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
-
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
-
-        vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.VoidAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
-    }
-
     function test_authorize_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
         uint256 valueToConfirm = 60e6; // Confirm less than authorized to test refund events

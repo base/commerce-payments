@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
-contract VoidAuthorizationTest is PaymentEscrowBase {
-    function test_void_succeeds_withNoEscrowedFunds(uint256 authorizedAmount) public {
+contract AuthorizationVoidedTest is PaymentEscrowBase {
+    function test_void_revert_noAuthorization(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -16,22 +16,8 @@ contract VoidAuthorizationTest is PaymentEscrowBase {
         bytes32 paymentDetailsHash = keccak256(paymentDetails);
 
         vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentDetailsHash));
         paymentEscrow.void(paymentDetails);
-
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
-
-        // try to confirm authorization and see revert
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.VoidAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
     }
 
     function test_void_succeeds_withEscrowedFunds(uint256 authorizedAmount) public {
@@ -70,24 +56,6 @@ contract VoidAuthorizationTest is PaymentEscrowBase {
         // Verify funds were returned to buyer
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + escrowBalanceBefore);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
-    }
-
-    function test_void_succeeds_whenAlreadyVoided(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory paymentDetails = abi.encode(auth);
-
-        // Void the authorization first time
-        vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
-
-        // Void the authorization second time
-        vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
     }
 
     function test_void_reverts_whenNotOperatorOrCaptureAddress() public {
