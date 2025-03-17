@@ -10,17 +10,16 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
 
         vm.assume(amount > 0 && amount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             amount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -42,17 +41,17 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         vm.assume(confirmAmount > 0 && confirmAmount < authorizedAmount);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -75,17 +74,17 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         uint256 confirmAmount = authorizedAmount + 1; // Always exceeds authorized
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -99,17 +98,17 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
         uint256 authorizedAmount = 100e6;
         uint256 valueToConfirm = 60e6; // Confirm less than authorized to test refund events
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -117,7 +116,12 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
         // Record expected event
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentAuthorized(
-            paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, valueToConfirm
+            paymentDetailsHash,
+            paymentDetails.operator,
+            paymentDetails.buyer,
+            paymentDetails.captureAddress,
+            paymentDetails.token,
+            valueToConfirm
         );
 
         // Execute confirmation

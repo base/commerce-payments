@@ -10,10 +10,10 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentDetailsHash));
@@ -25,17 +25,17 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -61,9 +61,8 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_reverts_whenNotOperatorOrCaptureAddress() public {
         uint256 authorizedAmount = 100e6;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory paymentDetails = abi.encode(auth);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
         address randomAddress = makeAddr("randomAddress");
         vm.prank(randomAddress);
@@ -76,17 +75,17 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -112,17 +111,17 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );

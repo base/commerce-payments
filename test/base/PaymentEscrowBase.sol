@@ -35,9 +35,9 @@ contract PaymentEscrowBase is Test {
     function _createPaymentEscrowAuthorization(address buyer, uint256 value)
         internal
         view
-        returns (PaymentEscrow.Authorization memory)
+        returns (PaymentEscrow.PaymentDetails memory)
     {
-        return PaymentEscrow.Authorization({
+        return PaymentEscrow.PaymentDetails({
             token: address(mockERC3009Token),
             buyer: buyer,
             captureAddress: captureAddress,

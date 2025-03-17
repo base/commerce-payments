@@ -10,17 +10,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -48,17 +48,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 1 && authorizedAmount <= buyerBalance);
         uint256 captureAmount = authorizedAmount / 2;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -87,17 +87,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         uint256 firstCaptureAmount = authorizedAmount / 2;
         uint256 secondCaptureAmount = authorizedAmount - firstCaptureAmount;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -134,17 +134,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -157,7 +157,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         uint256 captureAddressExpectedBalance = authorizedAmount - feeAmount;
 
         // Then capture the full amount
-        vm.prank(auth.captureAddress);
+        vm.prank(paymentDetails.captureAddress);
         paymentEscrow.capture(authorizedAmount, paymentDetails);
 
         // Verify balances
@@ -177,24 +177,24 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         vm.assume(captureAmount > 0 && captureAmount <= authorizedAmount);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        auth.captureDeadline = captureDeadline;
-        auth.validBefore = captureDeadline;
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        paymentDetails.captureDeadline = captureDeadline;
+        paymentDetails.validBefore = captureDeadline;
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
 
-        vm.warp(auth.validBefore - 1);
+        vm.warp(paymentDetails.validBefore - 1);
         vm.prank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
 
@@ -212,17 +212,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         uint256 captureAmount = authorizedAmount + 1; // Try to capture more than authorized
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );
@@ -244,10 +244,9 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
     function test_capture_reverts_whenNotOperator(address sender) public {
         uint256 authorizedAmount = 100e6;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.assume(sender != auth.operator);
-
-        bytes memory paymentDetails = abi.encode(auth);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.assume(sender != paymentDetails.operator);
 
         vm.prank(sender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
@@ -258,17 +257,17 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         uint256 authorizedAmount = 100e6;
         uint256 captureAmount = 60e6;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signERC3009(
             buyerEOA,
             address(paymentEscrow),
             authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
+            paymentDetails.validAfter,
+            paymentDetails.validBefore,
             paymentDetailsHash,
             BUYER_EOA_PK
         );

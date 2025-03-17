@@ -64,7 +64,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         // First compute the ERC3009 digest that needs to be signed
         bytes32 nonce = keccak256(
             abi.encode(
-                PaymentEscrow.Authorization({
+                PaymentEscrow.PaymentDetails({
                     token: address(mockERC3009Token),
                     buyer: buyer,
                     captureAddress: captureAddress,
@@ -127,7 +127,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint48 captureDeadline,
         bytes32 nonce
     ) internal view returns (bytes memory) {
-        PaymentEscrow.Authorization memory auth = PaymentEscrow.Authorization({
+        PaymentEscrow.PaymentDetails memory paymentDetails = PaymentEscrow.PaymentDetails({
             token: address(mockERC3009Token),
             buyer: smartWalletCounterfactual, // Use smart wallet address instead of EOA
             captureAddress: captureAddress,
@@ -140,7 +140,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             feeRecipient: feeRecipient,
             salt: uint256(nonce)
         });
-        return abi.encode(auth);
+        return abi.encode(paymentDetails);
     }
 
     function _signSmartWalletERC3009WithERC6492(
