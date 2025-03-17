@@ -305,7 +305,47 @@ contract PaymentEscrow {
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
 
         // Return tokens to buyer
-        SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.buyer, value);
+        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
+    }
+
+    /// @notice Return previously-captured tokens to buyer
+    /// @dev Can be called by operator or captureAddress
+    /// @param value Amount to refund
+    /// @param paymentDetails PaymentDetails struct
+    function refundWithSponsor(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        uint48 refundDeadline,
+        address sponsor,
+        bytes calldata signature
+    ) external validValue(value) {
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
+        // Check sender is operator or captureAddress
+        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
+            revert InvalidSender(msg.sender);
+        }
+
+        // Limit refund value to previously captured
+        uint256 captured = _captured[paymentDetailsHash];
+        if (captured < value) revert RefundExceedsCapture(value, captured);
+
+        _captured[paymentDetailsHash] = captured - value;
+        emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
+
+        // pull the full authorized amount from the buyer
+        IERC3009(paymentDetails.token).receiveWithAuthorization({
+            from: sponsor,
+            to: address(this),
+            value: value,
+            validAfter: 0,
+            validBefore: refundDeadline,
+            nonce: keccak256(abi.encode(paymentDetailsHash, refundDeadline)),
+            signature: innerSignature
+        });
+
+        // Return tokens to buyer
+        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
     }
 
     function _pullTokens(
