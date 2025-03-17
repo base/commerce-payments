@@ -35,6 +35,12 @@ contract PaymentEscrow {
         uint256 salt;
     }
 
+    enum Status {
+        EMPTY,
+        PREAPPROVED,
+        AUTHORIZED
+    }
+
     /// @notice ERC-6492 magic value
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
@@ -49,6 +55,13 @@ contract PaymentEscrow {
     /// @notice Amount of tokens captured for a specific 3009 authorization.
     /// @dev Used to limit amount that can be refunded post-capture.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _captured;
+
+    /// @notice Amount of tokens approved by buyer for a specific payment details hash
+    /// @dev Used to track and validate ERC-20 approvals for specific payments
+    mapping(bytes32 paymentDetailsHash => Status status) internal _status;
+
+    /// @notice Emitted when a buyer pre-approves for a specific payment
+    event PaymentApproved(bytes32 indexed paymentDetailsHash);
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -83,6 +96,8 @@ contract PaymentEscrow {
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
 
     error InvalidSender(address sender);
+    error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
+    error PaymentNotApproved(bytes32 paymentDetailsHash);
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
     error ValueLimitExceeded(uint256 value);
     error AfterAuthorizationDeadline(uint48 timestamp, uint48 deadline);
@@ -114,6 +129,20 @@ contract PaymentEscrow {
     }
 
     receive() external payable {}
+
+    /// @notice Registers buyer's token approval for a specific payment
+    /// @dev Must be called by the buyer specified in the payment details
+    /// @param paymentDetails PaymentDetails struct
+    function preApprove(PaymentDetails calldata paymentDetails) external {
+        // check sender is buyer
+        if (msg.sender != paymentDetails.buyer) revert InvalidSender(msg.sender);
+
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        if (_status[paymentDetailsHash] == Status.AUTHORIZED) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+
+        _status[paymentDetailsHash] = Status.PREAPPROVED;
+        emit PaymentApproved(paymentDetailsHash);
+    }
 
     /// @notice Transfers funds from buyer to captureAddress in one step
     /// @dev If value is less than the authorized value, difference is returned to buyer
@@ -299,29 +328,41 @@ contract PaymentEscrow {
         if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
         if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
 
-        // parse signature to use for 3009 receiveWithAuthorization
-        bytes memory innerSignature = signature;
-        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-            // apply 6492 signature prepareData
-            erc6492Validator.isValidSignatureNowAllowSideEffects(paymentDetails.buyer, paymentDetailsHash, signature);
-            // parse inner signature from 6492 format
-            (,, innerSignature) = abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+        if (signature.length == 0) {
+            // check if status is pre-approved
+            if (_status[paymentDetailsHash] != Status.PREAPPROVED) revert PaymentNotApproved(paymentDetailsHash);
+
+            _status[paymentDetailsHash] = Status.AUTHORIZED;
+            SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
+        } else {
+            _status[paymentDetailsHash] = Status.AUTHORIZED;
+
+            // parse signature to use for 3009 receiveWithAuthorization
+            bytes memory innerSignature = signature;
+            if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
+                // apply 6492 signature prepareData
+                erc6492Validator.isValidSignatureNowAllowSideEffects(
+                    paymentDetails.buyer, paymentDetailsHash, signature
+                );
+                // parse inner signature from 6492 format
+                (,, innerSignature) = abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+            }
+
+            // pull the full authorized amount from the buyer
+            IERC3009(paymentDetails.token).receiveWithAuthorization({
+                from: paymentDetails.buyer,
+                to: address(this),
+                value: paymentDetails.value,
+                validAfter: 0,
+                validBefore: paymentDetails.authorizeDeadline,
+                nonce: paymentDetailsHash,
+                signature: innerSignature
+            });
+
+            // send excess funds back to buyer
+            uint256 excessFunds = paymentDetails.value - value;
+            if (excessFunds > 0) SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
         }
-
-        // pull the full authorized amount from the buyer
-        IERC3009(paymentDetails.token).receiveWithAuthorization({
-            from: paymentDetails.buyer,
-            to: address(this),
-            value: paymentDetails.value,
-            validAfter: 0,
-            validBefore: paymentDetails.authorizeDeadline,
-            nonce: paymentDetailsHash,
-            signature: innerSignature
-        });
-
-        // send excess funds back to buyer
-        uint256 excessFunds = paymentDetails.value - value;
-        if (excessFunds > 0) SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient
