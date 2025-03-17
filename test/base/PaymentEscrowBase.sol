@@ -35,20 +35,34 @@ contract PaymentEscrowBase is Test {
     function _createPaymentEscrowAuthorization(address buyer, uint256 value)
         internal
         view
-        returns (PaymentEscrow.Authorization memory)
+        returns (PaymentEscrow.PaymentDetails memory)
     {
-        return PaymentEscrow.Authorization({
-            token: address(mockERC3009Token),
+        return PaymentEscrow.PaymentDetails({
+            operator: operator,
             buyer: buyer,
             captureAddress: captureAddress,
+            token: address(mockERC3009Token),
             value: value,
-            validAfter: 0,
-            validBefore: type(uint48).max,
+            authorizeDeadline: type(uint48).max,
             captureDeadline: type(uint48).max,
-            operator: operator,
             feeBps: FEE_BPS,
             feeRecipient: feeRecipient,
             salt: 0
+        });
+    }
+
+    function _signPaymentDetails(PaymentEscrow.PaymentDetails memory paymentDetails, uint256 signerPk)
+        internal
+        returns (bytes memory)
+    {
+        return _signERC3009({
+            from: paymentDetails.buyer,
+            to: address(paymentEscrow),
+            value: paymentDetails.value,
+            validAfter: 0,
+            validBefore: paymentDetails.authorizeDeadline,
+            nonce: keccak256(abi.encode(paymentDetails)),
+            signerPk: signerPk
         });
     }
 

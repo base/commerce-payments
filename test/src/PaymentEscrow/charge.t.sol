@@ -10,21 +10,12 @@ contract ChargeTest is PaymentEscrowBase {
 
         vm.assume(amount > 0 && amount <= buyerBalance);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
-        vm.warp(auth.captureDeadline - 1);
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        vm.warp(paymentDetails.captureDeadline - 1);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            amount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -43,21 +34,13 @@ contract ChargeTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         vm.assume(chargeAmount > 0 && chargeAmount < authorizedAmount);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.warp(auth.captureDeadline - 1);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.warp(paymentDetails.captureDeadline - 1);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -74,26 +57,23 @@ contract ChargeTest is PaymentEscrowBase {
         uint256 authorizedAmount = 100e6;
         uint256 valueToCharge = 60e6; // Charge less than authorized to test refund events
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.warp(auth.captureDeadline - 1);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.warp(paymentDetails.captureDeadline - 1);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentCharged(
-            paymentDetailsHash, auth.operator, auth.buyer, auth.captureAddress, auth.token, valueToCharge
+            paymentDetailsHash,
+            paymentDetails.operator,
+            paymentDetails.buyer,
+            paymentDetails.captureAddress,
+            paymentDetails.token,
+            valueToCharge
         );
 
         // Execute charge
@@ -109,21 +89,13 @@ contract ChargeTest is PaymentEscrowBase {
         uint256 chargeAmount = authorizedAmount / 2;
         uint256 refundAmount = chargeAmount / 2;
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.warp(auth.captureDeadline - 1);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.warp(paymentDetails.captureDeadline - 1);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First charge the payment
         vm.prank(operator);
@@ -160,10 +132,9 @@ contract ChargeTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         uint256 chargeAmount = authorizedAmount + 1; // Always exceeds authorized
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.warp(auth.captureDeadline - 1);
-
-        bytes memory paymentDetails = abi.encode(auth);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.warp(paymentDetails.captureDeadline - 1);
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, chargeAmount));
@@ -177,75 +148,39 @@ contract ChargeTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
         uint256 chargeAmount = authorizedAmount + 1; // Always exceeds authorized
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        auth.captureDeadline = captureDeadline;
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        paymentDetails.captureDeadline = captureDeadline;
         vm.warp(captureDeadline + 1);
-
-        bytes memory paymentDetails = abi.encode(auth);
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, chargeAmount));
         paymentEscrow.charge(chargeAmount, paymentDetails, "");
     }
 
-    function test_charge_reverts_whenAuthorizationIsVoided(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        // Assume reasonable values and ensure we don't exceed buyer's balance
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
-
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            authorizedAmount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
-
-        // First void the authorization
-        vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
-
-        // Then try to charge using the voided authorization
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.VoidAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.charge(authorizedAmount, paymentDetails, signature);
-    }
-
-    function test_charge_reverts_whenPastCaptureDeadline(uint256 amount) public {
+    function test_charge_reverts_whenAfterAuthorizationDeadline(uint256 amount, uint48 captureDeadline) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
         vm.assume(amount > 0 && amount <= buyerBalance);
+        vm.assume(captureDeadline > 0 && captureDeadline < type(uint48).max);
 
-        PaymentEscrow.Authorization memory auth = _createPaymentEscrowAuthorization(buyerEOA, amount);
-        uint48 deadline = 1000; // Set a specific deadline
-        auth.captureDeadline = deadline; // Override the max value so we can add 1 to it
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
+        paymentDetails.captureDeadline = captureDeadline;
+        paymentDetails.authorizeDeadline = captureDeadline;
 
         // Set time to after the capture deadline
-        vm.warp(deadline + 1);
+        vm.warp(captureDeadline + 1);
 
-        bytes memory paymentDetails = abi.encode(auth);
-        bytes32 paymentDetailsHash = keccak256(paymentDetails);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        bytes memory signature = _signERC3009(
-            buyerEOA,
-            address(paymentEscrow),
-            amount,
-            auth.validAfter,
-            auth.validBefore,
-            paymentDetailsHash,
-            BUYER_EOA_PK
-        );
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.AfterCaptureDeadline.selector, uint48(block.timestamp), deadline)
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterAuthorizationDeadline.selector,
+                uint48(block.timestamp),
+                paymentDetails.authorizeDeadline
+            )
         );
         paymentEscrow.charge(amount, paymentDetails, signature);
     }
