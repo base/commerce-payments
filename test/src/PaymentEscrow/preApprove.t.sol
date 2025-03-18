@@ -5,8 +5,82 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract PreApproveTest is PaymentEscrowBase {
-    function test_reverts_ifSenderIsNotBuyer() public {}
-    function test_reverts_ifPaymentIsAlreadyAuthorized() public {}
-    function test_succeeds_ifCalledByBuyer() public {}
-    function test_emitsExpectedEvents() public {}
+    function test_reverts_ifSenderIsNotBuyer(address invalidSender, uint256 amount) public {
+        vm.assume(invalidSender != buyerEOA);
+        vm.assume(invalidSender != address(0));
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        vm.prank(invalidSender);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        paymentEscrow.preApprove(paymentDetails);
+    }
+
+    function test_reverts_ifPaymentIsAlreadyAuthorized(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        // First authorize the payment
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+        mockERC3009Token.mint(buyerEOA, amount);
+
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+
+        // Now try to pre-approve
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        vm.prank(buyerEOA);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyAuthorized.selector, paymentDetailsHash));
+        paymentEscrow.preApprove(paymentDetails);
+    }
+
+    function test_succeeds_ifCalledByBuyer(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        vm.prank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
+
+        // Verify state change by trying to authorize with empty signature
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.startPrank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
+    }
+
+    function test_emitsExpectedEvents(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
+        vm.expectEmit(true, false, false, false);
+        emit PaymentEscrow.PaymentApproved(paymentDetailsHash);
+
+        vm.prank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
+    }
 }
