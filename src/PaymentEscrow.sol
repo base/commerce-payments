@@ -162,7 +162,6 @@ contract PaymentEscrow {
         // check status is not authorized
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
-        // @review should we check whether the payment is also not captured?
 
         _paymentState[paymentDetailsHash].isPreApproved = true;
         emit PaymentApproved(paymentDetailsHash);
