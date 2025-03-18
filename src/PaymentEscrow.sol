@@ -364,7 +364,7 @@ contract PaymentEscrow {
             revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.authorizeDeadline));
         }
 
-        // check before capture deadline
+        // check authorize deadline not after capture deadline
         if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
             revert InvalidDeadlines(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
         }
@@ -373,7 +373,7 @@ contract PaymentEscrow {
         if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
         if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
 
-        // use ERC-20 approvals if no signature, else use ERC-3009 authorization
+        // use ERC-20 approval if no signature, else use ERC-3009 authorization
         if (signature.length == 0) {
             // check status is pre-approved
             if (_status[paymentDetailsHash] != Status.PREAPPROVED) revert PaymentNotApproved(paymentDetailsHash);
@@ -415,7 +415,7 @@ contract PaymentEscrow {
             (target, prepareData, innerSignature) =
                 abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
 
-            // construct public call to target with prepareData
+            // construct call to target with prepareData
             IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
             calls[0] = IMulticall3.Call(target, prepareData);
             multicall3.tryAggregate({requireSuccess: false, calls: calls});
