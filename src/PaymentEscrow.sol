@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
 
 import {IERC3009} from "./IERC3009.sol";
+import {IMulticall3} from "./IMulticall3.sol";
 
 /// @notice Route and escrow payments using ERC-3009 authorizations.
 /// @dev This contract handles payment flows where a buyer authorizes a future payment,
@@ -44,15 +44,15 @@ contract PaymentEscrow {
     /// @notice ERC-6492 magic value
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
-    /// @notice Validator contract for processing ERC-6492 signatures
-    PublicERC6492Validator public immutable erc6492Validator;
+    /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
+    IMulticall3 public immutable multicall3;
 
-    /// @notice Authorization state for a specific 3009 authorization.
+    /// @notice Authorization state for a specific payment.
     /// @dev Used to track whether an authorization has been voided or expired, and to limit amount that can
     ///      be captured or refunded from escrow.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _authorized;
 
-    /// @notice Amount of tokens captured for a specific 3009 authorization.
+    /// @notice Amount of tokens captured for a specific payment.
     /// @dev Used to limit amount that can be refunded post-capture.
     mapping(bytes32 paymentDetailsHash => uint256 value) internal _captured;
 
@@ -110,10 +110,10 @@ contract PaymentEscrow {
     error AuthorizationVoided(bytes32 paymentDetailsHash);
     error ZeroAuthorization(bytes32 paymentDetailsHash);
 
-    /// @notice Initialize contract with ERC6492 validator
-    /// @param _erc6492Validator Address of the validator contract
-    constructor(address _erc6492Validator) {
-        erc6492Validator = PublicERC6492Validator(_erc6492Validator);
+    /// @notice Initialize contract with ERC6492 Executor
+    /// @param _multicall3 Address of the Executor contract
+    constructor(address _multicall3) {
+        multicall3 = IMulticall3(_multicall3);
     }
 
     /// @notice Ensures caller is the operator specified in payment details
@@ -292,8 +292,48 @@ contract PaymentEscrow {
     function refund(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // validate refund
+        _refund(value, paymentDetails.operator, paymentDetails.captureAddress, paymentDetailsHash);
+
+        // Return tokens to buyer
+        SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.buyer, value);
+    }
+
+    /// @notice Return previously-captured tokens to buyer
+    /// @dev Can be called by operator or captureAddress
+    /// @param value Amount to refund
+    /// @param paymentDetails PaymentDetails struct
+    function refundWithSponsor(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        address sponsor,
+        uint48 refundDeadline,
+        uint256 refundSalt,
+        bytes calldata signature
+    ) external validValue(value) {
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
+        // validate refund
+        _refund(value, paymentDetails.operator, paymentDetails.captureAddress, paymentDetailsHash);
+
+        // pull the full authorized amount from the sponsor
+        _receiveWithAuthorization({
+            token: paymentDetails.token,
+            from: sponsor,
+            value: value,
+            validBefore: refundDeadline,
+            nonce: keccak256(abi.encode(keccak256(abi.encode(paymentDetails)), refundSalt)),
+            signature: signature
+        });
+
+        // Return tokens to buyer
+        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
+    }
+
+    /// @notice natspec
+    function _refund(uint256 value, address operator, address captureAddress, bytes32 paymentDetailsHash) internal {
         // Check sender is operator or captureAddress
-        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
+        if (msg.sender != operator && msg.sender != captureAddress) {
             revert InvalidSender(msg.sender);
         }
 
@@ -303,11 +343,9 @@ contract PaymentEscrow {
 
         _captured[paymentDetailsHash] = captured - value;
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
-
-        // Return tokens to buyer
-        SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.buyer, value);
     }
 
+    /// @notice natspec
     function _pullTokens(
         PaymentDetails memory paymentDetails,
         bytes32 paymentDetailsHash,
@@ -338,32 +376,53 @@ contract PaymentEscrow {
         } else {
             _status[paymentDetailsHash] = Status.AUTHORIZED;
 
-            // parse signature to use for 3009 receiveWithAuthorization
-            bytes memory innerSignature = signature;
-            if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-                // apply 6492 signature prepareData
-                erc6492Validator.isValidSignatureNowAllowSideEffects(
-                    paymentDetails.buyer, paymentDetailsHash, signature
-                );
-                // parse inner signature from 6492 format
-                (,, innerSignature) = abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
-            }
-
-            // pull the full authorized amount from the buyer
-            IERC3009(paymentDetails.token).receiveWithAuthorization({
+            _receiveWithAuthorization({
+                token: paymentDetails.token,
                 from: paymentDetails.buyer,
-                to: address(this),
                 value: paymentDetails.value,
-                validAfter: 0,
-                validBefore: paymentDetails.authorizeDeadline,
+                validBefore: uint48(paymentDetails.authorizeDeadline),
                 nonce: paymentDetailsHash,
-                signature: innerSignature
+                signature: signature
             });
 
             // send excess funds back to buyer
             uint256 excessFunds = paymentDetails.value - value;
             if (excessFunds > 0) SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
         }
+    }
+
+    /// @notice natspec
+    function _receiveWithAuthorization(
+        address token,
+        address from,
+        uint256 value,
+        uint48 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) internal {
+        // parse signature to use for 3009 receiveWithAuthorization
+        bytes memory innerSignature = signature;
+        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
+            // parse inner signature from ERC-6492 format
+            address target;
+            bytes memory prepareData;
+            (target, prepareData, innerSignature) =
+                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+            IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
+            calls[0] = IMulticall3.Call(target, prepareData);
+            multicall3.tryAggregate({requireSuccess: false, calls: calls});
+        }
+
+        // pull the full authorized amount from the buyer
+        IERC3009(token).receiveWithAuthorization({
+            from: from,
+            to: address(this),
+            value: value,
+            validAfter: 0,
+            validBefore: validBefore,
+            nonce: nonce,
+            signature: innerSignature
+        });
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient
