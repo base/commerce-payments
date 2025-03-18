@@ -5,6 +5,10 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract ConfirmAuthorizationTest is PaymentEscrowBase {
+    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved() public {}
+    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred() public {}
+    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved() public {}
+
     function test_authorize_succeeds_whenValueEqualsAuthorized(uint256 amount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
