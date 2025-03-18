@@ -3,11 +3,80 @@ pragma solidity ^0.8.13;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-contract ConfirmAuthorizationTest is PaymentEscrowBase {
-    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved() public {}
-    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred() public {}
-    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved() public {}
+contract AuthorizeTest is PaymentEscrowBase {
+    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        // Give buyer tokens and approve escrow
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
+        // Try to authorize without pre-approval
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentNotApproved.selector, keccak256(abi.encode(paymentDetails))));
+        paymentEscrow.authorize(amount, paymentDetails, "");
+    }
+
+    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        // Pre-approve in escrow
+        vm.prank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
+
+        // Give buyer tokens but DON'T approve escrow
+        mockERC3009Token.mint(buyerEOA, amount);
+
+        // Try to authorize - should fail on token transfer
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
+        paymentEscrow.authorize(amount, paymentDetails, "");
+    }
+
+    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount
+        });
+
+        // Pre-approve in escrow
+        vm.prank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
+
+        // Give buyer tokens and approve escrow
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+
+        uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
+        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
+
+        // Authorize with empty signature
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, "");
+
+        // Verify balances
+        assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
+    }
 
     function test_authorize_succeeds_whenValueEqualsAuthorized(uint256 amount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
