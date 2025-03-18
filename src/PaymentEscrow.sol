@@ -6,6 +6,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 
+/// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
 /// @dev By escrowing payment, this contract can mimic the 2-step payment pattern of "authorization" and "capture".
 /// @dev Authorization is defined as placing a hold on a buyer's funds temporarily.
@@ -27,7 +28,7 @@ contract PaymentEscrow {
         uint256 value;
         /// @dev authorizeDeadline Timestamp when the authorization expires
         uint256 authorizeDeadline;
-        /// @dev captureDeadline Timestamp when the buyer can withdraw authorization from escrow
+        /// @dev captureDeadline Timestamp when the payment can no longer be captured and the buyer can reclaim authorization from escrow
         uint48 captureDeadline;
         /// @dev feeBps Fee percentage in basis points (1/100th of a percent)
         uint16 feeBps;
@@ -58,7 +59,7 @@ contract PaymentEscrow {
     /// @notice State per unique payment
     mapping(bytes32 paymentDetailsHash => PaymentState state) _paymentState;
 
-    /// @notice Emitted when a buyer pre-approves for a specific payment
+    /// @notice Emitted when a buyer pre-approves a payment
     event PaymentApproved(bytes32 indexed paymentDetailsHash);
 
     /// @notice Emitted when a payment is charged and immediately captured
@@ -90,7 +91,7 @@ contract PaymentEscrow {
     /// @notice Emitted when an authorized payment is reclaimed, returning any escrowed funds to the buyer
     event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 value);
 
-    /// @notice Emitted when captured payment is refunded
+    /// @notice Emitted when a captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 value, address sender);
 
     /// @notice Sender for a function call does not follow access control requirements
@@ -99,7 +100,7 @@ contract PaymentEscrow {
     /// @notice Payment has already been authorized
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
 
-    /// @notice Payment is has not been approved
+    /// @notice Payment has not been approved
     error PaymentNotApproved(bytes32 paymentDetailsHash);
 
     /// @notice Payment authorization is insufficient for a requested capture
@@ -111,7 +112,7 @@ contract PaymentEscrow {
     /// @notice Authorization attempted after deadline
     error AfterAuthorizationDeadline(uint48 timestamp, uint48 deadline);
 
-    ///  @notice Authorization deadline after capture deadline
+    /// @notice Authorization deadline after capture deadline
     error InvalidDeadlines(uint48 authorize, uint48 capture);
 
     /// @notice Capture attempted after deadline
@@ -161,6 +162,7 @@ contract PaymentEscrow {
         // check status is not authorized
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        // @review should we check whether the payment is also not captured?
 
         _paymentState[paymentDetailsHash].isPreApproved = true;
         emit PaymentApproved(paymentDetailsHash);
@@ -205,7 +207,8 @@ contract PaymentEscrow {
         );
     }
 
-    /// @notice Validates buyer signature and transfers funds from buyer to escrow
+    /// @notice Transfers funds from buyer to escrow
+    /// @dev Validates either buyer signature for ERC-3009 or, if empty signature, pre-approval via ERC-20 approva
     /// @param value Amount to authorize
     /// @param paymentDetails PaymentDetails struct
     /// @param signature Signature of the buyer authorizing the payment
@@ -272,6 +275,7 @@ contract PaymentEscrow {
 
     /// @notice Permanently voids a payment authorization
     /// @dev Returns any escrowed funds to buyer
+    /// @dev Can only be called by the operator or captureAddress
     /// @param paymentDetails PaymentDetails struct
     function void(PaymentDetails calldata paymentDetails) external {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
@@ -291,8 +295,8 @@ contract PaymentEscrow {
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, authorizedValue);
     }
 
-    /// @notice Permanently voids a payment authorization
-    /// @dev Returns any escrowed funds to buyer
+    /// @notice Returns any escrowed funds to buyer
+    /// @dev Can only be called by the buyer and only after the capture deadline
     /// @param paymentDetails PaymentDetails struct
     function reclaim(PaymentDetails calldata paymentDetails) external {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
@@ -319,6 +323,7 @@ contract PaymentEscrow {
 
     /// @notice Return previously-captured tokens to buyer
     /// @dev Can be called by operator or captureAddress
+    /// @dev Funds are transferred from the caller
     /// @param value Amount to refund
     /// @param paymentDetails PaymentDetails struct
     function refund(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
@@ -333,6 +338,8 @@ contract PaymentEscrow {
 
     /// @notice Return previously-captured tokens to buyer
     /// @dev Can be called by operator or captureAddress
+    /// @dev Funds are transferred from the sponsor via ERC-3009 authorization
+    /// @dev The value to refund and the value authorized in the ERC-3009 authorization must be identical
     /// @param value Amount to refund
     /// @param paymentDetails PaymentDetails struct
     function refundWithSponsor(
