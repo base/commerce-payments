@@ -14,8 +14,6 @@ contract RefundTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm and capture the payment
@@ -51,8 +49,6 @@ contract RefundTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -90,8 +86,6 @@ contract RefundTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 

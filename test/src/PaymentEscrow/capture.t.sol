@@ -13,8 +13,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
@@ -42,8 +40,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -73,8 +69,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -113,8 +107,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         // First confirm the authorization
@@ -149,8 +141,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
         paymentDetails.captureDeadline = captureDeadline;
         paymentDetails.authorizeDeadline = captureDeadline;
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 

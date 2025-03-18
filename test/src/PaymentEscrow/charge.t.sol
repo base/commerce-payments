@@ -13,8 +13,6 @@ contract ChargeTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
         vm.warp(paymentDetails.captureDeadline - 1);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
@@ -37,8 +35,6 @@ contract ChargeTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
         vm.warp(paymentDetails.captureDeadline - 1);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -92,8 +88,6 @@ contract ChargeTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
         vm.warp(paymentDetails.captureDeadline - 1);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -169,8 +163,6 @@ contract ChargeTest is PaymentEscrowBase {
 
         // Set time to after the capture deadline
         vm.warp(captureDeadline + 1);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
