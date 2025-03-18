@@ -118,28 +118,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         return keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
     }
 
-    function _createSmartWalletPaymentDetails(
-        uint256 value,
-        uint256 validAfter,
-        uint256 authorizeDeadline,
-        uint48 captureDeadline,
-        bytes32 nonce
-    ) internal view returns (bytes memory) {
-        PaymentEscrow.PaymentDetails memory paymentDetails = PaymentEscrow.PaymentDetails({
-            operator: operator,
-            buyer: smartWalletCounterfactual, // Use smart wallet address instead of EOA
-            captureAddress: captureAddress,
-            token: address(mockERC3009Token),
-            value: value,
-            authorizeDeadline: authorizeDeadline,
-            captureDeadline: captureDeadline,
-            feeBps: FEE_BPS,
-            feeRecipient: feeRecipient,
-            salt: uint256(nonce)
-        });
-        return abi.encode(paymentDetails);
-    }
-
     function _signSmartWalletERC3009WithERC6492(
         address buyer,
         address captureAddress,

@@ -12,8 +12,6 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(buyerEOA, amount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
@@ -35,8 +33,6 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
@@ -60,8 +56,6 @@ contract ConfirmAuthorizationTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 

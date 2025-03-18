@@ -57,6 +57,7 @@ contract PaymentEscrowBase is Test {
 
     function _signPaymentDetails(PaymentEscrow.PaymentDetails memory paymentDetails, uint256 signerPk)
         internal
+        view
         returns (bytes memory)
     {
         return _signERC3009({

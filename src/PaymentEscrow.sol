@@ -101,25 +101,19 @@ contract PaymentEscrow {
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
     error ValueLimitExceeded(uint256 value);
     error AfterAuthorizationDeadline(uint48 timestamp, uint48 deadline);
+    error InvalidDeadlines(uint48 authorize, uint48 capture);
     error BeforeCaptureDeadline(uint48 timestamp, uint48 deadline);
     error AfterCaptureDeadline(uint48 timestamp, uint48 deadline);
     error RefundExceedsCapture(uint256 refund, uint256 captured);
     error FeeBpsOverflow(uint16 feeBps);
     error ZeroFeeRecipient();
     error ZeroValue();
-    error AuthorizationVoided(bytes32 paymentDetailsHash);
     error ZeroAuthorization(bytes32 paymentDetailsHash);
 
     /// @notice Initialize contract with ERC6492 Executor
     /// @param _multicall3 Address of the Executor contract
     constructor(address _multicall3) {
         multicall3 = IMulticall3(_multicall3);
-    }
-
-    /// @notice Ensures caller is the operator specified in payment details
-    modifier onlyOperator(PaymentDetails calldata paymentDetails) {
-        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
-        _;
     }
 
     /// @notice Ensures value is not zero
@@ -153,11 +147,14 @@ contract PaymentEscrow {
     /// @param signature Signature of the buyer authorizing the payment
     function charge(uint256 value, PaymentDetails calldata paymentDetails, bytes calldata signature)
         external
-        onlyOperator(paymentDetails)
         validValue(value)
     {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // check sender is operator
+        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
+
+        // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
 
         // Update captured amount for refund tracking
@@ -187,14 +184,17 @@ contract PaymentEscrow {
     /// @param signature Signature of the buyer authorizing the payment
     function authorize(uint256 value, PaymentDetails calldata paymentDetails, bytes calldata signature)
         external
-        onlyOperator(paymentDetails)
         validValue(value)
     {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // check sender is operator
+        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
+
+        // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
 
-        // Update authorized amount to only what we're keeping
+        // update authorized amount to only what we're keeping
         _authorized[paymentDetailsHash] = value;
         emit PaymentAuthorized(
             paymentDetailsHash,
@@ -213,12 +213,13 @@ contract PaymentEscrow {
     function capture(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // check sender is operator or captureAddress
         if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
             revert InvalidSender(msg.sender);
         }
 
-        // check capture deadline
-        if (block.timestamp > paymentDetails.captureDeadline) {
+        // check before capture deadline
+        if (block.timestamp >= paymentDetails.captureDeadline) {
             revert AfterCaptureDeadline(uint48(block.timestamp), paymentDetails.captureDeadline);
         }
 
@@ -247,6 +248,7 @@ contract PaymentEscrow {
     function void(PaymentDetails calldata paymentDetails) external {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // check sender is operator or captureAddress
         if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
             revert InvalidSender(msg.sender);
         }
@@ -267,10 +269,12 @@ contract PaymentEscrow {
     function reclaim(PaymentDetails calldata paymentDetails) external {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
+        // check sender is buyer
         if (msg.sender != paymentDetails.buyer) {
             revert InvalidSender(msg.sender);
         }
 
+        // check not before capture deadline
         if (block.timestamp < paymentDetails.captureDeadline) {
             revert BeforeCaptureDeadline(uint48(block.timestamp), paymentDetails.captureDeadline);
         }
@@ -316,7 +320,7 @@ contract PaymentEscrow {
         // validate refund
         _refund(value, paymentDetails.operator, paymentDetails.captureAddress, paymentDetailsHash);
 
-        // pull the full authorized amount from the sponsor
+        // pull the refund amount from the sponsor
         _receiveWithAuthorization({
             token: paymentDetails.token,
             from: sponsor,
@@ -330,7 +334,7 @@ contract PaymentEscrow {
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
     }
 
-    /// @notice natspec
+    /// @notice Validate and update state for refund
     function _refund(uint256 value, address operator, address captureAddress, bytes32 paymentDetailsHash) internal {
         // Check sender is operator or captureAddress
         if (msg.sender != operator && msg.sender != captureAddress) {
@@ -345,28 +349,31 @@ contract PaymentEscrow {
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
     }
 
-    /// @notice natspec
+    /// @notice Transfer tokens into this contract
     function _pullTokens(
         PaymentDetails memory paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
         bytes calldata signature
     ) internal {
-        // validate value
+        // check value does not exceed payment value
         if (value > paymentDetails.value) revert ValueLimitExceeded(value);
 
-        // validate deadlines
+        // check before authorize deadline
         if (block.timestamp >= paymentDetails.authorizeDeadline) {
             revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.authorizeDeadline));
         }
+
+        // check authorize deadline not after capture deadline
         if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
-            revert AfterCaptureDeadline(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
+            revert InvalidDeadlines(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
         }
 
         // validate fees
         if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
         if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
 
+        // use ERC-20 approval if no signature, else use ERC-3009 authorization
         if (signature.length == 0) {
             // check status is pre-approved
             if (_status[paymentDetailsHash] != Status.PREAPPROVED) revert PaymentNotApproved(paymentDetailsHash);
@@ -391,7 +398,7 @@ contract PaymentEscrow {
         }
     }
 
-    /// @notice natspec
+    /// @notice Use ERC-3009 receiveWithAuthorization with optional ERC-6492 preparation call
     function _receiveWithAuthorization(
         address token,
         address from,
@@ -400,7 +407,6 @@ contract PaymentEscrow {
         bytes32 nonce,
         bytes calldata signature
     ) internal {
-        // parse signature to use for 3009 receiveWithAuthorization
         bytes memory innerSignature = signature;
         if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
             // parse inner signature from ERC-6492 format
@@ -408,12 +414,14 @@ contract PaymentEscrow {
             bytes memory prepareData;
             (target, prepareData, innerSignature) =
                 abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+
+            // construct call to target with prepareData
             IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
             calls[0] = IMulticall3.Call(target, prepareData);
             multicall3.tryAggregate({requireSuccess: false, calls: calls});
         }
 
-        // pull the full authorized amount from the buyer
+        // receive tokens from authorization signer
         IERC3009(token).receiveWithAuthorization({
             from: from,
             to: address(this),
