@@ -5,6 +5,95 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract CaptureAuthorizationTest is PaymentEscrowBase {
+    function test_capture_reverts_whenNotOperator(address sender) public {
+        uint256 authorizedAmount = 100e6;
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        vm.assume(sender != paymentDetails.operator);
+
+        vm.prank(sender);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
+        paymentEscrow.capture(authorizedAmount, paymentDetails);
+    }
+
+    function test_capture_reverts_whenValueIsZero() public {
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
+
+        vm.prank(operator);
+        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        paymentEscrow.capture(0, paymentDetails);
+    }
+
+    function test_capture_reverts_whenValueOverflows(uint256 overflowValue) public {
+        vm.assume(overflowValue > type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        paymentEscrow.capture(overflowValue, paymentDetails);
+    }
+
+    function test_capture_reverts_whenAfterCaptureDeadline(
+        uint256 authorizedAmount,
+        uint256 captureAmount,
+        uint48 captureDeadline
+    ) public {
+        vm.assume(captureDeadline > 1 && captureDeadline < type(uint40).max);
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
+        vm.assume(captureAmount > 0 && captureAmount <= authorizedAmount);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+        paymentDetails.captureDeadline = captureDeadline;
+        paymentDetails.authorizeDeadline = captureDeadline;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.warp(paymentDetails.authorizeDeadline - 1);
+        vm.prank(operator);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+
+        vm.warp(captureDeadline + 1);
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.AfterCaptureDeadline.selector, block.timestamp, captureDeadline)
+        );
+        paymentEscrow.capture(captureAmount, paymentDetails);
+    }
+
+    function test_capture_reverts_whenInsufficientAuthorization(uint256 authorizedAmount) public {
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
+        uint256 captureAmount = authorizedAmount + 1; // Try to capture more than authorized
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // First confirm the authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+
+        // Try to capture more than authorized
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.InsufficientAuthorization.selector, paymentDetailsHash, authorizedAmount, captureAmount
+            )
+        );
+        paymentEscrow.capture(captureAmount, paymentDetails);
+    }
+
     function test_capture_succeeds_withFullAmount(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -126,75 +215,6 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
-    function test_capture_reverts_whenAfterCaptureDeadline(
-        uint256 authorizedAmount,
-        uint256 captureAmount,
-        uint48 captureDeadline
-    ) public {
-        vm.assume(captureDeadline > 1 && captureDeadline < type(uint40).max);
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-        vm.assume(captureAmount > 0 && captureAmount <= authorizedAmount);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        paymentDetails.captureDeadline = captureDeadline;
-        paymentDetails.authorizeDeadline = captureDeadline;
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.warp(paymentDetails.authorizeDeadline - 1);
-        vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
-
-        vm.warp(captureDeadline + 1);
-        vm.prank(operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.AfterCaptureDeadline.selector, block.timestamp, captureDeadline)
-        );
-        paymentEscrow.capture(captureAmount, paymentDetails);
-    }
-
-    function test_capture_reverts_whenInsufficientAuthorization(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-        uint256 captureAmount = authorizedAmount + 1; // Try to capture more than authorized
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        // First confirm the authorization
-        vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
-
-        // Try to capture more than authorized
-        vm.prank(operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PaymentEscrow.InsufficientAuthorization.selector, paymentDetailsHash, authorizedAmount, captureAmount
-            )
-        );
-        paymentEscrow.capture(captureAmount, paymentDetails);
-    }
-
-    function test_capture_reverts_whenNotOperator(address sender) public {
-        uint256 authorizedAmount = 100e6;
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-        vm.assume(sender != paymentDetails.operator);
-
-        vm.prank(sender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
-        paymentEscrow.capture(authorizedAmount, paymentDetails);
-    }
-
     function test_capture_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
         uint256 captureAmount = 60e6;
@@ -217,25 +237,5 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         // Execute capture
         vm.prank(operator);
         paymentEscrow.capture(captureAmount, paymentDetails);
-    }
-
-    function test_capture_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
-
-        vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
-        paymentEscrow.capture(0, paymentDetails);
-    }
-
-    function test_capture_reverts_whenValueOverflows(uint256 overflowValue) public {
-        vm.assume(overflowValue > type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.capture(overflowValue, paymentDetails);
     }
 }
