@@ -5,7 +5,69 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract RefundTest is PaymentEscrowBase {
-    function test_refund_succeeds_whenCalledByOperator(uint256 authorizedAmount, uint256 refundAmount) public {
+    function test_reverts_whenValueIsZero() public {
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
+
+        vm.prank(operator);
+        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        paymentEscrow.refund(0, paymentDetails);
+    }
+
+    function test_reverts_whenValueOverflows(uint256 overflowValue) public {
+        vm.assume(overflowValue > type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        paymentEscrow.refund(overflowValue, paymentDetails);
+    }
+
+    function test_reverts_whenSenderNotOperatorOrCaptureAddress() public {
+        uint256 authorizedAmount = 100e6;
+        uint256 refundAmount = 60e6;
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        address randomAddress = makeAddr("randomAddress");
+        vm.prank(randomAddress);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress));
+        paymentEscrow.refund(refundAmount, paymentDetails);
+    }
+
+    function test_reverts_whenRefundExceedsCaptured(uint256 authorizedAmount) public {
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 1 && authorizedAmount <= buyerBalance); // Changed from > 0 to > 1
+        uint256 chargeAmount = authorizedAmount / 2; // Charge only half
+        uint256 refundAmount = authorizedAmount; // Try to refund full amount
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // First confirm and capture partial amount
+        vm.startPrank(operator);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.capture(chargeAmount, paymentDetails);
+        vm.stopPrank();
+
+        // Fund operator for refund
+        mockERC3009Token.mint(operator, refundAmount);
+        vm.prank(operator);
+        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
+
+        // Try to refund more than charged
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, refundAmount, chargeAmount));
+        paymentEscrow.refund(refundAmount, paymentDetails);
+    }
+
+    function test_succeeds_whenCalledByOperator(uint256 authorizedAmount, uint256 refundAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -41,7 +103,7 @@ contract RefundTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + refundAmount);
     }
 
-    function test_refund_succeeds_whenCalledByCaptureAddress(uint256 authorizedAmount, uint256 refundAmount) public {
+    function test_succeeds_whenCalledByCaptureAddress(uint256 authorizedAmount, uint256 refundAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -77,49 +139,7 @@ contract RefundTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + refundAmount);
     }
 
-    function test_refund_reverts_whenRefundExceedsCaptured(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 1 && authorizedAmount <= buyerBalance); // Changed from > 0 to > 1
-        uint256 chargeAmount = authorizedAmount / 2; // Charge only half
-        uint256 refundAmount = authorizedAmount; // Try to refund full amount
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        // First confirm and capture partial amount
-        vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
-        paymentEscrow.capture(chargeAmount, paymentDetails);
-        vm.stopPrank();
-
-        // Fund operator for refund
-        mockERC3009Token.mint(operator, refundAmount);
-        vm.prank(operator);
-        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
-
-        // Try to refund more than charged
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, refundAmount, chargeAmount));
-        paymentEscrow.refund(refundAmount, paymentDetails);
-    }
-
-    function test_refund_reverts_whenNotOperatorOrCaptureAddress() public {
-        uint256 authorizedAmount = 100e6;
-        uint256 refundAmount = 60e6;
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        address randomAddress = makeAddr("randomAddress");
-        vm.prank(randomAddress);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress));
-        paymentEscrow.refund(refundAmount, paymentDetails);
-    }
-
-    function test_refund_emitsCorrectEvents() public {
+    function test_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
         uint256 refundAmount = 60e6;
 
@@ -148,25 +168,5 @@ contract RefundTest is PaymentEscrowBase {
         // Execute refund
         vm.prank(operator);
         paymentEscrow.refund(refundAmount, paymentDetails);
-    }
-
-    function test_refund_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
-
-        vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
-        paymentEscrow.refund(0, paymentDetails);
-    }
-
-    function test_refund_reverts_whenValueOverflows(uint256 overflowValue) public {
-        vm.assume(overflowValue > type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.refund(overflowValue, paymentDetails);
     }
 }

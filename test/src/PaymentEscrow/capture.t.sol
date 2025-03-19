@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
-contract CaptureAuthorizationTest is PaymentEscrowBase {
-    function test_capture_reverts_whenNotOperator(address sender) public {
+contract CaptureTest is PaymentEscrowBase {
+    function test_reverts_whenNotOperator(address sender) public {
         uint256 authorizedAmount = 100e6;
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -17,7 +17,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(authorizedAmount, paymentDetails);
     }
 
-    function test_capture_reverts_whenValueIsZero() public {
+    function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
 
@@ -26,7 +26,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(0, paymentDetails);
     }
 
-    function test_capture_reverts_whenValueOverflows(uint256 overflowValue) public {
+    function test_reverts_whenValueOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -37,7 +37,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(overflowValue, paymentDetails);
     }
 
-    function test_capture_reverts_whenAfterCaptureDeadline(
+    function test_reverts_whenAfterCaptureDeadline(
         uint256 authorizedAmount,
         uint256 captureAmount,
         uint48 captureDeadline
@@ -67,7 +67,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(captureAmount, paymentDetails);
     }
 
-    function test_capture_reverts_whenInsufficientAuthorization(uint256 authorizedAmount) public {
+    function test_reverts_whenInsufficientAuthorization(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -94,7 +94,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(captureAmount, paymentDetails);
     }
 
-    function test_capture_succeeds_withFullAmount(uint256 authorizedAmount) public {
+    function test_succeeds_withFullAmount(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -121,7 +121,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
-    function test_capture_succeeds_withPartialAmount(uint256 authorizedAmount) public {
+    function test_succeeds_withPartialAmount(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 1 && authorizedAmount <= buyerBalance);
@@ -149,7 +149,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), authorizedAmount - captureAmount);
     }
 
-    function test_capture_succeeds_withMultipleCaptures(uint256 authorizedAmount) public {
+    function test_succeeds_withMultipleCaptures(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 2 && authorizedAmount <= buyerBalance);
@@ -188,7 +188,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
-    function test_capture_succeeds_captureAddressSender(uint256 authorizedAmount) public {
+    function test_succeeds_captureAddressSender(uint256 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -215,7 +215,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
-    function test_capture_emitsCorrectEvents() public {
+    function test_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
         uint256 captureAmount = 60e6;
 

@@ -43,6 +43,30 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         paymentEscrow.refundWithSponsor(0, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
     }
 
+    function test_refundWithSponsor_reverts_whenValueOverflows(uint256 overflowValue) public {
+        vm.assume(overflowValue > type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
+
+        uint48 refundDeadline = uint48(block.timestamp + 1 days);
+        uint256 refundSalt = 123;
+        bytes memory sponsorSignature = _signRefundAuthorization({
+            paymentDetails: paymentDetails,
+            value: 1,
+            sponsorAddress: _sponsor,
+            deadline: refundDeadline,
+            salt: refundSalt,
+            privateKey: _SPONSOR_PK
+        });
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        paymentEscrow.refundWithSponsor(
+            overflowValue, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature
+        );
+    }
+
     function test_reverts_ifSenderIsInvalid(address invalidSender, uint48 refundDeadline, uint256 refundSalt) public {
         vm.assume(invalidSender != operator);
         vm.assume(invalidSender != captureAddress);
@@ -371,30 +395,6 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.refundWithSponsor(amount, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
-    }
-
-    function test_refundWithSponsor_reverts_whenValueOverflows(uint256 overflowValue) public {
-        vm.assume(overflowValue > type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
-
-        uint48 refundDeadline = uint48(block.timestamp + 1 days);
-        uint256 refundSalt = 123;
-        bytes memory sponsorSignature = _signRefundAuthorization({
-            paymentDetails: paymentDetails,
-            value: 1,
-            sponsorAddress: _sponsor,
-            deadline: refundDeadline,
-            salt: refundSalt,
-            privateKey: _SPONSOR_PK
-        });
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.refundWithSponsor(
-            overflowValue, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature
-        );
     }
 
     // Helper function to sign refund authorization
