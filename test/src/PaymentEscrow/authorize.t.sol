@@ -6,6 +6,164 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 contract AuthorizeTest is PaymentEscrowBase {
+    function test_authorize_reverts_whenValueIsZero() public {
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        paymentEscrow.authorize(0, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenValueOverflows(uint256 overflowValue) public {
+        vm.assume(overflowValue > type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        paymentEscrow.authorize(overflowValue, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
+        vm.assume(invalidSender != operator);
+        vm.assume(invalidSender != address(0));
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(invalidSender);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenValueExceedsAuthorized(uint256 authorizedAmount) public {
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
+        uint256 confirmAmount = authorizedAmount + 1; // Always exceeds authorized
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, confirmAmount));
+        paymentEscrow.authorize(confirmAmount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_exactlyAtAuthorizationDeadline(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        uint48 authorizeDeadline = uint48(block.timestamp + 1 days);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        paymentDetails.authorizeDeadline = authorizeDeadline;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // Set time to exactly at the authorize deadline
+        vm.warp(authorizeDeadline);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterAuthorizationDeadline.selector, authorizeDeadline, authorizeDeadline
+            )
+        );
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenAuthorizationDeadlineAfterCaptureDeadline(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        // Set authorize deadline after capture deadline
+        uint48 captureDeadline = uint48(block.timestamp + 1 days);
+        uint48 authorizeDeadline = captureDeadline + 1; // One second later
+        paymentDetails.captureDeadline = captureDeadline;
+        paymentDetails.authorizeDeadline = authorizeDeadline;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidDeadlines.selector, authorizeDeadline, captureDeadline)
+        );
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenFeeBpsTooHigh(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        // Set fee bps > 100%
+        paymentDetails.feeBps = 10_001;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenFeeRecipientZeroButFeeBpsNonZero(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        // Set fee recipient to zero but keep non-zero fee bps
+        paymentDetails.feeRecipient = address(0);
+        paymentDetails.feeBps = 100; // 1%
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(PaymentEscrow.ZeroFeeRecipient.selector);
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
+    function test_authorize_reverts_whenAlreadyAuthorized(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // First authorization
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+
+        // Try to authorize again with same payment details
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.prank(operator);
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyAuthorized.selector, paymentDetailsHash));
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
     function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved(uint256 amount) public {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
@@ -74,7 +232,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
     }
 
-    function test_authorize_succeeds_whenValueEqualsAuthorized(uint256 amount) public {
+    function test_succeeds_whenValueEqualsAuthorized(uint256 amount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(amount > 0 && amount <= buyerBalance);
@@ -92,9 +250,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
     }
 
-    function test_authorize_succeeds_whenValueLessThanAuthorized(uint256 authorizedAmount, uint256 confirmAmount)
-        public
-    {
+    function test_succeeds_whenValueLessThanAuthorized(uint256 authorizedAmount, uint256 confirmAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -117,48 +273,32 @@ contract AuthorizeTest is PaymentEscrowBase {
         );
     }
 
-    function test_authorize_reverts_whenValueExceedsAuthorized(uint256 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-        uint256 confirmAmount = authorizedAmount + 1; // Always exceeds authorized
+    function test_authorize_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, confirmAmount));
-        paymentEscrow.authorize(confirmAmount, paymentDetails, signature);
-    }
-
-
-    function test_authorize_reverts_exactlyAtAuthorizationDeadline(uint120 amount) public {
-        vm.assume(amount > 0);
-
-        uint48 authorizeDeadline = uint48(block.timestamp + 1 days);
-        
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        paymentDetails.authorizeDeadline = authorizeDeadline;
+
+        // Set both fee recipient and fee bps to zero - this should be valid
+        paymentDetails.feeRecipient = address(0);
+        paymentDetails.feeBps = 0;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
-        // Set time to exactly at the authorize deadline
-        vm.warp(authorizeDeadline);
+        mockERC3009Token.mint(buyerEOA, amount);
+
+        uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
+        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         vm.prank(operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PaymentEscrow.AfterAuthorizationDeadline.selector,
-                authorizeDeadline,
-                authorizeDeadline
-            )
-        );
         paymentEscrow.authorize(amount, paymentDetails, signature);
+
+        // Verify balances - full amount should go to escrow since fees are 0
+        assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
     }
-    
+
     function test_authorize_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
         uint256 valueToConfirm = 60e6; // Confirm less than authorized to test refund events
@@ -184,151 +324,5 @@ contract AuthorizeTest is PaymentEscrowBase {
         // Execute confirmation
         vm.prank(operator);
         paymentEscrow.authorize(valueToConfirm, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenFeeBpsTooHigh(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        // Set fee bps > 100%
-        paymentDetails.feeBps = 10_001;
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenFeeRecipientZeroButFeeBpsNonZero(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        // Set fee recipient to zero but keep non-zero fee bps
-        paymentDetails.feeRecipient = address(0);
-        paymentDetails.feeBps = 100; // 1%
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroFeeRecipient.selector);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_authorize_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        // Set both fee recipient and fee bps to zero - this should be valid
-        paymentDetails.feeRecipient = address(0);
-        paymentDetails.feeBps = 0;
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        mockERC3009Token.mint(buyerEOA, amount);
-
-        uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
-        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
-
-        vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-
-        // Verify balances - full amount should go to escrow since fees are 0
-        assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
-        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
-    }
-
-    function test_authorize_reverts_whenAlreadyAuthorized(uint256 amount) public {
-        vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        // First authorization
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-
-        // Try to authorize again with same payment details
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(operator);
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-        vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyAuthorized.selector, paymentDetailsHash)
-        );
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
-        vm.assume(invalidSender != operator);
-        vm.assume(invalidSender != address(0));
-        vm.assume(amount > 0);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenAuthorizationDeadlineAfterCaptureDeadline(uint120 amount) public {
-        vm.assume(amount > 0);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-        
-        // Set authorize deadline after capture deadline
-        uint48 captureDeadline = uint48(block.timestamp + 1 days);
-        uint48 authorizeDeadline = captureDeadline + 1; // One second later
-        paymentDetails.captureDeadline = captureDeadline;
-        paymentDetails.authorizeDeadline = authorizeDeadline;
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.InvalidDeadlines.selector, authorizeDeadline, captureDeadline)
-        );
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
-        
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
-        paymentEscrow.authorize(0, paymentDetails, signature);
-    }
-
-    function test_authorize_reverts_whenValueOverflows() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
-        
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        uint256 overflowValue = uint256(type(uint120).max) + 1;
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.authorize(overflowValue, paymentDetails, signature);
     }
 }

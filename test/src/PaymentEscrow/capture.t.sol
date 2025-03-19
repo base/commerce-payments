@@ -220,7 +220,7 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
     }
 
     function test_capture_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
+        PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
 
         vm.prank(operator);
@@ -228,11 +228,12 @@ contract CaptureAuthorizationTest is PaymentEscrowBase {
         paymentEscrow.capture(0, paymentDetails);
     }
 
-    function test_capture_reverts_whenValueOverflows() public {
-        PaymentEscrow.PaymentDetails memory paymentDetails = 
+    function test_capture_reverts_whenValueOverflows(uint256 overflowValue) public {
+        vm.assume(overflowValue > type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
 
-        uint256 overflowValue = uint256(type(uint120).max) + 1;
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
         paymentEscrow.capture(overflowValue, paymentDetails);
