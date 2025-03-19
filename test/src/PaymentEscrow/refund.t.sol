@@ -149,4 +149,23 @@ contract RefundTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.refund(refundAmount, paymentDetails);
     }
+
+    function test_refund_reverts_whenValueIsZero() public {
+        PaymentEscrow.PaymentDetails memory paymentDetails = 
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1}); // Any non-zero value
+
+        vm.prank(operator);
+        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        paymentEscrow.refund(0, paymentDetails);
+    }
+
+    function test_refund_reverts_whenValueOverflows() public {
+        PaymentEscrow.PaymentDetails memory paymentDetails = 
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: 1});
+
+        uint256 overflowValue = uint256(type(uint120).max) + 1;
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        paymentEscrow.refund(overflowValue, paymentDetails);
+    }
 }
