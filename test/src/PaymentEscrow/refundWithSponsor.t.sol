@@ -6,17 +6,16 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract RefundWithSponsorTest is PaymentEscrowBase {
     address _sponsor;
-    uint256 constant SPONSOR_PK = 0x12345; // Example private key for sponsor
+    uint256 constant _SPONSOR_PK = 0x12345; // Example private key for sponsor
 
     function setUp() public virtual override {
         super.setUp();
-        _sponsor = vm.addr(SPONSOR_PK);
+        _sponsor = vm.addr(_SPONSOR_PK);
     }
 
     function test_reverts_ifValueIsZero(uint120 initialAmount, uint48 refundDeadline, uint256 refundSalt) public {
-        // Ensure reasonable bounds
         vm.assume(initialAmount > 0);
-        vm.assume(refundDeadline > block.timestamp); // Must be future timestamp
+        vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: initialAmount});
@@ -36,7 +35,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(operator);
@@ -67,7 +66,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(invalidSender);
@@ -104,7 +103,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(operator);
@@ -172,7 +171,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(operator);
@@ -206,7 +205,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(operator);
@@ -246,7 +245,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.prank(operator);
@@ -282,7 +281,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
@@ -322,7 +321,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
@@ -364,7 +363,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             sponsorAddress: _sponsor,
             deadline: refundDeadline,
             salt: refundSalt,
-            privateKey: SPONSOR_PK
+            privateKey: _SPONSOR_PK
         });
 
         vm.expectEmit(true, true, false, true);
