@@ -11,10 +11,8 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
@@ -33,14 +31,12 @@ contract ReclaimTest is PaymentEscrowBase {
     function test_reverts_ifBeforeCaptureDeadline(uint256 amount, uint48 currentTime) public {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
-        
+
         uint48 captureDeadline = uint48(block.timestamp + 1 days);
         vm.assume(currentTime < captureDeadline);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
         // Set both deadlines - ensure authorizeDeadline is before captureDeadline
         paymentDetails.captureDeadline = captureDeadline;
         paymentDetails.authorizeDeadline = captureDeadline - 1 hours; // Set authorize deadline before capture deadline
@@ -55,7 +51,9 @@ contract ReclaimTest is PaymentEscrowBase {
         // Try to reclaim before deadline
         vm.warp(currentTime);
         vm.prank(buyerEOA);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.BeforeCaptureDeadline.selector, currentTime, captureDeadline));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.BeforeCaptureDeadline.selector, currentTime, captureDeadline)
+        );
         paymentEscrow.reclaim(paymentDetails);
     }
 
@@ -63,30 +61,55 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // Try to reclaim without any authorization
         vm.warp(paymentDetails.captureDeadline);
         vm.prank(buyerEOA);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, keccak256(abi.encode(paymentDetails))));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, keccak256(abi.encode(paymentDetails)))
+        );
+        paymentEscrow.reclaim(paymentDetails);
+    }
+
+    function test_reverts_ifAlreadyReclaimed(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        // First authorize the payment
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+        mockERC3009Token.mint(buyerEOA, amount);
+
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+
+        // Reclaim the payment the first time
+        vm.warp(paymentDetails.captureDeadline);
+        vm.prank(buyerEOA);
+        paymentEscrow.reclaim(paymentDetails);
+
+        // Try to reclaim again
+        vm.prank(buyerEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, keccak256(abi.encode(paymentDetails)))
+        );
         paymentEscrow.reclaim(paymentDetails);
     }
 
     function test_succeeds_ifCalledByBuyerAfterCaptureDeadline(uint256 amount, uint48 timeAfterDeadline) public {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
-        
+
         uint48 captureDeadline = uint48(block.timestamp + 1 days);
         vm.assume(timeAfterDeadline > captureDeadline);
         vm.assume(timeAfterDeadline < type(uint48).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
         // Set both deadlines - ensure authorizeDeadline is before captureDeadline
         paymentDetails.captureDeadline = captureDeadline;
         paymentDetails.authorizeDeadline = captureDeadline - 1 hours; // Set authorize deadline before capture deadline
@@ -115,10 +138,8 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);

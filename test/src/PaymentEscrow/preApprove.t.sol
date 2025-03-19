@@ -11,10 +11,8 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         vm.prank(invalidSender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
@@ -25,10 +23,8 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
@@ -48,12 +44,31 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         vm.prank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
+
+        // Verify state change by trying to authorize with empty signature
+        mockERC3009Token.mint(buyerEOA, amount);
+        vm.startPrank(buyerEOA);
+        mockERC3009Token.approve(address(paymentEscrow), amount);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
+    }
+
+    function test_succeeds_ifCalledByBuyerMultipleTimes(uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(amount <= type(uint120).max);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+
+        vm.startPrank(buyerEOA);
+        paymentEscrow.preApprove(paymentDetails);
         paymentEscrow.preApprove(paymentDetails);
 
         // Verify state change by trying to authorize with empty signature
@@ -70,10 +85,8 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 

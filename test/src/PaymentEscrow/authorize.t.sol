@@ -10,10 +10,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // Give buyer tokens and approve escrow
         mockERC3009Token.mint(buyerEOA, amount);
@@ -22,7 +20,9 @@ contract AuthorizeTest is PaymentEscrowBase {
 
         // Try to authorize without pre-approval
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentNotApproved.selector, keccak256(abi.encode(paymentDetails))));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.PaymentNotApproved.selector, keccak256(abi.encode(paymentDetails)))
+        );
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
@@ -30,10 +30,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // Pre-approve in escrow
         vm.prank(buyerEOA);
@@ -52,10 +50,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         vm.assume(amount > 0);
         vm.assume(amount <= type(uint120).max);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
-            value: amount
-        });
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // Pre-approve in escrow
         vm.prank(buyerEOA);
