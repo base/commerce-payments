@@ -5,6 +5,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
+import {IPermit2} from "./interfaces/IPermit2.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -139,10 +140,20 @@ contract PaymentEscrow {
     /// @notice Authorization is zero
     error ZeroAuthorization(bytes32 paymentDetailsHash);
 
-    /// @notice Initialize contract with ERC6492 Executor
+    /// @notice Permit2 contract address - this should be the canonical deployment
+    IPermit2 public immutable permit2;
+
+    /// @notice Permit2 transfer failed
+    error Permit2TransferFailed();
+
+    /// @notice Initialize contract with ERC6492 Executor and Permit2
     /// @param _multicall3 Address of the Executor contract
-    constructor(address _multicall3) {
+    /// @param _permit2 Address of the Permit2 contract
+    constructor(address _multicall3, address _permit2) {
+        if (_multicall3 == address(0)) revert InvalidAddress();
         multicall3 = IMulticall3(_multicall3);
+        if (_permit2 == address(0)) revert InvalidAddress();
+        permit2 = IPermit2(_permit2);
     }
 
     /// @notice Ensures value is non-zero and does not overflow storage
@@ -484,5 +495,49 @@ contract PaymentEscrow {
 
         _paymentState[paymentDetailsHash].captured = captured - uint120(value);
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
+    }
+
+    /// @notice Transfer tokens into this contract
+    function _pullTokens(
+        address token,
+        address from,
+        uint256 value,
+        bytes memory signature
+    ) internal {
+        // Try ERC3009 first
+        try IERC3009(token).receiveWithAuthorization(
+            from,
+            address(this),
+            value,
+            0,
+            block.timestamp,
+            keccak256(signature),
+            signature
+        ) {
+            return; // ERC3009 succeeded
+        } catch {
+            // ERC3009 failed, try Permit2
+            try permit2.permitTransferFrom(
+                IPermit2.PermitTransferFrom({
+                    permitted: IPermit2.TokenPermissions({
+                        token: token,
+                        amount: value
+                    }),
+                    nonce: permit2.nonces(from),
+                    deadline: block.timestamp
+                }),
+                IPermit2.SignatureTransferDetails({
+                    to: address(this),
+                    requestedAmount: value
+                }),
+                from,
+                signature
+            ) {
+                return; // Permit2 succeeded
+            } catch {
+                // Both methods failed
+                revert Permit2TransferFailed();
+            }
+        }
     }
 }
