@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {console} from "forge-std/console.sol";
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 import {IPermit2} from "./interfaces/IPermit2.sol";
@@ -426,27 +425,13 @@ contract PaymentEscrow {
                 return; // ERC3009 succeeded
             } catch {
                 // ERC3009 failed, try Permit2
-                console.log("\n=== Permit2 Transfer Debug ===");
-                console.log("From:", paymentDetails.buyer);
-                console.log("To:", address(this));
-                console.log("Token:", paymentDetails.token);
-                console.log("Value:", value);
-                console.log("Payment Details Hash (nonce):", uint256(paymentDetailsHash));
-                console.log("Deadline:", paymentDetails.authorizeDeadline);
-
                 try permit2.permitTransferFrom(
                     IPermit2.PermitTransferFrom({
-                        permitted: IPermit2.TokenPermissions({
-                            token: paymentDetails.token,
-                            amount: value
-                        }),
+                        permitted: IPermit2.TokenPermissions({token: paymentDetails.token, amount: value}),
                         nonce: uint256(paymentDetailsHash),
                         deadline: paymentDetails.authorizeDeadline
                     }),
-                    IPermit2.SignatureTransferDetails({
-                        to: address(this),
-                        requestedAmount: value
-                    }),
+                    IPermit2.SignatureTransferDetails({to: address(this), requestedAmount: value}),
                     paymentDetails.buyer,
                     signature
                 ) {
