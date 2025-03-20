@@ -426,12 +426,18 @@ contract PaymentEscrow {
             } catch {
                 // ERC3009 failed, try Permit2
                 try permit2.permitTransferFrom(
-                    IPermit2.PermitTransferFrom({
-                        permitted: IPermit2.TokenPermissions({token: paymentDetails.token, amount: value}),
+                    ISignatureTransfer.PermitTransferFrom({
+                        permitted: ISignatureTransfer.TokenPermissions({
+                            token: paymentDetails.token,
+                            amount: value
+                        }),
                         nonce: uint256(paymentDetailsHash),
                         deadline: paymentDetails.authorizeDeadline
                     }),
-                    IPermit2.SignatureTransferDetails({to: address(this), requestedAmount: value}),
+                    ISignatureTransfer.SignatureTransferDetails({
+                        to: address(this),
+                        requestedAmount: value
+                    }),
                     paymentDetails.buyer,
                     signature
                 ) {
