@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
-import {IPermit2} from "./interfaces/IPermit2.sol";
-import {ISignatureTransfer} from "./interfaces/ISignatureTransfer.sol";
+import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
+import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
