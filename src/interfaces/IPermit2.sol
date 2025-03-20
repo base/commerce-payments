@@ -18,12 +18,14 @@ interface IPermit2 {
         uint256 requestedAmount;
     }
 
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+    
+    function nonces(address user) external view returns (uint256);
+
     function permitTransferFrom(
-        PermitTransferFrom calldata permit,
+        PermitTransferFrom memory permit,
         SignatureTransferDetails calldata transferDetails,
         address owner,
         bytes calldata signature
     ) external;
-
-    function nonces(address owner) external view returns (uint256);
 } 
