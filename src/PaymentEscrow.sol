@@ -412,36 +412,44 @@ contract PaymentEscrow {
 
             SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
         } else {
+            bytes memory innerSignature = signature;
+            if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
+                // parse inner signature from ERC-6492 format
+                address target;
+                bytes memory prepareData;
+                (target, prepareData, innerSignature) =
+                    abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+
+                // construct call to target with prepareData
+                IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
+                calls[0] = IMulticall3.Call(target, prepareData);
+                multicall3.tryAggregate({requireSuccess: false, calls: calls});
+            }
             // Try ERC3009 first
-            try IERC3009(paymentDetails.token).receiveWithAuthorization(
-                paymentDetails.buyer,
-                address(this),
-                value,
-                0,
-                paymentDetails.authorizeDeadline,
-                paymentDetailsHash,
-                signature
-            ) {
-                return; // ERC3009 succeeded
+            try IERC3009(paymentDetails.token).receiveWithAuthorization({
+                from: paymentDetails.buyer,
+                to: address(this),
+                value: paymentDetails.value,
+                validAfter: 0,
+                validBefore: uint48(paymentDetails.authorizeDeadline),
+                nonce: paymentDetailsHash,
+                signature: innerSignature
+            }) {
+                // ERC3009 succeeded
             } catch {
                 // ERC3009 failed, try Permit2
                 try permit2.permitTransferFrom(
                     ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({
-                            token: paymentDetails.token,
-                            amount: value
-                        }),
+                        permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
                         nonce: uint256(paymentDetailsHash),
                         deadline: paymentDetails.authorizeDeadline
                     }),
-                    ISignatureTransfer.SignatureTransferDetails({
-                        to: address(this),
-                        requestedAmount: value
-                    }),
+                    ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
                     paymentDetails.buyer,
                     signature
                 ) {
                     return; // Permit2 succeeded
+                    // can return here because we don't need to return excess funds to the buyer, we transferred the exact amount
                 } catch {
                     // Both methods failed
                     revert Permit2TransferFailed();
