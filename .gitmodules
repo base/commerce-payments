@@ -4,3 +4,6 @@
 [submodule "lib/spend-permissions"]
 	path = lib/spend-permissions
 	url = https://github.com/coinbase/spend-permissions
+[submodule "lib/permit2"]
+	path = lib/permit2
+	url = https://github.com/uniswap/permit2
