@@ -52,7 +52,6 @@ contract Permit2Test is PaymentEscrowBase {
             deadline: deadline
         });
 
-        // Log each hash step
         bytes32 tokenPermissionsHash =
             keccak256(abi.encode(_TOKEN_PERMISSIONS_TYPEHASH, permit.permitted.token, permit.permitted.amount));
         bytes32 permitHash = keccak256(
