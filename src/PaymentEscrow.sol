@@ -7,6 +7,7 @@ import {IMulticall3} from "./IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {MagicSpend} from "spend-permissions/MagicSpend.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -232,10 +233,9 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfers funds from buyer to escrow
-    /// @dev Validates authorization based on specified type: ERC-3009 signature, Permit2 signature, Spend Permissions 
     /// @param value Amount to authorize
     /// @param paymentDetails PaymentDetails struct
-    /// @param signature Signature of the buyer authorizing the payment (empty if using SpendPermission)
+    /// @param signature Signature of the buyer authorizing the payment
     /// @param authType Type of authorization to use
     function authorize(
         uint256 value,
@@ -243,24 +243,29 @@ contract PaymentEscrow {
         bytes calldata signature,
         AuthorizationType authType
     ) external validValue(value) {
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        _authorize(value, paymentDetails, signature, authType, MagicSpend.WithdrawRequest({
+            asset: address(0),
+            amount: 0,
+            nonce: 0,
+            deadline: 0,
+            signature: new bytes(0)
+        }));
+    }
 
-        // check sender is operator
-        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
-
-        // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, authType);
-
-        // update authorized amount for capture accounting
-        _paymentState[paymentDetailsHash].authorized = uint120(value);
-        emit PaymentAuthorized(
-            paymentDetailsHash,
-            paymentDetails.operator,
-            paymentDetails.buyer,
-            paymentDetails.captureAddress,
-            paymentDetails.token,
-            value
-        );
+    /// @notice Transfers funds from buyer to escrow with MagicSpend withdrawal
+    /// @param value Amount to authorize
+    /// @param paymentDetails PaymentDetails struct
+    /// @param signature Signature of the buyer authorizing the payment
+    /// @param authType Type of authorization to use
+    /// @param withdrawRequest MagicSpend withdrawal request (only used with SpendPermission)
+    function authorizeWithWithdraw(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        bytes calldata signature,
+        AuthorizationType authType,
+        MagicSpend.WithdrawRequest calldata withdrawRequest
+    ) external validValue(value) {
+        _authorize(value, paymentDetails, signature, authType, withdrawRequest);
     }
 
     /// @notice Transfer previously-escrowed funds to captureAddress
@@ -402,7 +407,8 @@ contract PaymentEscrow {
         bytes32 paymentDetailsHash,
         uint256 value,
         bytes calldata signature,
-        AuthorizationType authType
+        AuthorizationType authType,
+        MagicSpend.WithdrawRequest memory withdrawRequest
     ) internal {
         // check value does not exceed payment value
         if (value > paymentDetails.value) revert ValueLimitExceeded(value);
@@ -431,24 +437,17 @@ contract PaymentEscrow {
                 // SpendPermission has its own pre-approval flow
                 if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
                 
-                SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-                    account: paymentDetails.buyer,
-                    spender: address(this), // The PaymentEscrow contract is the spender
-                    token: paymentDetails.token,
-                    allowance: uint160(paymentDetails.value), // Safe because we checked value <= type(uint120).max
-                    period: type(uint48).max, // Non-recurring spend permission
-                    start: 0,
-                    end: uint48(paymentDetails.authorizeDeadline),
-                    salt: uint256(paymentDetailsHash),
-                    extraData: abi.encode(
-                        paymentDetails.operator,
-                        paymentDetails.captureAddress,
-                        paymentDetails.feeBps,
-                        paymentDetails.feeRecipient
-                    )
-                });
+                SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
+                    paymentDetails, 
+                    paymentDetailsHash, 
+                    value
+                );
                 
-                spendPermissionManager.spend(permission, uint160(value));
+                if (withdrawRequest.amount > 0) {
+                    spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
+                } else {
+                    spendPermissionManager.spend(permission, uint160(value));
+                }
             } else {
                 // For ERC3009 and Permit2, use standard ERC20 pre-approval
                 if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
@@ -507,6 +506,30 @@ contract PaymentEscrow {
                 );
             }
         }
+    }
+
+    /// @notice Helper to create a SpendPermission from PaymentDetails
+    function _createSpendPermission(
+        PaymentDetails calldata paymentDetails,
+        bytes32 paymentDetailsHash,
+        uint256 value
+    ) internal pure returns (SpendPermissionManager.SpendPermission memory) {
+        return SpendPermissionManager.SpendPermission({
+            account: paymentDetails.buyer,
+            spender: address(this),
+            token: paymentDetails.token,
+            allowance: uint160(paymentDetails.value),
+            period: type(uint48).max,
+            start: 0,
+            end: uint48(paymentDetails.authorizeDeadline),
+            salt: uint256(paymentDetailsHash),
+            extraData: abi.encode(
+                paymentDetails.operator,
+                paymentDetails.captureAddress,
+                paymentDetails.feeBps,
+                paymentDetails.feeRecipient
+            )
+        });
     }
 
     /// @notice Process ERC-6492 signature if present
@@ -595,5 +618,33 @@ contract PaymentEscrow {
 
         _paymentState[paymentDetailsHash].captured = captured - uint120(value);
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
+    }
+
+    /// @notice Internal implementation of authorize
+    function _authorize(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        bytes calldata signature,
+        AuthorizationType authType,
+        MagicSpend.WithdrawRequest memory withdrawRequest
+    ) internal {
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
+        // check sender is operator
+        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
+
+        // transfer tokens into escrow
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, authType, withdrawRequest);
+
+        // update authorized amount for capture accounting
+        _paymentState[paymentDetailsHash].authorized = uint120(value);
+        emit PaymentAuthorized(
+            paymentDetailsHash,
+            paymentDetails.operator,
+            paymentDetails.buyer,
+            paymentDetails.captureAddress,
+            paymentDetails.token,
+            value
+        );
     }
 }
