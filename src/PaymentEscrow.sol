@@ -6,6 +6,7 @@ import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -15,6 +16,13 @@ import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow {
+    /// @notice Types of payment authorizations supported
+    enum AuthorizationType {
+        ERC3009,        // Authorization via ERC3009 signature
+        Permit2,        // Authorization via Permit2 signature
+        SpendPermission // Authorization via pre-approval and ERC20 allowance
+    }
+
     /// @notice ERC-3009 authorization with additional payment routing data
     struct PaymentDetails {
         /// @dev operator Entity responsible for driving payment flow
@@ -146,12 +154,20 @@ contract PaymentEscrow {
     /// @notice Permit2 transfer failed
     error Permit2TransferFailed();
 
+    /// @notice Spend permission approval failed
+error PermissionApprovalFailed();
+
+    /// @notice Spend Permission Manager contract
+    SpendPermissionManager public immutable spendPermissionManager;
+
     /// @notice Initialize contract with ERC6492 Executor and Permit2
     /// @param _multicall3 Address of the Executor contract
     /// @param _permit2 Address of the Permit2 contract
-    constructor(address _multicall3, address _permit2) {
+    /// @param _spendPermissionManager Address of the SpendPermissionManager contract
+    constructor(address _multicall3, address _permit2, SpendPermissionManager _spendPermissionManager) {
         multicall3 = IMulticall3(_multicall3);
         permit2 = IPermit2(_permit2);
+        spendPermissionManager = _spendPermissionManager;
     }
 
     /// @notice Ensures value is non-zero and does not overflow storage
@@ -216,21 +232,24 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfers funds from buyer to escrow
-    /// @dev Validates either buyer signature for ERC-3009 or, if empty signature, pre-approval via ERC-20 approva
+    /// @dev Validates authorization based on specified type: ERC-3009 signature, Permit2 signature, Spend Permissions 
     /// @param value Amount to authorize
     /// @param paymentDetails PaymentDetails struct
-    /// @param signature Signature of the buyer authorizing the payment
-    function authorize(uint256 value, PaymentDetails calldata paymentDetails, bytes calldata signature)
-        external
-        validValue(value)
-    {
+    /// @param signature Signature of the buyer authorizing the payment (empty if using SpendPermission)
+    /// @param authType Type of authorization to use
+    function authorize(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        bytes calldata signature,
+        AuthorizationType authType
+    ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, authType);
 
         // update authorized amount for capture accounting
         _paymentState[paymentDetailsHash].authorized = uint120(value);
@@ -243,6 +262,7 @@ contract PaymentEscrow {
             value
         );
     }
+
 
     /// @notice Transfer previously-escrowed funds to captureAddress
     /// @dev Can be called multiple times up to cumulative authorized amount
@@ -377,12 +397,14 @@ contract PaymentEscrow {
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
     }
 
+
     /// @notice Transfer tokens into this contract
     function _pullTokens(
         PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        AuthorizationType authType
     ) internal {
         // check value does not exceed payment value
         if (value > paymentDetails.value) revert ValueLimitExceeded(value);
@@ -405,28 +427,44 @@ contract PaymentEscrow {
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
         _paymentState[paymentDetailsHash].isAuthorized = true;
 
-        // use ERC-20 approval if no signature, else use ERC-3009 authorization
-        if (signature.length == 0) {
+            bytes memory innerSignature = _processERC6492Signature(signature);
+
+
+        if (authType == AuthorizationType.SpendPermission) {
             // check status is pre-approved
-            if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
 
-            SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
+            // Create spend permission from payment details
+            SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
+                account: paymentDetails.buyer,
+                spender: address(this), // The PaymentEscrow contract is the spender
+                token: paymentDetails.token,
+                allowance: uint160(paymentDetails.value), // Safe because we checked value <= type(uint120).max
+                period: type(uint48).max, // Non-recurring spend permission
+                start: 0,
+                end: uint48(paymentDetails.authorizeDeadline),
+                salt: uint256(paymentDetailsHash),
+                extraData: abi.encode(
+                    paymentDetails.operator,
+                    paymentDetails.captureAddress,
+                    paymentDetails.feeBps,
+                    paymentDetails.feeRecipient
+                )
+            });
+
+        // approve permission with buyer signature if present
+        if (signature.length > 0) {
+            bool approved = spendPermissionManager.approveWithSignature(permission, innerSignature);
+            if (!approved) revert PermissionApprovalFailed();
         } else {
-            bytes memory innerSignature = signature;
-            if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-                // parse inner signature from ERC-6492 format
-                address target;
-                bytes memory prepareData;
-                (target, prepareData, innerSignature) =
-                    abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+        
+        // TODO if using a buyer-approved spend permission, do we need to check that the buyer 
+        // created a pre-approval similar to ERC-20 approvals?
+        if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
 
-                // construct call to target with prepareData
-                IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
-                calls[0] = IMulticall3.Call(target, prepareData);
-                multicall3.tryAggregate({requireSuccess: false, calls: calls});
-            }
-            // Try ERC3009 first
-            try IERC3009(paymentDetails.token).receiveWithAuthorization({
+        }
+        } else if (authType == AuthorizationType.ERC3009) {
+            
+            IERC3009(paymentDetails.token).receiveWithAuthorization({
                 from: paymentDetails.buyer,
                 to: address(this),
                 value: paymentDetails.value,
@@ -434,32 +472,61 @@ contract PaymentEscrow {
                 validBefore: uint48(paymentDetails.authorizeDeadline),
                 nonce: paymentDetailsHash,
                 signature: innerSignature
-            }) {
-                // ERC3009 succeeded
-            } catch {
-                // ERC3009 failed, try Permit2
-                try permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
-                        nonce: uint256(paymentDetailsHash),
-                        deadline: paymentDetails.authorizeDeadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
-                    paymentDetails.buyer,
-                    signature
-                ) {
-                    return; // Permit2 succeeded
-                    // can return here because we don't need to return excess funds to the buyer, we transferred the exact amount
-                } catch {
-                    // Both methods failed
-                    revert Permit2TransferFailed();
-                }
-            }
+            });
 
             // send excess funds back to buyer
             uint256 excessFunds = paymentDetails.value - value;
             if (excessFunds > 0) SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
+        } else if (authType == AuthorizationType.Permit2) {
+            permit2.permitTransferFrom(
+                ISignatureTransfer.PermitTransferFrom({
+                    permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
+                    nonce: uint256(paymentDetailsHash),
+                    deadline: paymentDetails.authorizeDeadline
+                }),
+                ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
+                paymentDetails.buyer,
+                innerSignature
+            );
         }
+    }
+
+    /// @notice Process ERC-6492 signature if present
+    function _processERC6492Signature(bytes calldata signature) internal returns (bytes memory) {
+        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
+            // parse inner signature from ERC-6492 format
+            address target;
+            bytes memory prepareData;
+            bytes memory innerSignature;
+            (target, prepareData, innerSignature) =
+                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+
+            // construct call to target with prepareData
+            IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
+            calls[0] = IMulticall3.Call(target, prepareData);
+            multicall3.tryAggregate({requireSuccess: false, calls: calls});
+            
+            return innerSignature;
+        }
+        return signature;
+    }
+
+    /// @notice Sends tokens to captureAddress and/or feeRecipient
+    /// @param token Token to transfer
+    /// @param captureAddress Address to receive payment
+    /// @param feeRecipient Address to receive fees
+    /// @param feeBps Fee percentage in basis points
+    /// @param value Total amount to split between payment and fees
+    function _distributeTokens(
+        address token,
+        address captureAddress,
+        address feeRecipient,
+        uint16 feeBps,
+        uint256 value
+    ) internal {
+        uint256 feeAmount = uint256(value) * feeBps / 10_000;
+        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
+        if (value - feeAmount > 0) SafeTransferLib.safeTransfer(token, captureAddress, value - feeAmount);
     }
 
     /// @notice Use ERC-3009 receiveWithAuthorization with optional ERC-6492 preparation call
@@ -495,24 +562,6 @@ contract PaymentEscrow {
             nonce: nonce,
             signature: innerSignature
         });
-    }
-
-    /// @notice Sends tokens to captureAddress and/or feeRecipient
-    /// @param token Token to transfer
-    /// @param captureAddress Address to receive payment
-    /// @param feeRecipient Address to receive fees
-    /// @param feeBps Fee percentage in basis points
-    /// @param value Total amount to split between payment and fees
-    function _distributeTokens(
-        address token,
-        address captureAddress,
-        address feeRecipient,
-        uint16 feeBps,
-        uint256 value
-    ) internal {
-        uint256 feeAmount = uint256(value) * feeBps / 10_000;
-        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
-        if (value - feeAmount > 0) SafeTransferLib.safeTransfer(token, captureAddress, value - feeAmount);
     }
 
     /// @notice Validate and update state for refund
