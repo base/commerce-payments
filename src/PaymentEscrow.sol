@@ -2,12 +2,14 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {MagicSpend} from "spend-permissions/MagicSpend.sol";
+
+
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
-import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "spend-permissions/MagicSpend.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -22,7 +24,6 @@ contract PaymentEscrow {
         ERC3009, // Authorization via ERC3009 signature
         Permit2, // Authorization via Permit2 signature
         SpendPermission // Authorization via pre-approval and ERC20 allowance
-
     }
 
     /// @notice ERC-3009 authorization with additional payment routing data
