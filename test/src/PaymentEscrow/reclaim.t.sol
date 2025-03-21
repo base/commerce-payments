@@ -5,11 +5,10 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract ReclaimTest is PaymentEscrowBase {
-    function test_reverts_ifSenderIsNotBuyer(address invalidSender, uint256 amount) public {
+    function test_reverts_ifSenderIsNotBuyer(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != buyerEOA);
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -28,9 +27,8 @@ contract ReclaimTest is PaymentEscrowBase {
         paymentEscrow.reclaim(paymentDetails);
     }
 
-    function test_reverts_ifBeforeCaptureDeadline(uint256 amount, uint48 currentTime) public {
+    function test_reverts_ifBeforeCaptureDeadline(uint120 amount, uint48 currentTime) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         uint48 captureDeadline = uint48(block.timestamp + 1 days);
         vm.assume(currentTime < captureDeadline);
@@ -57,9 +55,8 @@ contract ReclaimTest is PaymentEscrowBase {
         paymentEscrow.reclaim(paymentDetails);
     }
 
-    function test_reverts_ifAuthorizedValueIsZero(uint256 amount) public {
+    function test_reverts_ifAuthorizedValueIsZero(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -73,9 +70,8 @@ contract ReclaimTest is PaymentEscrowBase {
         paymentEscrow.reclaim(paymentDetails);
     }
 
-    function test_reverts_ifAlreadyReclaimed(uint256 amount) public {
+    function test_reverts_ifAlreadyReclaimed(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -100,9 +96,8 @@ contract ReclaimTest is PaymentEscrowBase {
         paymentEscrow.reclaim(paymentDetails);
     }
 
-    function test_succeeds_ifCalledByBuyerAfterCaptureDeadline(uint256 amount, uint48 timeAfterDeadline) public {
+    function test_succeeds_ifCalledByBuyerAfterCaptureDeadline(uint120 amount, uint48 timeAfterDeadline) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         uint48 captureDeadline = uint48(block.timestamp + 1 days);
         vm.assume(timeAfterDeadline > captureDeadline);
@@ -134,9 +129,8 @@ contract ReclaimTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore - amount);
     }
 
-    function test_emitsExpectedEvents(uint256 amount) public {
+    function test_emitsExpectedEvents(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});

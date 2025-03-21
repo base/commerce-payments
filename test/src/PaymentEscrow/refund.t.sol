@@ -25,9 +25,11 @@ contract RefundTest is PaymentEscrowBase {
         paymentEscrow.refund(overflowValue, paymentDetails);
     }
 
-    function test_reverts_whenSenderNotOperatorOrCaptureAddress() public {
-        uint256 authorizedAmount = 100e6;
-        uint256 refundAmount = 60e6;
+    function test_reverts_whenSenderNotOperatorOrCaptureAddress(uint120 authorizedAmount, uint120 refundAmount)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(refundAmount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
@@ -38,7 +40,7 @@ contract RefundTest is PaymentEscrowBase {
         paymentEscrow.refund(refundAmount, paymentDetails);
     }
 
-    function test_reverts_whenRefundExceedsCaptured(uint256 authorizedAmount) public {
+    function test_reverts_whenRefundExceedsCaptured(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 1 && authorizedAmount <= buyerBalance); // Changed from > 0 to > 1
@@ -67,7 +69,7 @@ contract RefundTest is PaymentEscrowBase {
         paymentEscrow.refund(refundAmount, paymentDetails);
     }
 
-    function test_succeeds_whenCalledByOperator(uint256 authorizedAmount, uint256 refundAmount) public {
+    function test_succeeds_whenCalledByOperator(uint120 authorizedAmount, uint120 refundAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -103,7 +105,7 @@ contract RefundTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + refundAmount);
     }
 
-    function test_succeeds_whenCalledByCaptureAddress(uint256 authorizedAmount, uint256 refundAmount) public {
+    function test_succeeds_whenCalledByCaptureAddress(uint120 authorizedAmount, uint120 refundAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -139,10 +141,11 @@ contract RefundTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + refundAmount);
     }
 
-    function test_emitsCorrectEvents() public {
-        uint256 authorizedAmount = 100e6;
-        uint256 refundAmount = 60e6;
+    function test_emitsCorrectEvents(uint120 authorizedAmount, uint120 refundAmount) public {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(refundAmount > 0 && refundAmount <= authorizedAmount);
 
+        mockERC3009Token.mint(buyerEOA, authorizedAmount);
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
 

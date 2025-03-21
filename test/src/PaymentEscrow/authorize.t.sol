@@ -46,7 +46,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_whenValueExceedsAuthorized(uint256 authorizedAmount) public {
+    function test_reverts_whenValueExceedsAuthorized(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -85,6 +85,29 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
+    function test_reverts_afterAuthorizationDeadline(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        uint48 authorizeDeadline = uint48(block.timestamp + 1 days);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        paymentDetails.authorizeDeadline = authorizeDeadline;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // Set time to after the authorize deadline
+        vm.warp(authorizeDeadline + 1);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterAuthorizationDeadline.selector, authorizeDeadline + 1, authorizeDeadline
+            )
+        );
+        paymentEscrow.authorize(amount, paymentDetails, signature);
+    }
+
     function test_reverts_whenAuthorizationDeadlineAfterCaptureDeadline(uint120 amount) public {
         vm.assume(amount > 0);
 
@@ -107,9 +130,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_whenFeeBpsTooHigh(uint256 amount) public {
+    function test_reverts_whenFeeBpsTooHigh(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -124,9 +146,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_whenFeeRecipientZeroButFeeBpsNonZero(uint256 amount) public {
+    function test_reverts_whenFeeRecipientZeroButFeeBpsNonZero(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -142,9 +163,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_whenAlreadyAuthorized(uint256 amount) public {
+    function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -164,9 +184,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved(uint256 amount) public {
+    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -184,9 +203,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
-    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred(uint256 amount) public {
+    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -204,9 +222,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
-    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved(uint256 amount) public {
+    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -232,7 +249,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
     }
 
-    function test_succeeds_whenValueEqualsAuthorized(uint256 amount) public {
+    function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(amount > 0 && amount <= buyerBalance);
@@ -250,7 +267,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
     }
 
-    function test_succeeds_whenValueLessThanAuthorized(uint256 authorizedAmount, uint256 confirmAmount) public {
+    function test_succeeds_whenValueLessThanAuthorized(uint120 authorizedAmount, uint120 confirmAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -273,9 +290,8 @@ contract AuthorizeTest is PaymentEscrowBase {
         );
     }
 
-    function test_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint256 amount) public {
+    function test_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -299,9 +315,11 @@ contract AuthorizeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
     }
 
-    function test_emitsCorrectEvents() public {
-        uint256 authorizedAmount = 100e6;
-        uint256 valueToConfirm = 60e6; // Confirm less than authorized to test refund events
+    function test_emitsCorrectEvents(uint120 authorizedAmount, uint120 valueToConfirm) public {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(valueToConfirm > 0 && valueToConfirm <= authorizedAmount);
+
+        mockERC3009Token.mint(buyerEOA, authorizedAmount);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);

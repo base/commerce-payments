@@ -67,13 +67,19 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         );
     }
 
-    function test_reverts_ifSenderIsInvalid(address invalidSender, uint48 refundDeadline, uint256 refundSalt) public {
+    function test_reverts_ifSenderIsInvalid(
+        uint120 amount,
+        address invalidSender,
+        uint48 refundDeadline,
+        uint256 refundSalt
+    ) public {
+        vm.assume(amount > 0);
         vm.assume(invalidSender != operator);
         vm.assume(invalidSender != captureAddress);
         vm.assume(invalidSender != address(0));
         vm.assume(refundDeadline > block.timestamp);
 
-        uint256 amount = 100e6;
+        mockERC3009Token.mint(buyerEOA, amount);
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
@@ -140,13 +146,12 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     }
 
     function test_reverts_ifSignatureIsInvalid(
-        uint256 amount,
+        uint120 amount,
         bytes calldata invalidSignature,
         uint48 refundDeadline,
         uint256 refundSalt
     ) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -167,13 +172,12 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     }
 
     function test_reverts_ifSaltIsIncorrect(
-        uint256 amount,
+        uint120 amount,
         uint256 incorrectSalt,
         uint48 refundDeadline,
         uint256 refundSalt
     ) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(incorrectSalt != refundSalt);
         vm.assume(refundDeadline > block.timestamp);
 
@@ -205,14 +209,18 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         );
     }
 
-    function test_reverts_ifSponsorIsIncorrect(address incorrectSponsor, uint48 refundDeadline, uint256 refundSalt)
-        public
-    {
+    function test_reverts_ifSponsorIsIncorrect(
+        uint120 amount,
+        address incorrectSponsor,
+        uint48 refundDeadline,
+        uint256 refundSalt
+    ) public {
+        vm.assume(amount > 0);
         vm.assume(incorrectSponsor != _sponsor);
         vm.assume(incorrectSponsor != address(0));
         vm.assume(refundDeadline > block.timestamp);
 
-        uint256 amount = 100e6;
+        mockERC3009Token.mint(buyerEOA, amount);
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
@@ -240,13 +248,12 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     }
 
     function test_reverts_ifRefundDeadlineIsIncorrect(
-        uint256 amount,
+        uint120 amount,
         uint48 incorrectDeadline,
         uint48 refundDeadline,
         uint256 refundSalt
     ) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(incorrectDeadline != refundDeadline);
         vm.assume(incorrectDeadline > block.timestamp); // Must be future timestamp
         vm.assume(refundDeadline > block.timestamp);
@@ -279,9 +286,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         );
     }
 
-    function test_succeeds_ifCalledByOperator(uint256 amount, uint48 refundDeadline, uint256 refundSalt) public {
+    function test_succeeds_ifCalledByOperator(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -318,9 +324,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + amount);
     }
 
-    function test_succeeds_ifCalledByCaptureAddress(uint256 amount, uint48 refundDeadline, uint256 refundSalt) public {
+    function test_succeeds_ifCalledByCaptureAddress(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -358,9 +363,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore + amount);
     }
 
-    function test_emitsExpectedEvents(uint256 amount, uint48 refundDeadline, uint256 refundSalt) public {
+    function test_emitsExpectedEvents(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
         vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -400,7 +404,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     // Helper function to sign refund authorization
     function _signRefundAuthorization(
         PaymentEscrow.PaymentDetails memory paymentDetails,
-        uint256 value,
+        uint120 value,
         address sponsorAddress,
         uint48 deadline,
         uint256 salt,

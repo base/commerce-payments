@@ -17,7 +17,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         paymentEscrow.void(paymentDetails);
     }
 
-    function test_void_revert_noAuthorization(uint256 authorizedAmount) public {
+    function test_void_revert_noAuthorization(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -32,7 +32,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         paymentEscrow.void(paymentDetails);
     }
 
-    function test_void_succeeds_withEscrowedFunds(uint256 authorizedAmount) public {
+    function test_void_succeeds_withEscrowedFunds(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
@@ -62,7 +62,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
-    function test_void_succeeds_whenCalledByCaptureAddress(uint256 authorizedAmount) public {
+    function test_void_succeeds_whenCalledByCaptureAddress(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);

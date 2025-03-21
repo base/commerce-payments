@@ -5,11 +5,10 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract PreApproveTest is PaymentEscrowBase {
-    function test_reverts_ifSenderIsNotBuyer(address invalidSender, uint256 amount) public {
+    function test_reverts_ifSenderIsNotBuyer(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != buyerEOA);
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -19,9 +18,8 @@ contract PreApproveTest is PaymentEscrowBase {
         paymentEscrow.preApprove(paymentDetails);
     }
 
-    function test_reverts_ifPaymentIsAlreadyAuthorized(uint256 amount) public {
+    function test_reverts_ifPaymentIsAlreadyAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -40,9 +38,8 @@ contract PreApproveTest is PaymentEscrowBase {
         paymentEscrow.preApprove(paymentDetails);
     }
 
-    function test_succeeds_ifCalledByBuyer(uint256 amount) public {
+    function test_succeeds_ifCalledByBuyer(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -60,9 +57,8 @@ contract PreApproveTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
     }
 
-    function test_succeeds_ifCalledByBuyerMultipleTimes(uint256 amount) public {
+    function test_succeeds_ifCalledByBuyerMultipleTimes(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
@@ -81,9 +77,8 @@ contract PreApproveTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
     }
 
-    function test_emitsExpectedEvents(uint256 amount) public {
+    function test_emitsExpectedEvents(uint120 amount) public {
         vm.assume(amount > 0);
-        vm.assume(amount <= type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
