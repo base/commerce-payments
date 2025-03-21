@@ -8,6 +8,7 @@ import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MagicSpend} from "spend-permissions/MagicSpend.sol";
+import {ISpendPermissionManager} from "spend-permissions/interfaces/ISpendPermissionManager.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -22,6 +23,13 @@ contract PaymentEscrow {
         ERC3009,        // Authorization via ERC3009 signature
         Permit2,        // Authorization via Permit2 signature
         SpendPermission // Authorization via pre-approval and ERC20 allowance
+    }
+
+    /// @notice Types of spend permission managers supported
+    enum SpendPermissionManagerType {
+        Standard,  // Original SpendPermissionManager for Coinbase Smart Wallet
+        EOA,      // EOASpendPermissionManager for EOA wallets
+        ERC7579   // ERC7579SpendPermissionManager for modular accounts
     }
 
     /// @notice ERC-3009 authorization with additional payment routing data
@@ -46,6 +54,10 @@ contract PaymentEscrow {
         address feeRecipient;
         /// @dev salt A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
+        /// @dev authType Type of authorization to use for this payment
+        AuthorizationType authType;
+        /// @dev managerType Type of spend permission manager to use (only relevant when authType is SpendPermission)
+        SpendPermissionManagerType managerType;
     }
 
     /// @notice State for tracking payments through lifecycle
@@ -161,14 +173,30 @@ contract PaymentEscrow {
     /// @notice Spend Permission Manager contract
     SpendPermissionManager public immutable spendPermissionManager;
 
+    /// @notice Different spend permission manager implementations
+    ISpendPermissionManager public immutable standardManager;
+    ISpendPermissionManager public immutable eoaManager;
+    ISpendPermissionManager public immutable erc7579Manager;
+
     /// @notice Initialize contract with ERC6492 Executor and Permit2
     /// @param _multicall3 Address of the Executor contract
     /// @param _permit2 Address of the Permit2 contract
     /// @param _spendPermissionManager Address of the SpendPermissionManager contract
-    constructor(address _multicall3, address _permit2, SpendPermissionManager _spendPermissionManager) {
+    /// @param _standardManager Address of the Standard SpendPermissionManager contract
+    /// @param _eoaManager Address of the EOASpendPermissionManager contract
+    /// @param _erc7579Manager Address of the ERC7579SpendPermissionManager contract
+    constructor(
+        address _multicall3,
+        address _permit2,
+        ISpendPermissionManager _standardManager,
+        ISpendPermissionManager _eoaManager,
+        ISpendPermissionManager _erc7579Manager
+    ) {
         multicall3 = IMulticall3(_multicall3);
         permit2 = IPermit2(_permit2);
-        spendPermissionManager = _spendPermissionManager;
+        standardManager = _standardManager;
+        eoaManager = _eoaManager;
+        erc7579Manager = _erc7579Manager;
     }
 
     /// @notice Ensures value is non-zero and does not overflow storage
@@ -443,10 +471,11 @@ contract PaymentEscrow {
                     value
                 );
                 
+                ISpendPermissionManager manager = _getManager(paymentDetails.managerType);
                 if (withdrawRequest.amount > 0) {
-                    spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
+                    manager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
                 } else {
-                    spendPermissionManager.spend(permission, uint160(value));
+                    manager.spend(permission, uint160(value));
                 }
             } else {
                 // For ERC3009 and Permit2, use standard ERC20 pre-approval
@@ -475,10 +504,11 @@ contract PaymentEscrow {
                     )
                 });
 
-                bool approved = spendPermissionManager.approveWithSignature(permission, innerSignature);
+                ISpendPermissionManager manager = _getManager(paymentDetails.managerType);
+                bool approved = manager.approveWithSignature(permission, innerSignature);
                 if (!approved) revert PermissionApprovalFailed();
                 
-                spendPermissionManager.spend(permission, uint160(value));
+                manager.spend(permission, uint160(value));
             } else if (authType == AuthorizationType.ERC3009) {
                 IERC3009(paymentDetails.token).receiveWithAuthorization({
                     from: paymentDetails.buyer,
@@ -646,5 +676,16 @@ contract PaymentEscrow {
             paymentDetails.token,
             value
         );
+    }
+
+    function _getManager(SpendPermissionManagerType managerType) internal view returns (ISpendPermissionManager) {
+        if (managerType == SpendPermissionManagerType.Standard) {
+            return standardManager;
+        } else if (managerType == SpendPermissionManagerType.EOA) {
+            return eoaManager;
+        } else if (managerType == SpendPermissionManagerType.ERC7579) {
+            return erc7579Manager;
+        }
+        revert("Invalid manager type");
     }
 }
