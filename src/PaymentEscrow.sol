@@ -2,17 +2,12 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
-
-
 import {IERC3009} from "./IERC3009.sol";
 import {IMulticall3} from "./IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
-import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {ISpendPermissionManager} from "spend-permissions/../interfaces/ISpendPermissionManager.sol";
 import {MagicSpend} from "magic-spend/MagicSpend.sol";
-import {ISpendPermissionManager} from "spend-permissions/interfaces/ISpendPermissionManager.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -175,7 +170,7 @@ contract PaymentEscrow {
     error PermissionApprovalFailed();
 
     /// @notice Spend Permission Manager contract
-    SpendPermissionManager public immutable spendPermissionManager;
+    ISpendPermissionManager public immutable spendPermissionManager;
 
     /// @notice Different spend permission manager implementations
     ISpendPermissionManager public immutable coinbaseSmartWalletManager;
@@ -185,10 +180,9 @@ contract PaymentEscrow {
     /// @notice Initialize contract with ERC6492 Executor and Permit2
     /// @param _multicall3 Address of the Executor contract
     /// @param _permit2 Address of the Permit2 contract
-    /// @param _spendPermissionManager Address of the SpendPermissionManager contract
-    /// @param _coinbaseSmartWalletManager Address of the Standard SpendPermissionManager contract
-    /// @param _eoaManager Address of the EOASpendPermissionManager contract
-    /// @param _erc7579Manager Address of the ERC7579SpendPermissionManager contract
+    /// @param _coinbaseSmartWalletManager Address of the Coinbase Smart Wallet SpendPermissionManager
+    /// @param _eoaManager Address of the EOA SpendPermissionManager
+    /// @param _erc7579Manager Address of the ERC7579 SpendPermissionManager
     constructor(
         address _multicall3,
         address _permit2,
@@ -469,7 +463,7 @@ contract PaymentEscrow {
                 // SpendPermission has its own pre-approval flow
                 if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
                 
-                SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
+                ISpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
                     paymentDetails, 
                     paymentDetailsHash, 
                     value
@@ -491,12 +485,12 @@ contract PaymentEscrow {
             bytes memory innerSignature = _processERC6492Signature(signature);
 
             if (authType == AuthorizationType.SpendPermission) {
-                SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
+                ISpendPermissionManager.SpendPermission memory permission = ISpendPermissionManager.SpendPermission({
                     account: paymentDetails.buyer,
-                    spender: address(this), // The PaymentEscrow contract is the spender
+                    spender: address(this),
                     token: paymentDetails.token,
-                    allowance: uint160(paymentDetails.value), // Safe because we checked value <= type(uint120).max
-                    period: type(uint48).max, // Non-recurring spend permission
+                    allowance: uint160(paymentDetails.value),
+                    period: type(uint48).max,
                     start: 0,
                     end: uint48(paymentDetails.authorizeDeadline),
                     salt: uint256(paymentDetailsHash),
@@ -545,12 +539,13 @@ contract PaymentEscrow {
     }
 
     /// @notice Helper to create a SpendPermission from PaymentDetails
-    function _createSpendPermission(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 value)
-        internal
-        view
-        returns (SpendPermissionManager.SpendPermission memory)
+    function _createSpendPermission(
+        PaymentDetails calldata paymentDetails, 
+        bytes32 paymentDetailsHash, 
+        uint256 value
+    ) internal view returns (ISpendPermissionManager.SpendPermission memory)
     {
-        return SpendPermissionManager.SpendPermission({
+        return ISpendPermissionManager.SpendPermission({
             account: paymentDetails.buyer,
             spender: address(this),
             token: paymentDetails.token,
