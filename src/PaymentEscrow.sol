@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "spend-permissions/MagicSpend.sol";
+import {MagicSpend} from "magic-spend/MagicSpend.sol";
 
 
 import {IERC3009} from "./IERC3009.sol";
@@ -211,7 +211,13 @@ contract PaymentEscrow {
             value,
             paymentDetails,
             signature,
-            MagicSpend.WithdrawRequest({asset: address(0), amount: 0, nonce: 0, deadline: 0, signature: new bytes(0)})
+            MagicSpend.WithdrawRequest({
+                signature: new bytes(0),
+                asset: address(0),
+                amount: 0,
+                nonce: 0,
+                expiry: 0
+            })
         );
     }
 
@@ -242,7 +248,13 @@ contract PaymentEscrow {
             value,
             paymentDetails,
             signature,
-            MagicSpend.WithdrawRequest({asset: address(0), amount: 0, nonce: 0, deadline: 0, signature: new bytes(0)})
+            MagicSpend.WithdrawRequest({
+                signature: new bytes(0),
+                asset: address(0),
+                amount: 0,
+                nonce: 0,
+                expiry: 0
+            })
         );
     }
 
@@ -502,7 +514,7 @@ contract PaymentEscrow {
     /// @notice Helper to create a SpendPermission from PaymentDetails
     function _createSpendPermission(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 value)
         internal
-        pure
+        view
         returns (SpendPermissionManager.SpendPermission memory)
     {
         return SpendPermissionManager.SpendPermission({
