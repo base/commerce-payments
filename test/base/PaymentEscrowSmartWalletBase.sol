@@ -7,6 +7,8 @@ import {Test} from "forge-std/Test.sol";
 import {CoinbaseSmartWallet} from "smart-wallet/CoinbaseSmartWallet.sol";
 import {CoinbaseSmartWalletFactory} from "smart-wallet/CoinbaseSmartWalletFactory.sol";
 import {PaymentEscrow} from "src/PaymentEscrow.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {MagicSpend} from "magic-spend/MagicSpend.sol";
 
 contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     // Constants for EIP-6492 support
@@ -142,5 +144,100 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         // Then wrap it in ERC6492 format
         bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, signature);
         return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
+    }
+
+    /// @notice Helper to create a SpendPermission struct with test defaults
+    function _createSpendPermission(
+        address buyer,
+        address captureAddress,
+        uint256 value,
+        uint256 authorizeDeadline,
+        uint48 captureDeadline
+    ) internal view returns (SpendPermissionManager.SpendPermission memory) {
+        return SpendPermissionManager.SpendPermission({
+            account: buyer,
+            spender: address(paymentEscrow),
+            token: address(mockERC3009Token),
+            allowance: uint160(value),
+            period: type(uint48).max,
+            start: 0,
+            end: uint48(authorizeDeadline),
+            salt: uint256(0),
+            extraData: abi.encode(operator, captureAddress, FEE_BPS, feeRecipient)
+        });
+    }
+
+    function _signSpendPermission(
+        SpendPermissionManager.SpendPermission memory spendPermission,
+        uint256 ownerPk,
+        uint256 ownerIndex
+    ) internal view returns (bytes memory) {
+        bytes32 spendPermissionHash = spendPermissionManager.getHash(spendPermission);
+        bytes32 replaySafeHash =
+            CoinbaseSmartWallet(payable(spendPermission.account)).replaySafeHash(spendPermissionHash);
+        bytes memory signature = _sign(ownerPk, replaySafeHash);
+        return abi.encode(CoinbaseSmartWallet.SignatureWrapper(ownerIndex, signature));
+    }
+
+    function _signSpendPermissionWithERC6492(
+        SpendPermissionManager.SpendPermission memory spendPermission,
+        uint256 ownerPk,
+        uint256 ownerIndex
+    ) internal view returns (bytes memory) {
+        bytes32 spendPermissionHash = spendPermissionManager.getHash(spendPermission);
+
+        // Construct replaySafeHash without relying on the account contract being deployed
+        bytes32 cbswDomainSeparator = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("Coinbase Smart Wallet")),
+                keccak256(bytes("1")),
+                block.chainid,
+                spendPermission.account
+            )
+        );
+        bytes32 replaySafeHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01", cbswDomainSeparator, keccak256(abi.encode(CBSW_MESSAGE_TYPEHASH, spendPermissionHash))
+            )
+        );
+        bytes memory signature = _sign(ownerPk, replaySafeHash);
+        bytes memory wrappedSignature = abi.encode(CoinbaseSmartWallet.SignatureWrapper(ownerIndex, signature));
+
+        // Wrap in ERC6492 format
+        bytes[] memory allInitialOwners = new bytes[](1);
+        allInitialOwners[0] = abi.encode(vm.addr(ownerPk));
+        bytes memory factoryCallData =
+            abi.encodeCall(CoinbaseSmartWalletFactory.createAccount, (allInitialOwners, ownerIndex));
+        bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, wrappedSignature);
+        return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
+    }
+
+    function _signSpendPermissionWithMagicSpend(
+        SpendPermissionManager.SpendPermission memory spendPermission,
+        MagicSpend.WithdrawRequest memory withdrawRequest,
+        uint256 ownerPk,
+        uint256 ownerIndex
+    ) internal view returns (bytes memory) {
+        bytes memory spendPermissionSig = _signSpendPermission(spendPermission, ownerPk, ownerIndex);
+        return abi.encode(spendPermissionSig, withdrawRequest);
+    }
+
+    function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
+        internal
+        view
+        returns (MagicSpend.WithdrawRequest memory)
+    {
+        bytes32 permissionHash = spendPermissionManager.getHash(spendPermission);
+        uint128 hashPortion = uint128(uint256(permissionHash));
+        uint256 nonce = uint256(hashPortion);
+
+        return MagicSpend.WithdrawRequest({
+            asset: address(0),
+            amount: 0,
+            nonce: nonce,
+            expiry: type(uint48).max,
+            signature: new bytes(0)
+        });
     }
 }
