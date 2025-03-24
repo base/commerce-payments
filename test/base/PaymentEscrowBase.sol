@@ -6,6 +6,9 @@ import {Test} from "forge-std/Test.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC3009} from "../../src/IERC3009.sol";
 import {IMulticall3} from "../../src/IMulticall3.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
+import {MagicSpend} from "magic-spend/MagicSpend.sol";
 import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 
@@ -14,6 +17,9 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     MockERC3009Token public mockERC3009Token;
     address public multicall3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
     address public permit2;
+    SpendPermissionManager public spendPermissionManager;
+    PublicERC6492Validator public publicERC6592Validator;
+    MagicSpend public magicSpend;
     address public operator;
     address public captureAddress;
     address public buyerEOA;
@@ -33,9 +39,11 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         // deploy token and permit2
         mockERC3009Token = new MockERC3009Token("Mock USDC", "mUSDC", 6);
         permit2 = address(deployPermit2());
-
+        publicERC6592Validator = new PublicERC6492Validator();
+        magicSpend = new MagicSpend(vm.addr(0xC014BA53), 1); // (owner, maxWithdrawDenominator)
+        spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
         // Deploy PaymentEscrow
-        paymentEscrow = new PaymentEscrow(address(multicall3), permit2);
+        paymentEscrow = new PaymentEscrow(address(multicall3), permit2, spendPermissionManager);
 
         // Setup roles
         operator = vm.addr(1);
@@ -55,14 +63,17 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         view
         returns (PaymentEscrow.PaymentDetails memory)
     {
-        return _createPaymentEscrowAuthorization(buyer, value, address(mockERC3009Token));
+        return _createPaymentEscrowAuthorization(
+            buyer, value, address(mockERC3009Token), PaymentEscrow.AuthorizationType.ERC3009
+        );
     }
 
-    function _createPaymentEscrowAuthorization(address buyer, uint256 value, address token)
-        internal
-        view
-        returns (PaymentEscrow.PaymentDetails memory)
-    {
+    function _createPaymentEscrowAuthorization(
+        address buyer,
+        uint256 value,
+        address token,
+        PaymentEscrow.AuthorizationType authType
+    ) internal view returns (PaymentEscrow.PaymentDetails memory) {
         return PaymentEscrow.PaymentDetails({
             operator: operator,
             buyer: buyer,
@@ -73,7 +84,8 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             captureDeadline: type(uint48).max,
             feeBps: FEE_BPS,
             feeRecipient: feeRecipient,
-            salt: 0
+            salt: 0,
+            authType: authType
         });
     }
 

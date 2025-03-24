@@ -73,7 +73,8 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     captureDeadline: captureDeadline,
                     feeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
-                    salt: uint256(0)
+                    salt: uint256(0),
+                    authType: PaymentEscrow.AuthorizationType.ERC3009
                 })
             )
         );

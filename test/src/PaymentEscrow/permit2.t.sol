@@ -73,8 +73,12 @@ contract Permit2Test is PaymentEscrowBase {
     function test_authorize_succeeds_withPermit2Fallback() public {
         uint256 amount = 100e18;
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount, token: address(plainToken)});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(plainToken),
+            authType: PaymentEscrow.AuthorizationType.Permit2
+        });
 
         // Generate Permit2 signature using the same deadline as paymentDetails
         bytes memory signature = _signPermit2Transfer({
