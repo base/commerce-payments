@@ -435,8 +435,22 @@ contract PaymentEscrow {
         } else if (
             authType == AuthorizationType.SpendPermission || authType == AuthorizationType.SpendPermissionWithMagicSpend
         ) {
-            SpendPermissionManager.SpendPermission memory permission =
-                _createSpendPermission(paymentDetails, paymentDetailsHash, value);
+            SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
+                account: paymentDetails.buyer,
+                spender: address(this),
+                token: paymentDetails.token,
+                allowance: uint160(paymentDetails.value),
+                period: type(uint48).max,
+                start: 0,
+                end: uint48(paymentDetails.authorizeDeadline),
+                salt: paymentDetails.salt,
+                extraData: abi.encode(
+                    paymentDetails.operator,
+                    paymentDetails.captureAddress,
+                    paymentDetails.feeBps,
+                    paymentDetails.feeRecipient
+                )
+            });
 
             if (signature.length > 0) {
                 if (authType == AuthorizationType.SpendPermissionWithMagicSpend) {
@@ -500,27 +514,6 @@ contract PaymentEscrow {
                 );
             }
         }
-    }
-
-    /// @notice Helper to create a SpendPermission from PaymentDetails
-    function _createSpendPermission(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 value)
-        internal
-        view
-        returns (SpendPermissionManager.SpendPermission memory)
-    {
-        return SpendPermissionManager.SpendPermission({
-            account: paymentDetails.buyer,
-            spender: address(this),
-            token: paymentDetails.token,
-            allowance: uint160(paymentDetails.value),
-            period: type(uint48).max,
-            start: 0,
-            end: uint48(paymentDetails.authorizeDeadline),
-            salt: paymentDetails.salt,
-            extraData: abi.encode(
-                paymentDetails.operator, paymentDetails.captureAddress, paymentDetails.feeBps, paymentDetails.feeRecipient
-            )
-        });
     }
 
     /// @notice Process ERC-6492 signature if present
