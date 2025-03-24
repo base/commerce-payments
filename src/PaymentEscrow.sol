@@ -21,9 +21,10 @@ import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 contract PaymentEscrow {
     /// @notice Types of payment authorizations supported
     enum AuthorizationType {
-        ERC3009, // Authorization via ERC3009 signature
-        Permit2, // Authorization via Permit2 signature
-        SpendPermission // Authorization via pre-approval and ERC20 allowance
+        ERC3009,        // Authorization via ERC3009 signature
+        ERC20Approval,   // Authorization via standard ERC20 approve + transferFrom
+        Permit2,        // Authorization via Permit2 signature
+        SpendPermission, // Authorization via SpendPermissionManager
     }
 
     /// @notice ERC-3009 authorization with additional payment routing data
@@ -435,52 +436,35 @@ contract PaymentEscrow {
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
         _paymentState[paymentDetailsHash].isAuthorized = true;
 
-        if (signature.length == 0) {
-            // No signature provided - use pre-approval path
-            if (authType == AuthorizationType.SpendPermission) {
-                // SpendPermission has its own pre-approval flow
-                if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
-
-                SpendPermissionManager.SpendPermission memory permission =
-                    _createSpendPermission(paymentDetails, paymentDetailsHash, value);
-
-                if (withdrawRequest.amount > 0) {
-                    spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
-                } else {
-                    spendPermissionManager.spend(permission, uint160(value));
-                }
-            } else {
-                // For ERC3009 and Permit2, use standard ERC20 pre-approval
-                if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
-                SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
+        if (authType == AuthorizationType.ERC20Approval) {
+            // Standard ERC20 approval path
+            if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
+            SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
+        }
+        else if (authType == AuthorizationType.SpendPermission) {
+            if (!_paymentState[paymentDetailsHash].isPreApproved && signature.length == 0) {
+                revert PaymentNotApproved(paymentDetailsHash);
             }
-        } else {
-            // Signature provided - use appropriate signature-based authorization
+
+            SpendPermissionManager.SpendPermission memory permission =
+                _createSpendPermission(paymentDetails, paymentDetailsHash, value);
+
+            if (signature.length > 0) {
+                bool approved = spendPermissionManager.approveWithSignature(permission, _processERC6492Signature(signature));
+                if (!approved) revert PermissionApprovalFailed();
+            }
+
+            if (withdrawRequest.amount > 0) {
+                spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
+            } else {
+                spendPermissionManager.spend(permission, uint160(value));
+            }
+        }
+        else {
+            // Signature-based authorization (ERC3009 or Permit2)
             bytes memory innerSignature = _processERC6492Signature(signature);
 
-            if (authType == AuthorizationType.SpendPermission) {
-                SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-                    account: paymentDetails.buyer,
-                    spender: address(this), // The PaymentEscrow contract is the spender
-                    token: paymentDetails.token,
-                    allowance: uint160(paymentDetails.value), // Safe because we checked value <= type(uint120).max
-                    period: type(uint48).max, // Non-recurring spend permission
-                    start: 0,
-                    end: uint48(paymentDetails.authorizeDeadline),
-                    salt: uint256(paymentDetailsHash),
-                    extraData: abi.encode(
-                        paymentDetails.operator,
-                        paymentDetails.captureAddress,
-                        paymentDetails.feeBps,
-                        paymentDetails.feeRecipient
-                    )
-                });
-
-                bool approved = spendPermissionManager.approveWithSignature(permission, innerSignature);
-                if (!approved) revert PermissionApprovalFailed();
-
-                spendPermissionManager.spend(permission, uint160(value));
-            } else if (authType == AuthorizationType.ERC3009) {
+            if (authType == AuthorizationType.ERC3009) {
                 IERC3009(paymentDetails.token).receiveWithAuthorization({
                     from: paymentDetails.buyer,
                     to: address(this),
