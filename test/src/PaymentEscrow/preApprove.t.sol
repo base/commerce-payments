@@ -41,8 +41,12 @@ contract PreApproveTest is PaymentEscrowBase {
     function test_succeeds_ifCalledByBuyer(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(mockERC3009Token),
+            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+        });
 
         vm.prank(buyerEOA);
         paymentEscrow.preApprove(paymentDetails);
@@ -54,14 +58,18 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.stopPrank();
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
+        paymentEscrow.authorize(amount, paymentDetails, ""); // ERC20Approval should work after pre-approval
     }
 
     function test_succeeds_ifCalledByBuyerMultipleTimes(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(mockERC3009Token),
+            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+        });
 
         vm.startPrank(buyerEOA);
         paymentEscrow.preApprove(paymentDetails);
@@ -74,7 +82,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.stopPrank();
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, ""); // Empty signature should work after pre-approval
+        paymentEscrow.authorize(amount, paymentDetails, ""); // ERC20Approval should work after pre-approval
     }
 
     function test_emitsExpectedEvents(uint120 amount) public {

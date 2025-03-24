@@ -184,11 +184,15 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
-    function test_reverts_ifSignatureIsEmptyAndTokenIsNotPreApproved(uint120 amount) public {
+    function test_reverts_ERC20Approval_tokenIsNotPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(mockERC3009Token),
+            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+        });
 
         // Give buyer tokens and approve escrow
         mockERC3009Token.mint(buyerEOA, amount);
@@ -203,11 +207,15 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
-    function test_reverts_ifSignatureIsEmptyAndTokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
+    function test_reverts_ERC20Approval_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(mockERC3009Token),
+            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+        });
 
         // Pre-approve in escrow
         vm.prank(buyerEOA);
@@ -222,11 +230,15 @@ contract AuthorizeTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
-    function test_succeeds_ifSignatureIsNotEmptyAndTokenIsPreApproved(uint120 amount) public {
+    function test_succeeds_ERC20Approval_ifTokenIsPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+            buyer: buyerEOA,
+            value: amount,
+            token: address(mockERC3009Token),
+            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+        });
 
         // Pre-approve in escrow
         vm.prank(buyerEOA);
@@ -240,7 +252,7 @@ contract AuthorizeTest is PaymentEscrowBase {
         uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
-        // Authorize with empty signature
+        // Authorize with ERC20Approval method
         vm.prank(operator);
         paymentEscrow.authorize(amount, paymentDetails, "");
 
