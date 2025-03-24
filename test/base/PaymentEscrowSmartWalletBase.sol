@@ -46,6 +46,10 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         // Fund the smart wallets
         mockERC3009Token.mint(address(smartWalletDeployed), 1000e6);
         mockERC3009Token.mint(smartWalletCounterfactual, 1000e6);
+
+        // Add spend permission manager as owner of (deployed) smart wallet
+        vm.prank(deployedWalletOwner);
+        smartWalletDeployed.addOwnerAddress(address(spendPermissionManager));
     }
 
     function _sign(uint256 pk, bytes32 hash) internal pure returns (bytes memory signature) {
@@ -239,5 +243,14 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             expiry: type(uint48).max,
             signature: new bytes(0)
         });
+    }
+
+    function _signWithdrawRequest(address account, MagicSpend.WithdrawRequest memory withdrawRequest)
+        internal
+        view
+        returns (bytes memory signature)
+    {
+        bytes32 hash = magicSpend.getHash(account, withdrawRequest);
+        return _sign(magicSpendOwnerPk, hash);
     }
 }

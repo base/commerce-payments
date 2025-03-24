@@ -20,6 +20,8 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     SpendPermissionManager public spendPermissionManager;
     PublicERC6492Validator public publicERC6592Validator;
     MagicSpend public magicSpend;
+    uint256 public magicSpendOwnerPk;
+    address public magicSpendOwner;
     address public operator;
     address public captureAddress;
     address public buyerEOA;
@@ -40,7 +42,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         mockERC3009Token = new MockERC3009Token("Mock USDC", "mUSDC", 6);
         permit2 = address(deployPermit2());
         publicERC6592Validator = new PublicERC6492Validator();
-        magicSpend = new MagicSpend(vm.addr(0xC014BA53), 1); // (owner, maxWithdrawDenominator)
+
+        magicSpendOwnerPk = 0xC014BA53;
+        magicSpendOwner = vm.addr(magicSpendOwnerPk);
+        magicSpend = new MagicSpend(magicSpendOwner, 1); // (owner, maxWithdrawDenominator)
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
         // Deploy PaymentEscrow
         paymentEscrow = new PaymentEscrow(address(multicall3), permit2, spendPermissionManager);
