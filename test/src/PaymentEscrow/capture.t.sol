@@ -101,6 +101,29 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.capture(captureAmount, paymentDetails);
     }
 
+    function test_reverts_captureAddressSender(uint120 authorizedAmount) public {
+        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
+
+        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
+
+        // First confirm the authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+
+        uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
+        uint256 captureAddressExpectedBalance = authorizedAmount - feeAmount;
+
+        // Then capture the full amount
+        vm.prank(paymentDetails.captureAddress);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, paymentDetails.captureAddress));
+        paymentEscrow.capture(authorizedAmount, paymentDetails);
+    }
+
     function test_succeeds_withFullAmount(uint120 authorizedAmount) public {
         uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
 
@@ -192,33 +215,6 @@ contract CaptureTest is PaymentEscrowBase {
         // Verify final state
         assertEq(mockERC3009Token.balanceOf(captureAddress), captureAddressExpectedBalance);
         assertEq(mockERC3009Token.balanceOf(feeRecipient), totalFeeAmount);
-        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
-    }
-
-    function test_succeeds_captureAddressSender(uint120 authorizedAmount) public {
-        uint256 buyerBalance = mockERC3009Token.balanceOf(buyerEOA);
-
-        vm.assume(authorizedAmount > 0 && authorizedAmount <= buyerBalance);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(buyerEOA, authorizedAmount);
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        // First confirm the authorization
-        vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
-
-        uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
-        uint256 captureAddressExpectedBalance = authorizedAmount - feeAmount;
-
-        // Then capture the full amount
-        vm.prank(paymentDetails.captureAddress);
-        paymentEscrow.capture(authorizedAmount, paymentDetails);
-
-        // Verify balances
-        assertEq(mockERC3009Token.balanceOf(captureAddress), captureAddressExpectedBalance);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 

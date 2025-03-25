@@ -274,13 +274,14 @@ contract PaymentEscrow {
 
     /// @notice Transfer previously-escrowed funds to captureAddress
     /// @dev Can be called multiple times up to cumulative authorized amount
+    /// @dev Can only be called by the operator
     /// @param value Amount to capture
     /// @param paymentDetails PaymentDetails struct
     function capture(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        // check sender is operator or captureAddress
-        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
+        // check sender is operator
+        if (msg.sender != paymentDetails.operator) {
             revert InvalidSender(msg.sender);
         }
 
