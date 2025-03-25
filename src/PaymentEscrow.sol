@@ -172,6 +172,9 @@ contract PaymentEscrow {
     /// @notice Spend permission approval failed
     error PermissionApprovalFailed();
 
+    /// @notice Fee bps range invalid due to min > max
+    error InvalidFeeBpsRange(uint16 minFeeBps, uint16 maxFeeBps);
+
     /// @notice Fee bps outside of allowed range
     error FeeBpsOutOfRange(uint16 feeBps, uint16 minFeeBps, uint16 maxFeeBps);
 
@@ -316,6 +319,7 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfer previously-escrowed funds to captureAddress
+    /// @dev Can be called multiple times up to cumulative authorized amount
     /// @dev Can only be called by the operator
     /// @param value Amount to capture
     /// @param paymentDetails PaymentDetails struct
@@ -464,7 +468,7 @@ contract PaymentEscrow {
         }
         if (paymentDetails.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentDetails.maxFeeBps);
         if (paymentDetails.minFeeBps > paymentDetails.maxFeeBps) {
-            revert FeeBpsOutOfRange(paymentDetails.minFeeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
+            revert InvalidFeeBpsRange(paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
         }
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
     }
