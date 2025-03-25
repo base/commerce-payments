@@ -122,6 +122,9 @@ contract PaymentEscrow {
     /// @notice Payment has already been authorized
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
 
+    /// @notice Payment has already been pre-approved
+    error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
+
     /// @notice Payment has not been approved
     error PaymentNotApproved(bytes32 paymentDetailsHash);
 
@@ -219,9 +222,10 @@ contract PaymentEscrow {
         // check sender is buyer
         if (msg.sender != paymentDetails.buyer) revert InvalidSender(msg.sender);
 
-        // check status is not authorized
+        // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        if (_paymentState[paymentDetailsHash].isPreApproved) revert PaymentAlreadyPreApproved(paymentDetailsHash);
 
         _paymentState[paymentDetailsHash].isPreApproved = true;
         emit PaymentApproved(paymentDetailsHash);
