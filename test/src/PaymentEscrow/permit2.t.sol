@@ -7,21 +7,8 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 
-// Import Permit2's interfaces and libraries
-import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
-import {IPermit2} from "permit2/interfaces/IPermit2.sol";
-import {PermitHash} from "permit2/libraries/PermitHash.sol";
-
 contract Permit2Test is PaymentEscrowBase {
-    using PermitHash for ISignatureTransfer.PermitTransferFrom;
-
-    // Permit2 constants
-    bytes32 constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
-    bytes32 constant _PERMIT_TRANSFER_FROM_TYPEHASH = keccak256(
-        "PermitTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline)TokenPermissions(address token,uint256 amount)"
-    );
-
-    // Non-ERC3009 token to force Permit2 path
+    // Non-ERC3009 token to guarantee no false positive use of Permit2 path
     MockERC20 public plainToken;
 
     function setUp() public override {
@@ -38,36 +25,6 @@ contract Permit2Test is PaymentEscrowBase {
         vm.startPrank(buyerEOA);
         plainToken.approve(address(paymentEscrow.permit2()), type(uint256).max);
         vm.stopPrank();
-    }
-
-    function _signPermit2Transfer(address token, uint256 amount, uint256 deadline, uint256 nonce, uint256 privateKey)
-        internal
-        view
-        returns (bytes memory)
-    {
-        // Create PermitTransferFrom struct
-        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: token, amount: amount}),
-            nonce: nonce,
-            deadline: deadline
-        });
-
-        bytes32 tokenPermissionsHash =
-            keccak256(abi.encode(_TOKEN_PERMISSIONS_TYPEHASH, permit.permitted.token, permit.permitted.amount));
-        bytes32 permitHash = keccak256(
-            abi.encode(
-                _PERMIT_TRANSFER_FROM_TYPEHASH,
-                tokenPermissionsHash,
-                address(paymentEscrow),
-                permit.nonce,
-                permit.deadline
-            )
-        );
-        bytes32 domainSeparator = IPermit2(address(paymentEscrow.permit2())).DOMAIN_SEPARATOR();
-
-        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
-        return abi.encodePacked(r, s, v);
     }
 
     function test_authorize_succeeds_withPermit2Fallback() public {

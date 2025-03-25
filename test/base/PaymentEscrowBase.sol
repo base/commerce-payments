@@ -6,6 +6,9 @@ import {Test} from "forge-std/Test.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC3009} from "../../src/IERC3009.sol";
 import {IMulticall3} from "../../src/IMulticall3.sol";
+import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
+import {IPermit2} from "permit2/interfaces/IPermit2.sol";
+import {PermitHash} from "permit2/libraries/PermitHash.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
 import {MagicSpend} from "magic-spend/MagicSpend.sol";
@@ -13,6 +16,8 @@ import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 
 contract PaymentEscrowBase is Test, DeployPermit2 {
+    using PermitHash for ISignatureTransfer.PermitTransferFrom;
+
     PaymentEscrow public paymentEscrow;
     MockERC3009Token public mockERC3009Token;
     address public multicall3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
@@ -20,7 +25,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     SpendPermissionManager public spendPermissionManager;
     PublicERC6492Validator public publicERC6592Validator;
     MagicSpend public magicSpend;
-    uint256 public magicSpendOwnerPk;
+    uint256 public magicSpendOwnerPk = 0xC014BA53;
     address public magicSpendOwner;
     address public operator;
     address public captureAddress;
@@ -28,6 +33,11 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     address public feeRecipient;
     uint16 constant FEE_BPS = 100; // 1%
     uint256 internal constant BUYER_EOA_PK = 0x1234;
+
+    bytes32 constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
+    bytes32 constant _PERMIT_TRANSFER_FROM_TYPEHASH = keccak256(
+        "PermitTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline)TokenPermissions(address token,uint256 amount)"
+    );
 
     constructor() DeployPermit2() {}
 
@@ -43,7 +53,6 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         permit2 = address(deployPermit2());
         publicERC6592Validator = new PublicERC6492Validator();
 
-        magicSpendOwnerPk = 0xC014BA53;
         magicSpendOwner = vm.addr(magicSpendOwnerPk);
         magicSpend = new MagicSpend(magicSpendOwner, 1); // (owner, maxWithdrawDenominator)
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
@@ -128,6 +137,36 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _signPermit2Transfer(address token, uint256 amount, uint256 deadline, uint256 nonce, uint256 privateKey)
+        internal
+        view
+        returns (bytes memory)
+    {
+        // Create PermitTransferFrom struct
+        ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: token, amount: amount}),
+            nonce: nonce,
+            deadline: deadline
+        });
+
+        bytes32 tokenPermissionsHash =
+            keccak256(abi.encode(_TOKEN_PERMISSIONS_TYPEHASH, permit.permitted.token, permit.permitted.amount));
+        bytes32 permitHash = keccak256(
+            abi.encode(
+                _PERMIT_TRANSFER_FROM_TYPEHASH,
+                tokenPermissionsHash,
+                address(paymentEscrow),
+                permit.nonce,
+                permit.deadline
+            )
+        );
+        bytes32 domainSeparator = IPermit2(address(paymentEscrow.permit2())).DOMAIN_SEPARATOR();
+
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         return abi.encodePacked(r, s, v);
     }
 }
