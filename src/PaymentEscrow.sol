@@ -184,6 +184,34 @@ contract PaymentEscrow {
         spendPermissionManager = _spendPermissionManager;
     }
 
+    /// @notice Check if a payment has been pre-approved
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return True if the payment has been pre-approved
+    function isPreApproved(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].isPreApproved;
+    }
+
+    /// @notice Check if a payment has been authorized
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return True if the payment has been authorized
+    function isAuthorized(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].isAuthorized;
+    }
+
+    /// @notice Get the amount of tokens currently authorized (held in escrow)
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return Amount of tokens authorized
+    function getAuthorizedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+        return _paymentState[paymentDetailsHash].authorized;
+    }
+
+    /// @notice Get the amount of tokens that have been captured
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return Amount of tokens captured
+    function getCapturedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+        return _paymentState[paymentDetailsHash].captured;
+    }
+
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
     /// @param paymentDetails PaymentDetails struct
