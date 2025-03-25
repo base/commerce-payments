@@ -521,15 +521,19 @@ contract PaymentEscrow {
             MagicSpend.WithdrawRequest memory withdrawRequest;
 
             if (!isApproved) {
-                // If not approved, we need both signature and withdraw request
-                (uint256 sigOffset, uint256 sigLength) = abi.decode(signature[:64], (uint256, uint256));
-                bytes memory spendPermissionSig = signature[sigOffset:sigOffset + sigLength];
-                withdrawRequest = abi.decode(signature[sigOffset + sigLength:], (MagicSpend.WithdrawRequest));
+                // First 2 bytes are the length of the spend permission signature
+                uint16 sigLength = uint16(bytes2(signature[0:2]));
+
+                // Extract the spend permission signature
+                bytes memory spendPermissionSig = bytes(signature[2:2 + sigLength]);
+
+                // Rest is withdraw request
+                withdrawRequest = abi.decode(signature[2 + sigLength:], (MagicSpend.WithdrawRequest));
 
                 bool approved = spendPermissionManager.approveWithSignature(permission, spendPermissionSig);
                 if (!approved) revert PermissionApprovalFailed();
             } else {
-                // If already approved, signature should only contain the withdraw request
+                // If already approved, signature contains just the withdraw request
                 withdrawRequest = abi.decode(signature, (MagicSpend.WithdrawRequest));
             }
 

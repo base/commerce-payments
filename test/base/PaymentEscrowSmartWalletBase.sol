@@ -224,7 +224,13 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
         bytes memory spendPermissionSig = _signSpendPermission(spendPermission, ownerPk, ownerIndex);
-        return abi.encode(spendPermissionSig, withdrawRequest);
+
+        // Concatenate length prefix and spend permission sig, then append encoded withdraw request
+        return bytes.concat(
+            abi.encodePacked(uint16(spendPermissionSig.length)), // 2 byte length prefix
+            spendPermissionSig,
+            abi.encode(withdrawRequest) // Properly encode the struct
+        );
     }
 
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
