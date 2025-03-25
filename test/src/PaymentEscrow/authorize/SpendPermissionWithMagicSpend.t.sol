@@ -8,9 +8,6 @@ import {MagicSpend} from "magic-spend/MagicSpend.sol";
 
 contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_withMagicSpendWithdraw(uint256 amount) public {
-        // Get wallet's current balance and magic spend balance
-        uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
-
         // Assume reasonable values and fund MagicSpend
         vm.assume(amount > 0 && amount <= type(uint120).max);
         mockERC3009Token.mint(address(magicSpend), amount);
@@ -21,13 +18,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         paymentDetails.authType = PaymentEscrow.AuthorizationType.SpendPermissionWithMagicSpend;
 
         // Create the spend permission
-        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
-            address(smartWalletDeployed),
-            receiver,
-            amount,
-            paymentDetails.preApprovalExpiry,
-            paymentDetails.authorizationExpiry
-        );
+        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentDetails);
 
         // Create and sign withdraw request
         MagicSpend.WithdrawRequest memory withdrawRequest = _createWithdrawRequest(permission);

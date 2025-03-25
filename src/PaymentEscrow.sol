@@ -215,14 +215,14 @@ contract PaymentEscrow {
     /// @notice Get the amount of tokens currently authorized (held in escrow)
     /// @param paymentDetailsHash Hash of the payment details
     /// @return Amount of tokens authorized
-    function getAuthorizedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+    function getCapturableAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
         return _paymentState[paymentDetailsHash].capturable;
     }
 
     /// @notice Get the amount of tokens that have been captured
     /// @param paymentDetailsHash Hash of the payment details
     /// @return Amount of tokens captured
-    function getCapturedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+    function getRefundableAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
         return _paymentState[paymentDetailsHash].refundable;
     }
 
@@ -687,7 +687,7 @@ contract PaymentEscrow {
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment details.
-    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient) internal view {
+    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient) internal pure {
         // check fee bps within [min, max]
         if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
             revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);

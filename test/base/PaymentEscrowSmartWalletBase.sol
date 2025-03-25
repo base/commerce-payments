@@ -151,23 +151,27 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     }
 
     /// @notice Helper to create a SpendPermission struct with test defaults
-    function _createSpendPermission(
-        address payer,
-        address receiver,
-        uint256 value,
-        uint256 preApprovalExpiry,
-        uint48 authorizationExpiry
-    ) internal view returns (SpendPermissionManager.SpendPermission memory) {
+    function _createSpendPermission(PaymentEscrow.PaymentDetails memory paymentDetails)
+        internal
+        view
+        returns (SpendPermissionManager.SpendPermission memory)
+    {
         return SpendPermissionManager.SpendPermission({
-            account: payer,
+            account: paymentDetails.payer,
             spender: address(paymentEscrow),
-            token: address(mockERC3009Token),
-            allowance: uint160(value),
+            token: address(paymentDetails.token),
+            allowance: uint160(paymentDetails.value),
             period: type(uint48).max,
             start: 0,
-            end: uint48(preApprovalExpiry),
+            end: uint48(paymentDetails.preApprovalExpiry),
             salt: uint256(0),
-            extraData: abi.encode(operator, receiver, FEE_BPS, FEE_BPS, feeRecipient)
+            extraData: abi.encode(
+                paymentDetails.operator,
+                paymentDetails.receiver,
+                paymentDetails.minFeeBps,
+                paymentDetails.maxFeeBps,
+                paymentDetails.feeRecipient
+            )
         });
     }
 

@@ -117,9 +117,6 @@ contract CaptureTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
 
-        uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
-        uint256 receiverExpectedBalance = authorizedAmount - feeAmount;
-
         // Then capture the full amount
         vm.prank(paymentDetails.receiver);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, paymentDetails.receiver));

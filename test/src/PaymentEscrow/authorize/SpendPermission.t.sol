@@ -19,13 +19,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         paymentDetails.authType = PaymentEscrow.AuthorizationType.SpendPermission;
 
         // Create and sign the spend permission
-        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
-            address(smartWalletDeployed),
-            receiver,
-            amount,
-            paymentDetails.preApprovalExpiry,
-            paymentDetails.authorizationExpiry
-        );
+        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentDetails);
 
         bytes memory signature = _signSpendPermission(
             permission,
