@@ -289,11 +289,12 @@ contract PaymentEscrow {
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
+        // update authorized amount for capture accounting
+        _paymentState[paymentDetailsHash].authorized = uint120(value);
+
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
 
-        // update authorized amount for capture accounting
-        _paymentState[paymentDetailsHash].authorized = uint120(value);
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
