@@ -15,3 +15,4 @@ smart-wallet/=lib/spend-permissions/lib/smart-wallet/src/
 solady/=lib/spend-permissions/lib/solady/src/
 spend-permissions/=lib/spend-permissions/src
 webauthn-sol/=lib/spend-permissions/lib/webauthn-sol/src/
+permit2/=lib/permit2/src/
