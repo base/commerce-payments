@@ -26,7 +26,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(initialAmount, paymentDetails, signature);
-        paymentEscrow.capture(initialAmount, paymentDetails);
+        paymentEscrow.capture(initialAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -87,7 +87,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -124,7 +124,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(captureAmount, paymentDetails, signature);
-        paymentEscrow.capture(captureAmount, paymentDetails);
+        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -163,7 +163,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         vm.prank(operator);
@@ -190,7 +190,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -228,7 +228,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -267,7 +267,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         bytes memory sponsorSignature = _signRefundAuthorization({
@@ -299,7 +299,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         // Fund sponsor
@@ -338,7 +338,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         // Fund sponsor with enough tokens
@@ -379,7 +379,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         // First authorize and capture
         vm.startPrank(operator);
         paymentEscrow.authorize(amount, paymentDetails, signature);
-        paymentEscrow.capture(amount, paymentDetails);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
         // Fund sponsor with enough tokens

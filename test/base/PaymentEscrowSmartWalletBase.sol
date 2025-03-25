@@ -77,7 +77,8 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     value: value,
                     authorizeDeadline: validBefore,
                     captureDeadline: captureDeadline,
-                    feeBps: FEE_BPS,
+                    minFeeBps: FEE_BPS,
+                    maxFeeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
                     salt: uint256(0),
                     authType: PaymentEscrow.AuthorizationType.ERC3009
@@ -167,7 +168,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             start: 0,
             end: uint48(authorizeDeadline),
             salt: uint256(0),
-            extraData: abi.encode(operator, captureAddress, FEE_BPS, feeRecipient)
+            extraData: abi.encode(operator, captureAddress, FEE_BPS, FEE_BPS, feeRecipient)
         });
     }
 

@@ -44,9 +44,11 @@ contract PaymentEscrow {
         uint256 authorizeDeadline;
         /// @dev captureDeadline Timestamp when the payment can no longer be captured and the buyer can reclaim authorization from escrow
         uint48 captureDeadline;
-        /// @dev feeBps Fee percentage in basis points (1/100th of a percent)
-        uint16 feeBps;
-        /// @dev feeRecipient Address that receives the fee portion of payments
+        /// @dev minFeeBps Minimum fee percentage in basis points
+        uint16 minFeeBps;
+        /// @dev maxFeeBps Maximum fee percentage in basis points
+        uint16 maxFeeBps;
+        /// @dev feeRecipient Address that receives the fee portion of payments, if 0 then operator can set at capture
         address feeRecipient;
         /// @dev salt A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
@@ -170,6 +172,12 @@ contract PaymentEscrow {
     /// @notice Spend permission approval failed
     error PermissionApprovalFailed();
 
+    /// @notice Fee bps outside of allowed range
+    error FeeBpsOutOfRange(uint16 feeBps, uint16 minFeeBps, uint16 maxFeeBps);
+
+    /// @notice Fee recipient cannot be changed
+    error FeeRecipientLocked(address existingRecipient);
+
     /// @notice Ensures value is non-zero and does not overflow storage
     modifier validValue(uint256 value) {
         if (value == 0) revert ZeroValue();
@@ -236,39 +244,54 @@ contract PaymentEscrow {
     /// @dev Reverts if the authorization has been voided or the capture deadline has passed
     /// @param value Amount to charge and capture
     /// @param paymentDetails PaymentDetails struct
-    /// @param signature Signature of the buyer authorizing the payment
-    function charge(uint256 value, PaymentDetails calldata paymentDetails, bytes calldata signature)
-        external
-        validValue(value)
-    {
+    /// @param feeBps Fee percentage to apply (must be within min/max range)
+    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
+    /// @param signature Authorization signature from buyer
+    function charge(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        uint16 feeBps,
+        address feeRecipient,
+        bytes calldata signature
+    ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
+        // validate fee parameters
+        if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
+            revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
+        }
+
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
+        address finalFeeRecipient;
+        if (paymentDetails.feeRecipient != address(0)) {
+            // If fee recipient is specified in PaymentDetails, use that
+            finalFeeRecipient = paymentDetails.feeRecipient;
+        } else {
+            // Otherwise use operator-provided recipient
+            if (feeBps > 0 && feeRecipient == address(0)) {
+                revert ZeroFeeRecipient();
+            }
+            finalFeeRecipient = feeRecipient;
+        }
+
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
-
         // update captured amount for refund accounting
         _paymentState[paymentDetailsHash].captured = uint120(value);
+        // distribute tokens to capture address and fee recipient
+        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, finalFeeRecipient, feeBps, value);
+
         emit PaymentCharged(
             paymentDetailsHash,
             paymentDetails.operator,
             paymentDetails.buyer,
             paymentDetails.captureAddress,
             paymentDetails.token,
-            value
-        );
-
-        // distribute tokens including fees
-        _distributeTokens(
-            paymentDetails.token,
-            paymentDetails.captureAddress,
-            paymentDetails.feeRecipient,
-            paymentDetails.feeBps,
             value
         );
     }
@@ -306,11 +329,15 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfer previously-escrowed funds to captureAddress
-    /// @dev Can be called multiple times up to cumulative authorized amount
     /// @dev Can only be called by the operator
     /// @param value Amount to capture
     /// @param paymentDetails PaymentDetails struct
-    function capture(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
+    /// @param feeBps Fee percentage to apply (must be within min/max range)
+    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
+    function capture(uint256 value, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient)
+        external
+        validValue(value)
+    {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
@@ -318,7 +345,25 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // check before capture deadline
+        // validate fee parameters
+        if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
+            revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
+        }
+
+        // determine fee recipient
+        address finalFeeRecipient;
+        if (paymentDetails.feeRecipient != address(0)) {
+            // If fee recipient is specified in PaymentDetails, use that
+            finalFeeRecipient = paymentDetails.feeRecipient;
+        } else {
+            // Otherwise use operator-provided recipient
+            if (feeBps > 0 && feeRecipient == address(0)) {
+                revert ZeroFeeRecipient();
+            }
+            finalFeeRecipient = feeRecipient;
+        }
+
+        // validate capture deadline
         if (block.timestamp >= paymentDetails.captureDeadline) {
             revert AfterCaptureDeadline(uint48(block.timestamp), paymentDetails.captureDeadline);
         }
@@ -334,13 +379,7 @@ contract PaymentEscrow {
         emit PaymentCaptured(paymentDetailsHash, value, msg.sender);
 
         // distribute tokens including fees
-        _distributeTokens(
-            paymentDetails.token,
-            paymentDetails.captureAddress,
-            paymentDetails.feeRecipient,
-            paymentDetails.feeBps,
-            value
-        );
+        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, feeRecipient, feeBps, value);
     }
 
     /// @notice Permanently voids a payment authorization
@@ -451,8 +490,10 @@ contract PaymentEscrow {
         if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
             revert InvalidDeadlines(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
         }
-        if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
-        if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
+        if (paymentDetails.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentDetails.maxFeeBps);
+        if (paymentDetails.minFeeBps > paymentDetails.maxFeeBps) {
+            revert FeeBpsOutOfRange(paymentDetails.minFeeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
+        }
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
     }
 
@@ -519,7 +560,8 @@ contract PaymentEscrow {
                 extraData: abi.encode(
                     paymentDetails.operator,
                     paymentDetails.captureAddress,
-                    paymentDetails.feeBps,
+                    paymentDetails.minFeeBps,
+                    paymentDetails.maxFeeBps,
                     paymentDetails.feeRecipient
                 )
             });
@@ -544,7 +586,8 @@ contract PaymentEscrow {
                 extraData: abi.encode(
                     paymentDetails.operator,
                     paymentDetails.captureAddress,
-                    paymentDetails.feeBps,
+                    paymentDetails.minFeeBps,
+                    paymentDetails.maxFeeBps,
                     paymentDetails.feeRecipient
                 )
             });

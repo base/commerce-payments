@@ -96,7 +96,8 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             value: value,
             authorizeDeadline: type(uint48).max,
             captureDeadline: type(uint48).max,
-            feeBps: FEE_BPS,
+            minFeeBps: FEE_BPS,
+            maxFeeBps: FEE_BPS,
             feeRecipient: feeRecipient,
             salt: 0,
             authType: authType
