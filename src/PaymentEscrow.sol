@@ -122,6 +122,9 @@ contract PaymentEscrow {
     /// @notice Payment has already been authorized
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
 
+    /// @notice Payment has already been pre-approved
+    error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
+
     /// @notice Payment has not been approved
     error PaymentNotApproved(bytes32 paymentDetailsHash);
 
@@ -184,6 +187,34 @@ contract PaymentEscrow {
         spendPermissionManager = _spendPermissionManager;
     }
 
+    /// @notice Check if a payment has been pre-approved
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return True if the payment has been pre-approved
+    function isPreApproved(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].isPreApproved;
+    }
+
+    /// @notice Check if a payment has been authorized
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return True if the payment has been authorized
+    function isAuthorized(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].isAuthorized;
+    }
+
+    /// @notice Get the amount of tokens currently authorized (held in escrow)
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return Amount of tokens authorized
+    function getAuthorizedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+        return _paymentState[paymentDetailsHash].authorized;
+    }
+
+    /// @notice Get the amount of tokens that have been captured
+    /// @param paymentDetailsHash Hash of the payment details
+    /// @return Amount of tokens captured
+    function getCapturedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
+        return _paymentState[paymentDetailsHash].captured;
+    }
+
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
     /// @param paymentDetails PaymentDetails struct
@@ -191,9 +222,10 @@ contract PaymentEscrow {
         // check sender is buyer
         if (msg.sender != paymentDetails.buyer) revert InvalidSender(msg.sender);
 
-        // check status is not authorized
+        // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        if (_paymentState[paymentDetailsHash].isPreApproved) revert PaymentAlreadyPreApproved(paymentDetailsHash);
 
         _paymentState[paymentDetailsHash].isPreApproved = true;
         emit PaymentApproved(paymentDetailsHash);
@@ -257,11 +289,12 @@ contract PaymentEscrow {
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
+        // update authorized amount for capture accounting
+        _paymentState[paymentDetailsHash].authorized = uint120(value);
+
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
 
-        // update authorized amount for capture accounting
-        _paymentState[paymentDetailsHash].authorized = uint120(value);
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -274,13 +307,14 @@ contract PaymentEscrow {
 
     /// @notice Transfer previously-escrowed funds to captureAddress
     /// @dev Can be called multiple times up to cumulative authorized amount
+    /// @dev Can only be called by the operator
     /// @param value Amount to capture
     /// @param paymentDetails PaymentDetails struct
     function capture(uint256 value, PaymentDetails calldata paymentDetails) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        // check sender is operator or captureAddress
-        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.captureAddress) {
+        // check sender is operator
+        if (msg.sender != paymentDetails.operator) {
             revert InvalidSender(msg.sender);
         }
 

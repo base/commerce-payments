@@ -61,7 +61,7 @@ contract PreApproveTest is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, ""); // ERC20Approval should work after pre-approval
     }
 
-    function test_succeeds_ifCalledByBuyerMultipleTimes(uint120 amount) public {
+    function test_reverts_ifCalledByBuyerMultipleTimes(uint120 amount) public {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
@@ -71,18 +71,12 @@ contract PreApproveTest is PaymentEscrowBase {
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
         vm.startPrank(buyerEOA);
         paymentEscrow.preApprove(paymentDetails);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyPreApproved.selector, paymentDetailsHash));
         paymentEscrow.preApprove(paymentDetails);
-
-        // Verify state change by trying to authorize with empty signature
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.startPrank(buyerEOA);
-        mockERC3009Token.approve(address(paymentEscrow), amount);
-        vm.stopPrank();
-
-        vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, ""); // ERC20Approval should work after pre-approval
     }
 
     function test_emitsExpectedEvents(uint120 amount) public {
