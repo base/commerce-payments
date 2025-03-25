@@ -26,7 +26,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.PaymentNotApproved.selector, keccak256(abi.encode(paymentDetails)))
         );
-        paymentEscrow.charge(amount, paymentDetails, "");
+        paymentEscrow.charge(amount, paymentDetails, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient);
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
@@ -49,7 +49,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Try to charge - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        paymentEscrow.charge(amount, paymentDetails, "");
+        paymentEscrow.charge(amount, paymentDetails, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient);
     }
 
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
@@ -77,10 +77,10 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         // Charge with empty signature
         vm.prank(operator);
-        paymentEscrow.charge(amount, paymentDetails, "");
+        paymentEscrow.charge(amount, paymentDetails, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient);
 
         // Verify balances including fee distribution
-        uint256 feeAmount = uint256(amount) * FEE_BPS / 10_000;
+        uint256 feeAmount = uint256(amount) * paymentDetails.minFeeBps / 10_000;
         assertEq(mockERC3009Token.balanceOf(captureAddress), captureAddressBalanceBefore + (amount - feeAmount));
         assertEq(mockERC3009Token.balanceOf(feeRecipient), feeRecipientBalanceBefore + feeAmount);
         assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);

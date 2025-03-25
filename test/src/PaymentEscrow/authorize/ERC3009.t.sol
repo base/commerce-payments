@@ -137,29 +137,12 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
 
         // Set fee bps > 100%
-        paymentDetails.feeBps = 10_001;
+        paymentDetails.maxFeeBps = 10_001;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
-    }
-
-    function test_reverts_whenFeeRecipientZeroButFeeBpsNonZero(uint120 amount) public {
-        vm.assume(amount > 0);
-
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({buyer: buyerEOA, value: amount});
-
-        // Set fee recipient to zero but keep non-zero fee bps
-        paymentDetails.feeRecipient = address(0);
-        paymentDetails.feeBps = 100; // 1%
-
-        bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
-
-        vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroFeeRecipient.selector);
         paymentEscrow.authorize(amount, paymentDetails, signature);
     }
 
@@ -233,7 +216,8 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         // Set both fee recipient and fee bps to zero - this should be valid
         paymentDetails.feeRecipient = address(0);
-        paymentDetails.feeBps = 0;
+        paymentDetails.minFeeBps = 0;
+        paymentDetails.maxFeeBps = 0;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, BUYER_EOA_PK);
 
