@@ -10,15 +10,15 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
-        // Give buyer tokens and approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(buyerEOA);
+        // Give payer tokens and approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
+        vm.prank(payerEOA);
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
         // Try to charge without pre-approval in Escrow contract
@@ -33,18 +33,18 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
         // Pre-approve in escrow
-        vm.prank(buyerEOA);
+        vm.prank(payerEOA);
         paymentEscrow.preApprove(paymentDetails);
 
-        // Give buyer tokens but DON'T approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
+        // Give payer tokens but DON'T approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
 
         // Try to charge - should fail on token transfer
         vm.prank(operator);
@@ -56,23 +56,23 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
         // Pre-approve in escrow
-        vm.prank(buyerEOA);
+        vm.prank(payerEOA);
         paymentEscrow.preApprove(paymentDetails);
 
-        // Give buyer tokens and approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(buyerEOA);
+        // Give payer tokens and approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
+        vm.prank(payerEOA);
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
-        uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
-        uint256 captureAddressBalanceBefore = mockERC3009Token.balanceOf(captureAddress);
+        uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
+        uint256 receiverBalanceBefore = mockERC3009Token.balanceOf(receiver);
         uint256 feeRecipientBalanceBefore = mockERC3009Token.balanceOf(feeRecipient);
 
         // Charge with empty signature
@@ -81,8 +81,8 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         // Verify balances including fee distribution
         uint256 feeAmount = uint256(amount) * paymentDetails.minFeeBps / 10_000;
-        assertEq(mockERC3009Token.balanceOf(captureAddress), captureAddressBalanceBefore + (amount - feeAmount));
+        assertEq(mockERC3009Token.balanceOf(receiver), receiverBalanceBefore + (amount - feeAmount));
         assertEq(mockERC3009Token.balanceOf(feeRecipient), feeRecipientBalanceBefore + feeAmount);
-        assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
 }

@@ -10,15 +10,15 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
-        // Give buyer tokens and approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(buyerEOA);
+        // Give payer tokens and approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
+        vm.prank(payerEOA);
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
         // Try to authorize without pre-approval
@@ -33,18 +33,18 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
         // Pre-approve in escrow
-        vm.prank(buyerEOA);
+        vm.prank(payerEOA);
         paymentEscrow.preApprove(paymentDetails);
 
-        // Give buyer tokens but DON'T approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
+        // Give payer tokens but DON'T approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
 
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
@@ -56,22 +56,22 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
             authType: PaymentEscrow.AuthorizationType.ERC20Approval
         });
 
         // Pre-approve in escrow
-        vm.prank(buyerEOA);
+        vm.prank(payerEOA);
         paymentEscrow.preApprove(paymentDetails);
 
-        // Give buyer tokens and approve escrow
-        mockERC3009Token.mint(buyerEOA, amount);
-        vm.prank(buyerEOA);
+        // Give payer tokens and approve escrow
+        mockERC3009Token.mint(payerEOA, amount);
+        vm.prank(payerEOA);
         mockERC3009Token.approve(address(paymentEscrow), amount);
 
-        uint256 buyerBalanceBefore = mockERC3009Token.balanceOf(buyerEOA);
+        uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         // Authorize with ERC20Approval method
@@ -79,7 +79,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         paymentEscrow.authorize(amount, paymentDetails, "");
 
         // Verify balances
-        assertEq(mockERC3009Token.balanceOf(buyerEOA), buyerBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
     }
 }

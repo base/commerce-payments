@@ -22,10 +22,10 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // Create signature
         bytes memory signature = _signSmartWalletERC3009(
             address(smartWalletDeployed),
-            captureAddress,
+            receiver,
             amount,
-            paymentDetails.authorizeDeadline,
-            paymentDetails.captureDeadline,
+            paymentDetails.preApprovalExpiry,
+            paymentDetails.authorizationExpiry,
             DEPLOYED_WALLET_OWNER_PK,
             0
         );
@@ -35,7 +35,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         paymentEscrow.charge(amount, paymentDetails, signature, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
-        assertEq(mockERC3009Token.balanceOf(captureAddress), amount - feeAmount);
+        assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
         assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
     }
 
@@ -57,10 +57,10 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // Create signature
         bytes memory signature = _signSmartWalletERC3009WithERC6492(
             address(smartWalletCounterfactual),
-            captureAddress,
+            receiver,
             amount,
-            paymentDetails.authorizeDeadline,
-            paymentDetails.captureDeadline,
+            paymentDetails.preApprovalExpiry,
+            paymentDetails.authorizationExpiry,
             COUNTERFACTUAL_WALLET_OWNER_PK,
             0
         );
@@ -70,7 +70,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         paymentEscrow.charge(amount, paymentDetails, signature, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
-        assertEq(mockERC3009Token.balanceOf(captureAddress), amount - feeAmount);
+        assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
         assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
     }
 }
