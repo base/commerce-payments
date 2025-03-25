@@ -214,6 +214,9 @@ contract PaymentEscrow {
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
+        // validate payment details
+        _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
+
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
 
@@ -250,6 +253,9 @@ contract PaymentEscrow {
 
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
+
+        // validate payment details
+        _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
@@ -399,6 +405,22 @@ contract PaymentEscrow {
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
     }
 
+    function _validatePaymentDetails(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 value)
+        internal
+        view
+    {
+        if (value > paymentDetails.value) revert ValueLimitExceeded(value);
+        if (block.timestamp >= paymentDetails.authorizeDeadline) {
+            revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.authorizeDeadline));
+        }
+        if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
+            revert InvalidDeadlines(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
+        }
+        if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
+        if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
+        if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+    }
+
     /// @notice Transfer tokens into this contract
     function _pullTokens(
         PaymentDetails calldata paymentDetails,
@@ -407,34 +429,49 @@ contract PaymentEscrow {
         bytes calldata signature,
         AuthorizationType authType
     ) internal {
-        // check value does not exceed payment value
-        if (value > paymentDetails.value) revert ValueLimitExceeded(value);
-
-        // check before authorize deadline
-        if (block.timestamp >= paymentDetails.authorizeDeadline) {
-            revert AfterAuthorizationDeadline(uint48(block.timestamp), uint48(paymentDetails.authorizeDeadline));
-        }
-
-        // check authorize deadline not after capture deadline
-        if (paymentDetails.authorizeDeadline > paymentDetails.captureDeadline) {
-            revert InvalidDeadlines(uint48(paymentDetails.authorizeDeadline), paymentDetails.captureDeadline);
-        }
-
-        // validate fees
-        if (paymentDetails.feeBps > 10_000) revert FeeBpsOverflow(paymentDetails.feeBps);
-        if (paymentDetails.feeRecipient == address(0) && paymentDetails.feeBps != 0) revert ZeroFeeRecipient();
-
-        // check payment not previously authorized
-        if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        // Mark as authorized
         _paymentState[paymentDetailsHash].isAuthorized = true;
 
+        // Handle each authorization type
         if (authType == AuthorizationType.ERC20Approval) {
             // Standard ERC20 approval path
             if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
             SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.buyer, address(this), value);
-        } else if (
-            authType == AuthorizationType.SpendPermission || authType == AuthorizationType.SpendPermissionWithMagicSpend
-        ) {
+        } else if (authType == AuthorizationType.ERC3009) {
+            // ERC3009 signature path
+            bytes memory innerSignature = _processERC6492Signature(signature);
+
+            IERC3009(paymentDetails.token).receiveWithAuthorization({
+                from: paymentDetails.buyer,
+                to: address(this),
+                value: paymentDetails.value,
+                validAfter: 0,
+                validBefore: uint48(paymentDetails.authorizeDeadline),
+                nonce: paymentDetailsHash,
+                signature: innerSignature
+            });
+
+            // Return excess funds to buyer
+            uint256 excessFunds = paymentDetails.value - value;
+            if (excessFunds > 0) {
+                SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
+            }
+        } else if (authType == AuthorizationType.Permit2) {
+            // Permit2 signature path
+            bytes memory innerSignature = _processERC6492Signature(signature);
+
+            permit2.permitTransferFrom(
+                ISignatureTransfer.PermitTransferFrom({
+                    permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
+                    nonce: uint256(paymentDetailsHash),
+                    deadline: paymentDetails.authorizeDeadline
+                }),
+                ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
+                paymentDetails.buyer,
+                innerSignature
+            );
+        } else if (authType == AuthorizationType.SpendPermission) {
+            // Regular SpendPermission path
             SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
                 account: paymentDetails.buyer,
                 spender: address(this),
@@ -453,66 +490,50 @@ contract PaymentEscrow {
             });
 
             if (signature.length > 0) {
-                if (authType == AuthorizationType.SpendPermissionWithMagicSpend) {
-                    // Get the offset and length of the encoded data
-                    (uint256 sigOffset, uint256 sigLength) = abi.decode(signature[:64], (uint256, uint256));
+                bool approved = spendPermissionManager.approveWithSignature(permission, signature);
+                if (!approved) revert PermissionApprovalFailed();
+            }
 
-                    // Extract the signature portion directly as calldata
-                    bytes calldata spendPermissionSig = signature[sigOffset:sigOffset + sigLength];
+            spendPermissionManager.spend(permission, uint160(value));
+        } else if (authType == AuthorizationType.SpendPermissionWithMagicSpend) {
+            // SpendPermission with MagicSpend path
+            SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
+                account: paymentDetails.buyer,
+                spender: address(this),
+                token: paymentDetails.token,
+                allowance: uint160(paymentDetails.value),
+                period: type(uint48).max,
+                start: 0,
+                end: uint48(paymentDetails.authorizeDeadline),
+                salt: paymentDetails.salt,
+                extraData: abi.encode(
+                    paymentDetails.operator,
+                    paymentDetails.captureAddress,
+                    paymentDetails.feeBps,
+                    paymentDetails.feeRecipient
+                )
+            });
 
-                    // Get the withdraw request from the remaining data
-                    MagicSpend.WithdrawRequest memory withdrawRequest =
-                        abi.decode(signature[sigOffset + sigLength:], (MagicSpend.WithdrawRequest));
+            // Check if permission is already approved with SpendPermissionManager
+            bool isApproved = spendPermissionManager.isApproved(permission);
 
-                    // Spend Permission Manager will handle ERC-6492 signatures
-                    bool approved = spendPermissionManager.approveWithSignature(permission, spendPermissionSig);
-                    if (!approved) revert PermissionApprovalFailed();
+            // Always decode withdraw request - it's required
+            MagicSpend.WithdrawRequest memory withdrawRequest;
 
-                    spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
-                } else {
-                    // Regular SpendPermission path
-                    // Spend Permission Manager will handle ERC-6492 signatures
-                    bool approved = spendPermissionManager.approveWithSignature(permission, signature);
-                    if (!approved) revert PermissionApprovalFailed();
+            if (!isApproved) {
+                // If not approved, we need both signature and withdraw request
+                (uint256 sigOffset, uint256 sigLength) = abi.decode(signature[:64], (uint256, uint256));
+                bytes memory spendPermissionSig = signature[sigOffset:sigOffset + sigLength];
+                withdrawRequest = abi.decode(signature[sigOffset + sigLength:], (MagicSpend.WithdrawRequest));
 
-                    spendPermissionManager.spend(permission, uint160(value));
-                }
+                bool approved = spendPermissionManager.approveWithSignature(permission, spendPermissionSig);
+                if (!approved) revert PermissionApprovalFailed();
             } else {
-                // Pre-approved path
-                spendPermissionManager.spend(permission, uint160(value));
+                // If already approved, signature should only contain the withdraw request
+                withdrawRequest = abi.decode(signature, (MagicSpend.WithdrawRequest));
             }
-        } else {
-            // Signature-based authorization (ERC3009 or Permit2)
-            bytes memory innerSignature = _processERC6492Signature(signature);
 
-            if (authType == AuthorizationType.ERC3009) {
-                IERC3009(paymentDetails.token).receiveWithAuthorization({
-                    from: paymentDetails.buyer,
-                    to: address(this),
-                    value: paymentDetails.value,
-                    validAfter: 0,
-                    validBefore: uint48(paymentDetails.authorizeDeadline),
-                    nonce: paymentDetailsHash,
-                    signature: innerSignature
-                });
-
-                // send excess funds back to buyer
-                uint256 excessFunds = paymentDetails.value - value;
-                if (excessFunds > 0) {
-                    SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, excessFunds);
-                }
-            } else if (authType == AuthorizationType.Permit2) {
-                permit2.permitTransferFrom(
-                    ISignatureTransfer.PermitTransferFrom({
-                        permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
-                        nonce: uint256(paymentDetailsHash),
-                        deadline: paymentDetails.authorizeDeadline
-                    }),
-                    ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
-                    paymentDetails.buyer,
-                    innerSignature
-                );
-            }
+            spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
         }
     }
 
