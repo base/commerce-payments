@@ -28,11 +28,11 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     uint256 public magicSpendOwnerPk = 0xC014BA53;
     address public magicSpendOwner;
     address public operator;
-    address public captureAddress;
-    address public buyerEOA;
+    address public receiver;
+    address public payerEOA;
     address public feeRecipient;
     uint16 constant FEE_BPS = 100; // 1%
-    uint256 internal constant BUYER_EOA_PK = 0x1234;
+    uint256 internal constant payer_EOA_PK = 0x1234;
 
     bytes32 constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
     bytes32 constant _PERMIT_TRANSFER_FROM_TYPEHASH = keccak256(
@@ -62,40 +62,40 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         // Setup roles
         operator = vm.addr(1);
         vm.label(operator, "operator");
-        captureAddress = vm.addr(2);
-        vm.label(captureAddress, "captureAddress");
-        buyerEOA = vm.addr(BUYER_EOA_PK);
+        receiver = vm.addr(2);
+        vm.label(receiver, "receiver");
+        payerEOA = vm.addr(payer_EOA_PK);
         feeRecipient = vm.addr(4);
         vm.label(feeRecipient, "feeRecipient");
 
-        // Mint tokens to buyer
-        mockERC3009Token.mint(buyerEOA, 1000e9);
+        // Mint tokens to payer
+        mockERC3009Token.mint(payerEOA, 1000e9);
     }
 
-    function _createPaymentEscrowAuthorization(address buyer, uint256 value)
+    function _createPaymentEscrowAuthorization(address payer, uint256 value)
         internal
         view
         returns (PaymentEscrow.PaymentDetails memory)
     {
         return _createPaymentEscrowAuthorization(
-            buyer, value, address(mockERC3009Token), PaymentEscrow.AuthorizationType.ERC3009
+            payer, value, address(mockERC3009Token), PaymentEscrow.AuthorizationType.ERC3009
         );
     }
 
     function _createPaymentEscrowAuthorization(
-        address buyer,
+        address payer,
         uint256 value,
         address token,
         PaymentEscrow.AuthorizationType authType
     ) internal view returns (PaymentEscrow.PaymentDetails memory) {
         return PaymentEscrow.PaymentDetails({
             operator: operator,
-            buyer: buyer,
-            captureAddress: captureAddress,
+            payer: payer,
+            receiver: receiver,
             token: token,
             value: value,
-            authorizeDeadline: type(uint48).max,
-            captureDeadline: type(uint48).max,
+            preApprovalExpiry: type(uint48).max,
+            authorizationExpiry: type(uint48).max,
             minFeeBps: FEE_BPS,
             maxFeeBps: FEE_BPS,
             feeRecipient: feeRecipient,
@@ -110,11 +110,11 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         returns (bytes memory)
     {
         return _signERC3009({
-            from: paymentDetails.buyer,
+            from: paymentDetails.payer,
             to: address(paymentEscrow),
             value: paymentDetails.value,
             validAfter: 0,
-            validBefore: paymentDetails.authorizeDeadline,
+            validBefore: paymentDetails.preApprovalExpiry,
             nonce: keccak256(abi.encode(paymentDetails)),
             signerPk: signerPk
         });

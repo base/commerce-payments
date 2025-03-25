@@ -23,10 +23,10 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         // Create the spend permission
         SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(
             address(smartWalletDeployed),
-            captureAddress,
+            receiver,
             amount,
-            paymentDetails.authorizeDeadline,
-            paymentDetails.captureDeadline
+            paymentDetails.preApprovalExpiry,
+            paymentDetails.authorizationExpiry
         );
 
         // Create and sign withdraw request

@@ -16,8 +16,8 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
         // Deploy a regular ERC20 without ERC3009
         plainToken = new MockERC20("Plain Token", "PLAIN", 18);
 
-        // Buyer needs to approve Permit2 to spend their tokens
-        vm.startPrank(buyerEOA);
+        // payer needs to approve Permit2 to spend their tokens
+        vm.startPrank(payerEOA);
         plainToken.approve(address(paymentEscrow.permit2()), type(uint256).max);
         vm.stopPrank();
     }
@@ -25,11 +25,11 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
 
-        // Mint enough tokens to the buyer
-        plainToken.mint(buyerEOA, amount);
+        // Mint enough tokens to the payer
+        plainToken.mint(payerEOA, amount);
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            buyer: buyerEOA,
+            payer: payerEOA,
             value: amount,
             token: address(plainToken),
             authType: PaymentEscrow.AuthorizationType.Permit2
@@ -39,9 +39,9 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
         bytes memory signature = _signPermit2Transfer({
             token: address(plainToken),
             amount: amount,
-            deadline: paymentDetails.authorizeDeadline,
+            deadline: paymentDetails.preApprovalExpiry,
             nonce: uint256(keccak256(abi.encode(paymentDetails))),
-            privateKey: BUYER_EOA_PK
+            privateKey: payer_EOA_PK
         });
 
         // Should succeed via Permit2 authorization
@@ -50,6 +50,6 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // Verify the transfer worked
         assertEq(plainToken.balanceOf(address(paymentEscrow)), amount);
-        assertEq(plainToken.balanceOf(buyerEOA), 0);
+        assertEq(plainToken.balanceOf(payerEOA), 0);
     }
 }
