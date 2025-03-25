@@ -250,9 +250,9 @@ contract PaymentEscrow {
     function charge(
         uint256 value,
         PaymentDetails calldata paymentDetails,
+        bytes calldata signature,
         uint16 feeBps,
-        address feeRecipient,
-        bytes calldata signature
+        address feeRecipient
     ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
@@ -267,13 +267,6 @@ contract PaymentEscrow {
 
         // update captured amount for refund accounting
         _paymentState[paymentDetailsHash].captured = uint120(value);
-
-        // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
-
-        // distribute tokens to capture address and fee recipient
-        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, feeRecipient, feeBps, value);
-
         emit PaymentCharged(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -282,6 +275,12 @@ contract PaymentEscrow {
             paymentDetails.token,
             value
         );
+
+        // transfer tokens into escrow
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
+
+        // distribute tokens to capture address and fee recipient
+        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, feeRecipient, feeBps, value);
     }
 
     /// @notice Transfers funds from buyer to escrow
@@ -333,7 +332,7 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // validate capture deadline
+        // check before capture deadline
         if (block.timestamp >= paymentDetails.captureDeadline) {
             revert AfterCaptureDeadline(uint48(block.timestamp), paymentDetails.captureDeadline);
         }
