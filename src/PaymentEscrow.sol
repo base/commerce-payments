@@ -30,41 +30,41 @@ contract PaymentEscrow {
 
     /// @notice ERC-3009 authorization with additional payment routing data
     struct PaymentDetails {
-        /// @dev operator Entity responsible for driving payment flow
+        /// @dev Entity responsible for driving payment flow
         address operator;
-        /// @dev payer The buyer's address authorizing the payment
+        /// @dev The buyer's address authorizing the payment
         address payer;
-        /// @dev recipient Address that receives the payment (minus fees)
+        /// @dev Address that receives the payment (minus fees)
         address receiver;
-        /// @dev token The ERC-3009 token contract address
+        /// @dev The ERC-3009 token contract address
         address token;
-        /// @dev value The amount of tokens that will be transferred from the buyer to the escrow
+        /// @dev The amount of tokens that will be transferred from the buyer to the escrow
         uint256 value;
-        /// @dev preApprovalExpiry Timestamp when the payer's pre-approval can no longer authorize payment
+        /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
         uint48 preApprovalExpiry;
-        /// @dev authorizationExpiry Timestamp when an authorization can no longer be captured and the buyer can reclaim from escrow
+        /// @dev Timestamp when an authorization can no longer be captured and the buyer can reclaim from escrow
         uint48 authorizationExpiry;
-        /// @dev minFeeBps Minimum fee percentage in basis points
+        /// @dev Minimum fee percentage in basis points
         uint16 minFeeBps;
-        /// @dev maxFeeBps Maximum fee percentage in basis points
+        /// @dev Maximum fee percentage in basis points
         uint16 maxFeeBps;
-        /// @dev feeRecipient Address that receives the fee portion of payments, if 0 then operator can set at capture
+        /// @dev Address that receives the fee portion of payments, if 0 then operator can set at capture
         address feeRecipient;
-        /// @dev salt A source of entropy to ensure unique hashes across different payment details
+        /// @dev A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
-        /// @dev authType Type of authorization to use for this payment
+        /// @dev Type of authorization to use for this payment
         AuthorizationType authType;
     }
 
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
-        /// @dev isPreApproved True if payment was pre-aproved by the buyer
+        /// @dev True if payment was pre-aproved by the buyer
         bool isPreApproved;
-        /// @dev isAuthorized True if payment has been authorized or charged
+        /// @dev True if payment has been authorized or charged
         bool isAuthorized;
-        /// @dev capturable Value of tokens currently on hold in escrow that can be captured
+        /// @dev Value of tokens currently on hold in escrow that can be captured
         uint120 capturable;
-        /// @dev refundable Value of tokens previously captured that can be refunded
+        /// @dev Value of tokens previously captured that can be refunded
         uint120 refundable;
     }
 
@@ -673,7 +673,7 @@ contract PaymentEscrow {
     function _refund(uint256 value, address operator, address originalPaymentReceiver, bytes32 paymentDetailsHash)
         internal
     {
-        // Check sender is operator or originalPaymentReceiver
+        // Check sender is operator or original payment receiver
         if (msg.sender != operator && msg.sender != originalPaymentReceiver) {
             revert InvalidSender(msg.sender);
         }
