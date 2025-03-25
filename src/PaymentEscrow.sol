@@ -62,10 +62,10 @@ contract PaymentEscrow {
         bool isPreApproved;
         /// @dev isAuthorized True if payment has been authorized or charged
         bool isAuthorized;
-        /// @dev authorized Value of tokens currently on hold in escrow
-        uint120 authorized;
-        /// @dev captured Value of tokens previously captured and not refunded
-        uint120 captured;
+        /// @dev capturable Value of tokens currently on hold in escrow that can be captured
+        uint120 capturable;
+        /// @dev refundable Value of tokens previously captured that can be refunded
+        uint120 refundable;
     }
 
     /// @notice ERC-6492 magic value
@@ -216,14 +216,14 @@ contract PaymentEscrow {
     /// @param paymentDetailsHash Hash of the payment details
     /// @return Amount of tokens authorized
     function getAuthorizedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
-        return _paymentState[paymentDetailsHash].authorized;
+        return _paymentState[paymentDetailsHash].capturable;
     }
 
     /// @notice Get the amount of tokens that have been captured
     /// @param paymentDetailsHash Hash of the payment details
     /// @return Amount of tokens captured
     function getCapturedAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
-        return _paymentState[paymentDetailsHash].captured;
+        return _paymentState[paymentDetailsHash].refundable;
     }
 
     /// @notice Registers buyer's token approval for a specific payment
@@ -269,7 +269,7 @@ contract PaymentEscrow {
         _validateFee(paymentDetails, feeBps, feeRecipient);
 
         // update captured amount for refund accounting
-        _paymentState[paymentDetailsHash].captured = uint120(value);
+        _paymentState[paymentDetailsHash].refundable = uint120(value);
         emit PaymentCharged(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -303,7 +303,7 @@ contract PaymentEscrow {
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
         // update authorized amount for capture accounting
-        _paymentState[paymentDetailsHash].authorized = uint120(value);
+        _paymentState[paymentDetailsHash].capturable = uint120(value);
 
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
@@ -346,11 +346,11 @@ contract PaymentEscrow {
 
         // check sufficient escrow to capture
         PaymentState memory state = _paymentState[paymentDetailsHash];
-        if (state.authorized < value) revert InsufficientAuthorization(paymentDetailsHash, state.authorized, value);
+        if (state.capturable < value) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, value);
 
         // update state
-        state.authorized -= uint120(value);
-        state.captured += uint120(value);
+        state.capturable -= uint120(value);
+        state.refundable += uint120(value);
         _paymentState[paymentDetailsHash] = state;
         emit PaymentCaptured(paymentDetailsHash, value, msg.sender);
 
@@ -371,11 +371,11 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
-        uint256 authorizedValue = _paymentState[paymentDetailsHash].authorized;
+        uint256 authorizedValue = _paymentState[paymentDetailsHash].capturable;
         if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // return any escrowed funds
-        _paymentState[paymentDetailsHash].authorized = 0;
+        _paymentState[paymentDetailsHash].capturable = 0;
         emit PaymentVoided(paymentDetailsHash, authorizedValue, msg.sender);
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, authorizedValue);
     }
@@ -397,11 +397,11 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
-        uint256 authorizedValue = _paymentState[paymentDetailsHash].authorized;
+        uint256 authorizedValue = _paymentState[paymentDetailsHash].capturable;
         if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // return any escrowed funds
-        _paymentState[paymentDetailsHash].authorized = 0;
+        _paymentState[paymentDetailsHash].capturable = 0;
         emit PaymentReclaimed(paymentDetailsHash, authorizedValue);
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, authorizedValue);
     }
@@ -676,10 +676,10 @@ contract PaymentEscrow {
         }
 
         // Limit refund value to previously captured
-        uint120 captured = _paymentState[paymentDetailsHash].captured;
+        uint120 captured = _paymentState[paymentDetailsHash].refundable;
         if (captured < value) revert RefundExceedsCapture(value, captured);
 
-        _paymentState[paymentDetailsHash].captured = captured - uint120(value);
+        _paymentState[paymentDetailsHash].refundable = captured - uint120(value);
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
     }
 
