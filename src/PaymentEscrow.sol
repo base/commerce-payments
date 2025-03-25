@@ -176,7 +176,7 @@ contract PaymentEscrow {
     error FeeBpsOutOfRange(uint16 feeBps, uint16 minFeeBps, uint16 maxFeeBps);
 
     /// @notice Fee recipient cannot be changed
-    error FeeRecipientLocked(address existingRecipient);
+    error InvalidFeeRecipient(address attempted, address expected);
 
     /// @notice Ensures value is non-zero and does not overflow storage
     modifier validValue(uint256 value) {
@@ -259,32 +259,20 @@ contract PaymentEscrow {
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
-        // validate fee parameters
-        if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
-            revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
-        }
-
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
-        address finalFeeRecipient;
-        if (paymentDetails.feeRecipient != address(0)) {
-            // If fee recipient is specified in PaymentDetails, use that
-            finalFeeRecipient = paymentDetails.feeRecipient;
-        } else {
-            // Otherwise use operator-provided recipient
-            if (feeBps > 0 && feeRecipient == address(0)) {
-                revert ZeroFeeRecipient();
-            }
-            finalFeeRecipient = feeRecipient;
-        }
+        // validate fee parameters
+        _validateFee(paymentDetails, feeBps, feeRecipient);
+
+        // update captured amount for refund accounting
+        _paymentState[paymentDetailsHash].captured = uint120(value);
 
         // transfer tokens into escrow
         _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
-        // update captured amount for refund accounting
-        _paymentState[paymentDetailsHash].captured = uint120(value);
+
         // distribute tokens to capture address and fee recipient
-        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, finalFeeRecipient, feeBps, value);
+        _distributeTokens(paymentDetails.token, paymentDetails.captureAddress, feeRecipient, feeBps, value);
 
         emit PaymentCharged(
             paymentDetailsHash,
@@ -345,28 +333,13 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // validate fee parameters
-        if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
-            revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
-        }
-
-        // determine fee recipient
-        address finalFeeRecipient;
-        if (paymentDetails.feeRecipient != address(0)) {
-            // If fee recipient is specified in PaymentDetails, use that
-            finalFeeRecipient = paymentDetails.feeRecipient;
-        } else {
-            // Otherwise use operator-provided recipient
-            if (feeBps > 0 && feeRecipient == address(0)) {
-                revert ZeroFeeRecipient();
-            }
-            finalFeeRecipient = feeRecipient;
-        }
-
         // validate capture deadline
         if (block.timestamp >= paymentDetails.captureDeadline) {
             revert AfterCaptureDeadline(uint48(block.timestamp), paymentDetails.captureDeadline);
         }
+
+        // validate fee parameters
+        _validateFee(paymentDetails, feeBps, feeRecipient);
 
         // check sufficient escrow to capture
         PaymentState memory state = _paymentState[paymentDetailsHash];
@@ -705,5 +678,21 @@ contract PaymentEscrow {
 
         _paymentState[paymentDetailsHash].captured = captured - uint120(value);
         emit PaymentRefunded(paymentDetailsHash, value, msg.sender);
+    }
+
+    /// @notice Validates attempted fee adheres to constraints set by payment details.
+    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient) internal view {
+        // check fee bps within [min, max]
+        if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
+            revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
+        }
+
+        // check fee recipient only zero address if zero fee bps
+        if (feeBps > 0 && feeRecipient == address(0)) revert ZeroFeeRecipient();
+
+        // check fee recipient matches payment details if non-zero
+        if (paymentDetails.feeRecipient != address(0) && paymentDetails.feeRecipient != feeRecipient) {
+            revert InvalidFeeRecipient(feeRecipient, paymentDetails.feeRecipient);
+        }
     }
 }
