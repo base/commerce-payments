@@ -72,6 +72,12 @@ contract PaymentEscrow {
     /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
     IMulticall3 public immutable multicall3;
 
+    /// @notice Permit2 contract address - this should be the canonical deployment
+    IPermit2 public immutable permit2;
+
+    /// @notice Spend Permission Manager contract
+    SpendPermissionManager public immutable spendPermissionManager;
+
     /// @notice State per unique payment
     mapping(bytes32 paymentDetailsHash => PaymentState state) _paymentState;
 
@@ -155,17 +161,18 @@ contract PaymentEscrow {
     /// @notice Authorization is zero
     error ZeroAuthorization(bytes32 paymentDetailsHash);
 
-    /// @notice Permit2 contract address - this should be the canonical deployment
-    IPermit2 public immutable permit2;
-
     /// @notice Permit2 transfer failed
     error Permit2TransferFailed();
 
     /// @notice Spend permission approval failed
     error PermissionApprovalFailed();
 
-    /// @notice Spend Permission Manager contract
-    SpendPermissionManager public immutable spendPermissionManager;
+    /// @notice Ensures value is non-zero and does not overflow storage
+    modifier validValue(uint256 value) {
+        if (value == 0) revert ZeroValue();
+        if (value > type(uint120).max) revert ValueOverflow(value, type(uint120).max);
+        _;
+    }
 
     /// @notice Initialize contract with ERC6492 Executor and Permit2
     /// @param _multicall3 Address of the Executor contract
@@ -175,13 +182,6 @@ contract PaymentEscrow {
         multicall3 = IMulticall3(_multicall3);
         permit2 = IPermit2(_permit2);
         spendPermissionManager = _spendPermissionManager;
-    }
-
-    /// @notice Ensures value is non-zero and does not overflow storage
-    modifier validValue(uint256 value) {
-        if (value == 0) revert ZeroValue();
-        if (value > type(uint120).max) revert ValueOverflow(value, type(uint120).max);
-        _;
     }
 
     /// @notice Registers buyer's token approval for a specific payment
@@ -405,6 +405,7 @@ contract PaymentEscrow {
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.buyer, value);
     }
 
+    /// @notice Validates required properties of a payment
     function _validatePaymentDetails(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 value)
         internal
         view
