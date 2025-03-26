@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 /// @notice Minimal contract for PaymentEscrow operations
-/// @dev Enables batch execution and multiple executors for higher throughput potential and convenience
+/// @dev Enables batch execution from multiple executors for optimal throughput and efficiency
 contract Operator is Ownable {
-    address escrow;
+    address immutable escrow;
     mapping(address executor => bool allowed) isExecutor;
 
     event ExecutorUpdated(address executor, bool allowed);
@@ -15,6 +15,7 @@ contract Operator is Ownable {
         escrow = escrow_;
         for (uint256 i; i < executors.length; i++) {
             isExecutor[executors[i]] = true;
+            emit ExecutorUpdated(executors[i], true);
         }
     }
 
