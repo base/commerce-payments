@@ -522,7 +522,7 @@ contract PaymentEscrow {
             );
         } else if (authType == AuthorizationType.SpendPermission) {
             // assume signature also includes an encoded withdraw
-            (bytes memory sig, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
+            (bytes memory accountSignature, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
 
             // Regular SpendPermission path
             SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
@@ -537,9 +537,9 @@ contract PaymentEscrow {
                 extraData: hex""
             });
 
-            // approve with signature if present
-            if (signature.length > 0) {
-                bool approved = spendPermissionManager.approveWithSignature(permission, signature);
+            // approve with account signature if present
+            if (accountSignature.length > 0) {
+                bool approved = spendPermissionManager.approveWithSignature(permission, accountSignature);
                 if (!approved) revert PermissionApprovalFailed();
             }
 
