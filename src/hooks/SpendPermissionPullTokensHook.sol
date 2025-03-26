@@ -9,8 +9,10 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 contract SpendPermissionPullTokensHook is IPullTokensHook {
     SpendPermissionManager public immutable spendPermissionManager;
+    PaymentEscrow public immutable paymentEscrow;
 
     error InvalidSignature();
+    error OnlyPaymentEscrow();
 
     constructor(address _spendPermissionManager, address _paymentEscrow) {
         spendPermissionManager = SpendPermissionManager(payable(_spendPermissionManager));

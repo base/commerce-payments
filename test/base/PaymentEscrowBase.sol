@@ -84,10 +84,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         paymentEscrow = new PaymentEscrow(address(multicall3));
 
         // Deploy hook contracts
-        erc3009Hook = new ERC3009PullTokensHook(multicall3);
+        erc3009Hook = new ERC3009PullTokensHook(multicall3, address(paymentEscrow));
         erc20Hook = new ERC20PullTokensHook(address(paymentEscrow));
-        permit2Hook = new Permit2PullTokensHook(permit2);
-        spendPermissionHook = new SpendPermissionPullTokensHook(address(spendPermissionManager));
+        permit2Hook = new Permit2PullTokensHook(permit2, address(paymentEscrow));
+        spendPermissionHook = new SpendPermissionPullTokensHook(address(spendPermissionManager), address(paymentEscrow));
 
         // Store hook addresses in mapping
         hooks[PullTokensHook.ERC3009] = address(erc3009Hook);

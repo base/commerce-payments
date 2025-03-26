@@ -12,6 +12,7 @@ contract ERC20PullTokensHook is IPullTokensHook {
     error PaymentNotApproved(bytes32 paymentDetailsHash);
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
     error InvalidSender(address sender);
+    error OnlyPaymentEscrow();
 
     mapping(bytes32 => bool) public isPreApproved;
 

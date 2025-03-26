@@ -7,6 +7,8 @@ import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract Permit2PullTokensHook is IPullTokensHook {
+    error OnlyPaymentEscrow();
+
     IPermit2 public immutable permit2;
     PaymentEscrow public immutable paymentEscrow;
 
