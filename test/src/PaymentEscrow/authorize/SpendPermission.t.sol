@@ -26,6 +26,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
             DEPLOYED_WALLET_OWNER_PK,
             0 // owner index
         );
+        bytes memory wrappedSignature = abi.encode(signature, hex"");
 
         // Record balances before
         uint256 walletBalanceBefore = mockERC3009Token.balanceOf(address(smartWalletDeployed));
@@ -33,7 +34,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, wrappedSignature);
 
         // Verify balances
         assertEq(
