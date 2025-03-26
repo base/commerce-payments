@@ -1,36 +1,49 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+
 /// @notice Minimal contract for PaymentEscrow operations
 /// @dev Enables batch execution and multiple executors for higher throughput potential and convenience
-contract Operator {
+contract Operator is Ownable {
     address escrow;
-    address owner;
-    mapping(address executor => bool allowed) allowedExecutors;
+    mapping(address executor => bool allowed) isExecutor;
 
     event ExecutorUpdated(address executor, bool allowed);
 
-    constructor(address escrow_, address owner_, address[] memory executors) {
+    constructor(address escrow_, address owner_, address[] memory executors) Ownable(owner_) {
         escrow = escrow_;
-        owner = owner_;
         for (uint256 i; i < executors.length; i++) {
-            allowedExecutors[executors[i]] = true;
+            isExecutor[executors[i]] = true;
         }
     }
 
-    function sendCalls(bytes[] calldata calls) external {
-        if (!allowedExecutors[msg.sender]) revert();
+    modifier onlyExecutor() {
+        if (msg.sender != address(this) && isExecutor[msg.sender]) revert();
+        _;
+    }
 
+    function multicall(bytes[] calldata calls) external onlyExecutor {
         uint256 callsLen = calls.length;
         for (uint256 i; i < callsLen; i++) {
-            escrow.call(calls[i]);
+            address(this).call(calls[i]);
         }
     }
 
-    function updateExecutor(address executor, bool allowed) external {
-        if (msg.sender != owner) revert();
+    function execute(bytes calldata data) external onlyExecutor {
+        escrow.call(data);
+    }
 
-        allowedExecutors[executor] = allowed;
+    function execute(address target, bytes calldata data) external onlyExecutor {
+        target.call(data);
+    }
+
+    function execute(address target, uint256 value, bytes calldata data) external onlyExecutor {
+        target.call{value: value}(data);
+    }
+
+    function updateExecutor(address executor, bool allowed) external onlyOwner {
+        isExecutor[executor] = allowed;
         emit ExecutorUpdated(executor, allowed);
     }
 }
