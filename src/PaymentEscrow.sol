@@ -2,13 +2,8 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
-
 import {IERC3009} from "./interfaces/IERC3009.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
-import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
-import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 
 /// @title PaymentEscrow
@@ -19,15 +14,7 @@ import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow {
-    /// @notice Types of payment authorizations supported
-    enum AuthorizationType {
-        ERC3009,
-        ERC20Approval,
-        Permit2,
-        SpendPermission
-    }
-
-    /// @notice ERC-3009 authorization with additional payment routing data
+    /// @notice Payment details, contains all information required to authorize and capture a unique payment
     struct PaymentDetails {
         /// @dev Entity responsible for driving payment flow
         address operator;
@@ -70,12 +57,6 @@ contract PaymentEscrow {
 
     /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
     IMulticall3 public immutable multicall3;
-
-    /// @notice Permit2 contract address - this should be the canonical deployment
-    IPermit2 public immutable permit2;
-
-    /// @notice Spend Permission Manager contract
-    SpendPermissionManager public immutable spendPermissionManager;
 
     /// @notice State per unique payment
     mapping(bytes32 paymentDetailsHash => PaymentState state) _paymentState;
@@ -154,9 +135,6 @@ contract PaymentEscrow {
     /// @notice Authorization is zero
     error ZeroAuthorization(bytes32 paymentDetailsHash);
 
-    /// @notice Permit2 transfer failed
-    error Permit2TransferFailed();
-
     /// @notice Fee bps range invalid due to min > max
     error InvalidFeeBpsRange(uint16 minFeeBps, uint16 maxFeeBps);
 
@@ -173,14 +151,10 @@ contract PaymentEscrow {
         _;
     }
 
-    /// @notice Initialize contract with ERC6492 Executor and Permit2
+    /// @notice Initialize contract with ERC6492 Executor
     /// @param _multicall3 Address of the Executor contract
-    /// @param _permit2 Address of the Permit2 contract
-    /// @param _spendPermissionManager Address of the SpendPermissionManager contract
-    constructor(address _multicall3, address _permit2, SpendPermissionManager _spendPermissionManager) {
+    constructor(address _multicall3) {
         multicall3 = IMulticall3(_multicall3);
-        permit2 = IPermit2(_permit2);
-        spendPermissionManager = _spendPermissionManager;
     }
 
     /// @notice Check if a payment has been authorized

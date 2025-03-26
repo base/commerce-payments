@@ -81,7 +81,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
 
         // Deploy PaymentEscrow
-        paymentEscrow = new PaymentEscrow(address(multicall3), permit2, spendPermissionManager);
+        paymentEscrow = new PaymentEscrow(address(multicall3));
 
         // Deploy hook contracts
         erc3009Hook = new ERC3009PullTokensHook(multicall3);
@@ -197,7 +197,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
                 permit.deadline
             )
         );
-        bytes32 domainSeparator = IPermit2(address(paymentEscrow.permit2())).DOMAIN_SEPARATOR();
+        bytes32 domainSeparator = IPermit2(permit2).DOMAIN_SEPARATOR();
 
         bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);

@@ -25,8 +25,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy PaymentEscrow with known dependencies
-        PaymentEscrow paymentEscrow =
-            new PaymentEscrow(MULTICALL3, PERMIT2, SpendPermissionManager(payable(SPEND_PERMISSION_MANAGER)));
+        PaymentEscrow paymentEscrow = new PaymentEscrow(MULTICALL3);
 
         vm.stopBroadcast();
 

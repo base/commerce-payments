@@ -18,7 +18,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // payer needs to approve Permit2 to spend their tokens
         vm.startPrank(payerEOA);
-        plainToken.approve(address(paymentEscrow.permit2()), type(uint256).max);
+        plainToken.approve(permit2, type(uint256).max);
         vm.stopPrank();
     }
 
