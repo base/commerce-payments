@@ -14,7 +14,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroValue.selector);
-        paymentEscrow.authorize(0, paymentDetails, signature);
+        paymentEscrow.authorize(0, paymentDetails, signature, "");
     }
 
     function test_reverts_whenValueOverflows(uint256 overflowValue) public {
@@ -27,7 +27,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.authorize(overflowValue, paymentDetails, signature);
+        paymentEscrow.authorize(overflowValue, paymentDetails, signature, "");
     }
 
     function test_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
@@ -43,7 +43,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_reverts_whenValueExceedsAuthorized(uint120 authorizedAmount) public {
@@ -59,7 +59,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, confirmAmount));
-        paymentEscrow.authorize(confirmAmount, paymentDetails, signature);
+        paymentEscrow.authorize(confirmAmount, paymentDetails, signature, "");
     }
 
     function test_reverts_exactlyAtPreApprovalExpiry(uint120 amount) public {
@@ -80,7 +80,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry, preApprovalExpiry)
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_reverts_afterPreApprovalExpiry(uint120 amount) public {
@@ -103,7 +103,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
                 PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry + 1, preApprovalExpiry
             )
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_reverts_whenPreApprovalExpiryAfterAuthorizationExpiry(uint120 amount) public {
@@ -125,7 +125,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry)
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_reverts_whenFeeBpsTooHigh(uint120 amount) public {
@@ -141,7 +141,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
@@ -155,14 +155,14 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         // First authorization
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
 
         // Try to authorize again with same payment details
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyAuthorized.selector, paymentDetailsHash));
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
@@ -177,7 +177,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
 
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
@@ -197,7 +197,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(confirmAmount, paymentDetails, signature);
+        paymentEscrow.authorize(confirmAmount, paymentDetails, signature, "");
 
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), confirmAmount);
         assertEq(
@@ -225,7 +225,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
 
         // Verify balances - full amount should go to escrow since fees are 0
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
@@ -258,6 +258,6 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         // Execute confirmation
         vm.prank(operator);
-        paymentEscrow.authorize(valueToConfirm, paymentDetails, signature);
+        paymentEscrow.authorize(valueToConfirm, paymentDetails, signature, "");
     }
 }

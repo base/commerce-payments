@@ -20,15 +20,14 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes calldata hookData
     ) external override {
-        (bytes memory sig, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
-
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
-            spender: msg.sender,
+            spender: address(this),
             token: paymentDetails.token,
-            allowance: uint160(value),
+            allowance: uint160(paymentDetails.value),
             period: type(uint48).max,
             start: 0,
             end: paymentDetails.preApprovalExpiry,
@@ -37,15 +36,15 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
         });
 
         if (signature.length > 0) {
-            bool approved = spendPermissionManager.approveWithSignature(permission, sig);
+            bool approved = spendPermissionManager.approveWithSignature(permission, signature);
             if (!approved) revert InvalidSignature();
         }
 
-        if (encodedWithdraw.length == 0) {
+        if (hookData.length == 0) {
             spendPermissionManager.spend(permission, uint160(value));
         } else {
             spendPermissionManager.spendWithWithdraw(
-                permission, uint160(value), abi.decode(encodedWithdraw, (MagicSpend.WithdrawRequest))
+                permission, uint160(value), abi.decode(hookData, (MagicSpend.WithdrawRequest))
             );
         }
 

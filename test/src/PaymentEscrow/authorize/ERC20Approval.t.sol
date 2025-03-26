@@ -26,7 +26,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize without pre-approval
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(ERC20PullTokensHook.PaymentNotApproved.selector, paymentDetailsHash));
-        paymentEscrow.authorize(amount, paymentDetails, "");
+        paymentEscrow.authorize(amount, paymentDetails, "", "");
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
@@ -44,7 +44,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        paymentEscrow.authorize(amount, paymentDetails, "");
+        paymentEscrow.authorize(amount, paymentDetails, "", "");
     }
 
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
@@ -66,7 +66,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         // Authorize with ERC20Approval method
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, "");
+        paymentEscrow.authorize(amount, paymentDetails, "", "");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);

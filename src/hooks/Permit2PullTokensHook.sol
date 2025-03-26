@@ -17,7 +17,8 @@ contract Permit2PullTokensHook is IPullTokensHook {
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes calldata
     ) external override {
         permit2.permitTransferFrom(
             ISignatureTransfer.PermitTransferFrom({

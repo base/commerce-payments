@@ -40,6 +40,7 @@ contract ERC20PullTokensHook is IPullTokensHook {
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
+        bytes calldata,
         bytes calldata
     ) external override {
         if (!isPreApproved[paymentDetailsHash]) {

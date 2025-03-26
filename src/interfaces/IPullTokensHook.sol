@@ -15,6 +15,7 @@ interface IPullTokensHook {
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes calldata hookData
     ) external;
 }

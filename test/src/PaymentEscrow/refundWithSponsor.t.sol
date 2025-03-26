@@ -25,7 +25,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(initialAmount, paymentDetails, signature);
+        paymentEscrow.authorize(initialAmount, paymentDetails, signature, "");
         paymentEscrow.capture(initialAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -86,7 +86,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -123,7 +123,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(captureAmount, paymentDetails, signature);
+        paymentEscrow.authorize(captureAmount, paymentDetails, signature, "");
         paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -162,7 +162,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -189,7 +189,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -227,7 +227,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -266,7 +266,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -298,7 +298,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -337,7 +337,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -378,7 +378,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
         // First authorize and capture
         vm.startPrank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 

@@ -17,7 +17,7 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         vm.prank(sender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
@@ -64,7 +64,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.warp(paymentDetails.preApprovalExpiry - 1);
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         vm.warp(authorizationExpiry + 1);
         vm.prank(operator);
@@ -91,7 +91,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         // Try to capture more than authorized
         vm.prank(operator);
@@ -115,7 +115,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         // Then capture the full amount
         vm.prank(paymentDetails.receiver);
@@ -135,7 +135,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
         uint256 receiverExpectedBalance = authorizedAmount - feeAmount;
@@ -163,7 +163,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         uint256 feeAmount = captureAmount * FEE_BPS / 10_000;
         uint256 receiverExpectedBalance = captureAmount - feeAmount;
@@ -192,7 +192,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         // First capture
         vm.prank(operator);
@@ -232,7 +232,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
@@ -265,7 +265,7 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         vm.prank(operator);
         vm.expectRevert(
@@ -297,7 +297,7 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         vm.prank(operator);
         vm.expectRevert(
@@ -331,7 +331,7 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
 
         address newFeeRecipient = address(0xdead);
 

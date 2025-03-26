@@ -19,7 +19,8 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes calldata
     ) external override {
         bytes memory innerSignature = signature;
         if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {

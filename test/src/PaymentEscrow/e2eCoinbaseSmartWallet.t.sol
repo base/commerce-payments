@@ -32,7 +32,9 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
 
         // Submit charge
         vm.prank(operator);
-        paymentEscrow.charge(amount, paymentDetails, signature, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.charge(
+            amount, paymentDetails, signature, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient
+        );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
@@ -67,7 +69,9 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
 
         // Submit charge
         vm.prank(operator);
-        paymentEscrow.charge(amount, paymentDetails, signature, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.charge(
+            amount, paymentDetails, signature, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient
+        );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);

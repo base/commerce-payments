@@ -217,18 +217,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
     }
 
-    function _signSpendPermissionWithMagicSpend(
-        SpendPermissionManager.SpendPermission memory spendPermission,
-        MagicSpend.WithdrawRequest memory withdrawRequest,
-        uint256 ownerPk,
-        uint256 ownerIndex
-    ) internal view returns (bytes memory) {
-        bytes memory spendPermissionSig = _signSpendPermission(spendPermission, ownerPk, ownerIndex);
-
-        // Concatenate length prefix and spend permission sig, then append encoded withdraw request
-        return abi.encode(spendPermissionSig, abi.encode(withdrawRequest));
-    }
-
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
         internal
         view

@@ -32,7 +32,7 @@ contract PreApproveTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         // Now try to pre-approve
         vm.prank(payerEOA);
@@ -61,7 +61,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.stopPrank();
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, ""); // ERC20Approval should work after pre-approval
+        paymentEscrow.authorize(amount, paymentDetails, "", ""); // ERC20Approval should work after pre-approval
     }
 
     function test_reverts_ifCalledBypayerMultipleTimes(uint120 amount) public {

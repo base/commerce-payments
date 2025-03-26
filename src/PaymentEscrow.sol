@@ -216,6 +216,7 @@ contract PaymentEscrow {
         uint256 value,
         PaymentDetails calldata paymentDetails,
         bytes calldata signature,
+        bytes calldata hookData,
         uint16 feeBps,
         address feeRecipient
     ) external validValue(value) {
@@ -242,7 +243,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, value);
@@ -252,10 +253,12 @@ contract PaymentEscrow {
     /// @param value Amount to authorize
     /// @param paymentDetails PaymentDetails struct
     /// @param signature Signature of the buyer authorizing the payment
-    function authorize(uint256 value, PaymentDetails calldata paymentDetails, bytes calldata signature)
-        external
-        validValue(value)
-    {
+    function authorize(
+        uint256 value,
+        PaymentDetails calldata paymentDetails,
+        bytes calldata signature,
+        bytes calldata hookData
+    ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
@@ -273,7 +276,7 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].capturable = uint120(value);
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
 
         _paymentState[paymentDetailsHash].isAuthorized = true;
         emit PaymentAuthorized(
@@ -446,9 +449,12 @@ contract PaymentEscrow {
         PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes calldata hookData
     ) internal {
-        IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(paymentDetails, paymentDetailsHash, value, signature);
+        IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(
+            paymentDetails, paymentDetailsHash, value, signature, hookData
+        );
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient

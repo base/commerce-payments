@@ -46,7 +46,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // Should succeed via Permit2 authorization
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
 
         // Verify the transfer worked
         assertEq(plainToken.balanceOf(address(paymentEscrow)), amount);
