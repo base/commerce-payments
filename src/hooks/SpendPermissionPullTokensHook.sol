@@ -12,8 +12,14 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
 
     error InvalidSignature();
 
-    constructor(address _spendPermissionManager) {
+    constructor(address _spendPermissionManager, address _paymentEscrow) {
         spendPermissionManager = SpendPermissionManager(payable(_spendPermissionManager));
+        paymentEscrow = PaymentEscrow(_paymentEscrow);
+    }
+
+    modifier onlyPaymentEscrow() {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _;
     }
 
     function pullTokens(
@@ -22,7 +28,7 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
         uint256 value,
         bytes calldata signature,
         bytes calldata hookData
-    ) external override {
+    ) external override onlyPaymentEscrow {
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
             spender: address(this),
@@ -48,6 +54,6 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
             );
         }
 
-        SafeTransferLib.safeTransfer(paymentDetails.token, msg.sender, value);
+        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), value);
     }
 }

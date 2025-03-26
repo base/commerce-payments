@@ -21,6 +21,11 @@ contract ERC20PullTokensHook is IPullTokensHook {
         paymentEscrow = PaymentEscrow(_paymentEscrow);
     }
 
+    modifier onlyPaymentEscrow() {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _;
+    }
+
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
     /// @param paymentDetails PaymentDetails struct
@@ -42,10 +47,10 @@ contract ERC20PullTokensHook is IPullTokensHook {
         uint256 value,
         bytes calldata,
         bytes calldata
-    ) external override {
+    ) external override onlyPaymentEscrow {
         if (!isPreApproved[paymentDetailsHash]) {
             revert PaymentNotApproved(paymentDetailsHash);
         }
-        SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.payer, msg.sender, value);
+        SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.payer, address(paymentEscrow), value);
     }
 }

@@ -8,11 +8,20 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract ERC3009PullTokensHook is IPullTokensHook {
+    error OnlyPaymentEscrow();
+
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
     IMulticall3 public immutable multicall3;
+    PaymentEscrow public immutable paymentEscrow;
 
-    constructor(address _multicall3) {
+    modifier onlyPaymentEscrow() {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _;
+    }
+
+    constructor(address _multicall3, address _paymentEscrow) {
         multicall3 = IMulticall3(_multicall3);
+        paymentEscrow = PaymentEscrow(_paymentEscrow);
     }
 
     function pullTokens(
@@ -21,7 +30,7 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         uint256 value,
         bytes calldata signature,
         bytes calldata
-    ) external override {
+    ) external override onlyPaymentEscrow {
         bytes memory innerSignature = signature;
         if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
             // parse inner signature from ERC-6492 format
@@ -54,6 +63,6 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         }
 
         // Then transfer them to the escrow
-        SafeTransferLib.safeTransfer(paymentDetails.token, msg.sender, value);
+        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), value);
     }
 }

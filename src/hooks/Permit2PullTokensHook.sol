@@ -8,9 +8,16 @@ import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract Permit2PullTokensHook is IPullTokensHook {
     IPermit2 public immutable permit2;
+    PaymentEscrow public immutable paymentEscrow;
 
-    constructor(address _permit2) {
+    modifier onlyPaymentEscrow() {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _;
+    }
+
+    constructor(address _permit2, address _paymentEscrow) {
         permit2 = IPermit2(_permit2);
+        paymentEscrow = PaymentEscrow(_paymentEscrow);
     }
 
     function pullTokens(
@@ -19,14 +26,14 @@ contract Permit2PullTokensHook is IPullTokensHook {
         uint256 value,
         bytes calldata signature,
         bytes calldata
-    ) external override {
+    ) external override onlyPaymentEscrow {
         permit2.permitTransferFrom(
             ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
                 nonce: uint256(paymentDetailsHash),
                 deadline: paymentDetails.preApprovalExpiry
             }),
-            ISignatureTransfer.SignatureTransferDetails({to: msg.sender, requestedAmount: value}),
+            ISignatureTransfer.SignatureTransferDetails({to: address(paymentEscrow), requestedAmount: value}),
             paymentDetails.payer,
             signature
         );
