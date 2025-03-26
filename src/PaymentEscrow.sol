@@ -20,12 +20,10 @@ import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 contract PaymentEscrow {
     /// @notice Types of payment authorizations supported
     enum AuthorizationType {
-        ERC3009, // Authorization via ERC3009 signature
-        ERC20Approval, // Authorization via standard ERC20 approve + transferFrom
-        Permit2, // Authorization via Permit2 signature
-        SpendPermission, // Authorization via SpendPermissionManager
-        SpendPermissionWithMagicSpend // Authorization via SpendPermissionManager with MagicSpend withdrawal
-
+        ERC3009,
+        ERC20Approval,
+        Permit2,
+        SpendPermission
     }
 
     /// @notice ERC-3009 authorization with additional payment routing data
@@ -523,6 +521,9 @@ contract PaymentEscrow {
                 innerSignature
             );
         } else if (authType == AuthorizationType.SpendPermission) {
+            // assume signature also includes an encoded withdraw
+            (bytes memory sig, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
+
             // Regular SpendPermission path
             SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
                 account: paymentDetails.payer,
@@ -532,67 +533,23 @@ contract PaymentEscrow {
                 period: type(uint48).max,
                 start: 0,
                 end: uint48(paymentDetails.preApprovalExpiry),
-                // TODO: make salt paymentDetailsHash and remove extraData
-                salt: paymentDetails.salt,
-                extraData: abi.encode(
-                    paymentDetails.operator,
-                    paymentDetails.receiver,
-                    paymentDetails.minFeeBps,
-                    paymentDetails.maxFeeBps,
-                    paymentDetails.feeRecipient
-                )
+                salt: uint256(paymentDetailsHash),
+                extraData: hex""
             });
 
+            // approve with signature if present
             if (signature.length > 0) {
                 bool approved = spendPermissionManager.approveWithSignature(permission, signature);
                 if (!approved) revert PermissionApprovalFailed();
             }
 
-            spendPermissionManager.spend(permission, uint160(value));
-        } else if (authType == AuthorizationType.SpendPermissionWithMagicSpend) {
-            // SpendPermission with MagicSpend path
-            SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-                account: paymentDetails.payer,
-                spender: address(this),
-                token: paymentDetails.token,
-                allowance: uint160(paymentDetails.value),
-                period: type(uint48).max,
-                start: 0,
-                end: uint48(paymentDetails.preApprovalExpiry),
-                salt: paymentDetails.salt,
-                extraData: abi.encode(
-                    paymentDetails.operator,
-                    paymentDetails.receiver,
-                    paymentDetails.minFeeBps,
-                    paymentDetails.maxFeeBps,
-                    paymentDetails.feeRecipient
-                )
-            });
-
-            // Check if permission is already approved with SpendPermissionManager
-            bool isApproved = spendPermissionManager.isApproved(permission);
-
-            // Always decode withdraw request - it's required
-            MagicSpend.WithdrawRequest memory withdrawRequest;
-
-            if (!isApproved) {
-                // First 2 bytes are the length of the spend permission signature
-                uint16 sigLength = uint16(bytes2(signature[0:2]));
-
-                // Extract the spend permission signature
-                bytes memory spendPermissionSig = bytes(signature[2:2 + sigLength]);
-
-                // Rest is withdraw request
-                withdrawRequest = abi.decode(signature[2 + sigLength:], (MagicSpend.WithdrawRequest));
-
-                bool approved = spendPermissionManager.approveWithSignature(permission, spendPermissionSig);
-                if (!approved) revert PermissionApprovalFailed();
+            // spend with withdraw if WithdrawRequest provided
+            if (encodedWithdraw.length == 0) {
+                spendPermissionManager.spend(permission, uint160(value));
             } else {
-                // If already approved, signature contains just the withdraw request
-                withdrawRequest = abi.decode(signature, (MagicSpend.WithdrawRequest));
+                MagicSpend.WithdrawRequest memory withdraw = abi.decode(encodedWithdraw, (MagicSpend.WithdrawRequest));
+                spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdraw);
             }
-
-            spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdrawRequest);
         }
     }
 

@@ -156,6 +156,8 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         view
         returns (SpendPermissionManager.SpendPermission memory)
     {
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
         return SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
             spender: address(paymentEscrow),
@@ -164,14 +166,8 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             period: type(uint48).max,
             start: 0,
             end: uint48(paymentDetails.preApprovalExpiry),
-            salt: uint256(0),
-            extraData: abi.encode(
-                paymentDetails.operator,
-                paymentDetails.receiver,
-                paymentDetails.minFeeBps,
-                paymentDetails.maxFeeBps,
-                paymentDetails.feeRecipient
-            )
+            salt: uint256(paymentDetailsHash),
+            extraData: hex""
         });
     }
 
@@ -230,11 +226,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         bytes memory spendPermissionSig = _signSpendPermission(spendPermission, ownerPk, ownerIndex);
 
         // Concatenate length prefix and spend permission sig, then append encoded withdraw request
-        return bytes.concat(
-            abi.encodePacked(uint16(spendPermissionSig.length)), // 2 byte length prefix
-            spendPermissionSig,
-            abi.encode(withdrawRequest) // Properly encode the struct
-        );
+        return abi.encode(spendPermissionSig, abi.encode(withdrawRequest));
     }
 
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
