@@ -227,11 +227,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         // Concatenate length prefix and spend permission sig, then append encoded withdraw request
         return abi.encode(spendPermissionSig, abi.encode(withdrawRequest));
-        // return bytes.concat(
-        //     abi.encodePacked(uint16(spendPermissionSig.length)), // 2 byte length prefix
-        //     spendPermissionSig,
-        //     abi.encode(withdrawRequest) // Properly encode the struct
-        // );
     }
 
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
