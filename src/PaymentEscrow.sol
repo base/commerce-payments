@@ -521,11 +521,7 @@ contract PaymentEscrow {
                 innerSignature
             );
         } else if (authType == AuthorizationType.SpendPermission) {
-            // {sigStart}{withdrawStart}{sigLength}{sig}{withdrawLength}{withdraw}
-            // empty sig, empty withdraw: {2*32}{3*32}{0}{0}
-            // sig, empty withdraw: {2*32}{3*32+sigLength}{sigLength}{sig}{0}
-            // empty sig, withdraw: {2*32}{3*32}{0}{withdrawLength}{withdraw}
-            // sig, withdraw: {2*32}{3*32+sigLength}{sigLength}{sig}{withdrawLength}{withdraw}
+            // assume signature also includes an encoded withdraw
             (bytes memory sig, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
 
             // Regular SpendPermission path
