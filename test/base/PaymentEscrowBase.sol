@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import {Test} from "forge-std/Test.sol";
 
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
-import {IERC3009} from "../../src/IERC3009.sol";
-import {IMulticall3} from "../../src/IMulticall3.sol";
+import {IERC3009} from "../../src/interfaces/IERC3009.sol";
+import {IMulticall3} from "../../src/interfaces/IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 import {PermitHash} from "permit2/libraries/PermitHash.sol";
@@ -15,8 +15,21 @@ import {MagicSpend} from "magic-spend/MagicSpend.sol";
 import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 
+import {ERC3009PullTokensHook} from "../../src/hooks/ERC3009PullTokensHook.sol";
+import {ERC20PullTokensHook} from "../../src/hooks/ERC20PullTokensHook.sol";
+import {Permit2PullTokensHook} from "../../src/hooks/Permit2PullTokensHook.sol";
+import {SpendPermissionPullTokensHook} from "../../src/hooks/SpendPermissionPullTokensHook.sol";
+
 contract PaymentEscrowBase is Test, DeployPermit2 {
     using PermitHash for ISignatureTransfer.PermitTransferFrom;
+
+    // Enum to make it easier to reference hooks in tests
+    enum PullTokensHook {
+        ERC3009,
+        ERC20,
+        Permit2,
+        SpendPermission
+    }
 
     PaymentEscrow public paymentEscrow;
     MockERC3009Token public mockERC3009Token;
@@ -25,6 +38,16 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     SpendPermissionManager public spendPermissionManager;
     PublicERC6492Validator public publicERC6592Validator;
     MagicSpend public magicSpend;
+
+    // Hook contracts
+    ERC3009PullTokensHook public erc3009Hook;
+    ERC20PullTokensHook public erc20Hook;
+    Permit2PullTokensHook public permit2Hook;
+    SpendPermissionPullTokensHook public spendPermissionHook;
+
+    // Mapping to store hook addresses
+    mapping(PullTokensHook => address) public hooks;
+
     uint256 public magicSpendOwnerPk = 0xC014BA53;
     address public magicSpendOwner;
     address public operator;
@@ -56,8 +79,21 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         magicSpendOwner = vm.addr(magicSpendOwnerPk);
         magicSpend = new MagicSpend(magicSpendOwner, 1); // (owner, maxWithdrawDenominator)
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
+
         // Deploy PaymentEscrow
         paymentEscrow = new PaymentEscrow(address(multicall3), permit2, spendPermissionManager);
+
+        // Deploy hook contracts
+        erc3009Hook = new ERC3009PullTokensHook(multicall3);
+        erc20Hook = new ERC20PullTokensHook(address(paymentEscrow));
+        permit2Hook = new Permit2PullTokensHook(permit2);
+        spendPermissionHook = new SpendPermissionPullTokensHook(address(spendPermissionManager));
+
+        // Store hook addresses in mapping
+        hooks[PullTokensHook.ERC3009] = address(erc3009Hook);
+        hooks[PullTokensHook.ERC20] = address(erc20Hook);
+        hooks[PullTokensHook.Permit2] = address(permit2Hook);
+        hooks[PullTokensHook.SpendPermission] = address(spendPermissionHook);
 
         // Setup roles
         operator = vm.addr(1);
@@ -77,17 +113,14 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         view
         returns (PaymentEscrow.PaymentDetails memory)
     {
-        return _createPaymentEscrowAuthorization(
-            payer, value, address(mockERC3009Token), PaymentEscrow.AuthorizationType.ERC3009
-        );
+        return _createPaymentEscrowAuthorization(payer, value, address(mockERC3009Token), PullTokensHook.ERC3009);
     }
 
-    function _createPaymentEscrowAuthorization(
-        address payer,
-        uint256 value,
-        address token,
-        PaymentEscrow.AuthorizationType authType
-    ) internal view returns (PaymentEscrow.PaymentDetails memory) {
+    function _createPaymentEscrowAuthorization(address payer, uint256 value, address token, PullTokensHook hook)
+        internal
+        view
+        returns (PaymentEscrow.PaymentDetails memory)
+    {
         return PaymentEscrow.PaymentDetails({
             operator: operator,
             payer: payer,
@@ -100,7 +133,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             maxFeeBps: FEE_BPS,
             feeRecipient: feeRecipient,
             salt: 0,
-            authType: authType
+            pullTokensHook: hooks[hook]
         });
     }
 
@@ -111,7 +144,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     {
         return _signERC3009({
             from: paymentDetails.payer,
-            to: address(paymentEscrow),
+            to: paymentDetails.pullTokensHook,
             value: paymentDetails.value,
             validAfter: 0,
             validBefore: paymentDetails.preApprovalExpiry,
@@ -159,7 +192,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             abi.encode(
                 _PERMIT_TRANSFER_FROM_TYPEHASH,
                 tokenPermissionsHash,
-                address(paymentEscrow),
+                hooks[PullTokensHook.Permit2],
                 permit.nonce,
                 permit.deadline
             )

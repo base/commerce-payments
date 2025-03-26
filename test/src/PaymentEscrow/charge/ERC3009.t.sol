@@ -161,7 +161,6 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
-        vm.warp(paymentDetails.authorizationExpiry - 1);
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -269,7 +268,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC3009
+            hook: PullTokensHook.ERC3009
         });
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
@@ -299,7 +298,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC3009
+            hook: PullTokensHook.ERC3009
         });
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
@@ -324,7 +323,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC3009
+            hook: PullTokensHook.ERC3009
         });
         paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;
@@ -360,7 +359,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC3009
+            hook: PullTokensHook.ERC3009
         });
         paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;

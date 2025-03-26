@@ -5,10 +5,11 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MagicSpend} from "magic-spend/MagicSpend.sol";
 
-import {IERC3009} from "./IERC3009.sol";
-import {IMulticall3} from "./IMulticall3.sol";
+import {IERC3009} from "./interfaces/IERC3009.sol";
+import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
+import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -50,14 +51,12 @@ contract PaymentEscrow {
         address feeRecipient;
         /// @dev A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
-        /// @dev Type of authorization to use for this payment
-        AuthorizationType authType;
+        /// @dev Contract implementing token pull logic
+        address pullTokensHook;
     }
 
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
-        /// @dev True if payment was pre-aproved by the buyer
-        bool isPreApproved;
         /// @dev True if payment has been authorized or charged
         bool isAuthorized;
         /// @dev Value of tokens currently on hold in escrow that can be captured
@@ -80,9 +79,6 @@ contract PaymentEscrow {
 
     /// @notice State per unique payment
     mapping(bytes32 paymentDetailsHash => PaymentState state) _paymentState;
-
-    /// @notice Emitted when a buyer pre-approves a payment
-    event PaymentApproved(bytes32 indexed paymentDetailsHash);
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -121,12 +117,6 @@ contract PaymentEscrow {
 
     /// @notice Payment has already been authorized
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
-
-    /// @notice Payment has already been pre-approved
-    error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
-
-    /// @notice Payment has not been approved
-    error PaymentNotApproved(bytes32 paymentDetailsHash);
 
     /// @notice Payment authorization is insufficient for a requested capture
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
@@ -167,9 +157,6 @@ contract PaymentEscrow {
     /// @notice Permit2 transfer failed
     error Permit2TransferFailed();
 
-    /// @notice Spend permission approval failed
-    error PermissionApprovalFailed();
-
     /// @notice Fee bps range invalid due to min > max
     error InvalidFeeBpsRange(uint16 minFeeBps, uint16 maxFeeBps);
 
@@ -196,13 +183,6 @@ contract PaymentEscrow {
         spendPermissionManager = _spendPermissionManager;
     }
 
-    /// @notice Check if a payment has been pre-approved
-    /// @param paymentDetailsHash Hash of the payment details
-    /// @return True if the payment has been pre-approved
-    function isPreApproved(bytes32 paymentDetailsHash) external view returns (bool) {
-        return _paymentState[paymentDetailsHash].isPreApproved;
-    }
-
     /// @notice Check if a payment has been authorized
     /// @param paymentDetailsHash Hash of the payment details
     /// @return True if the payment has been authorized
@@ -222,22 +202,6 @@ contract PaymentEscrow {
     /// @return Amount of tokens captured
     function getRefundableAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
         return _paymentState[paymentDetailsHash].refundable;
-    }
-
-    /// @notice Registers buyer's token approval for a specific payment
-    /// @dev Must be called by the buyer specified in the payment details
-    /// @param paymentDetails PaymentDetails struct
-    function preApprove(PaymentDetails calldata paymentDetails) external {
-        // check sender is buyer
-        if (msg.sender != paymentDetails.payer) revert InvalidSender(msg.sender);
-
-        // check status is not authorized or already pre-approved
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-        if (_paymentState[paymentDetailsHash].isAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
-        if (_paymentState[paymentDetailsHash].isPreApproved) revert PaymentAlreadyPreApproved(paymentDetailsHash);
-
-        _paymentState[paymentDetailsHash].isPreApproved = true;
-        emit PaymentApproved(paymentDetailsHash);
     }
 
     /// @notice Transfers funds from buyer to captureAddress in one step
@@ -278,7 +242,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, value);
@@ -300,12 +264,18 @@ contract PaymentEscrow {
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, value);
 
+        // check if payment is already authorized
+        if (_paymentState[paymentDetailsHash].isAuthorized) {
+            revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        }
+
         // update authorized amount for capture accounting
         _paymentState[paymentDetailsHash].capturable = uint120(value);
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, paymentDetails.authType);
+        _pullTokens(paymentDetails, paymentDetailsHash, value, signature);
 
+        _paymentState[paymentDetailsHash].isAuthorized = true;
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -476,101 +446,9 @@ contract PaymentEscrow {
         PaymentDetails calldata paymentDetails,
         bytes32 paymentDetailsHash,
         uint256 value,
-        bytes calldata signature,
-        AuthorizationType authType
+        bytes calldata signature
     ) internal {
-        // Mark as authorized
-        _paymentState[paymentDetailsHash].isAuthorized = true;
-
-        // Handle each authorization type
-        if (authType == AuthorizationType.ERC20Approval) {
-            // Standard ERC20 approval path
-            if (!_paymentState[paymentDetailsHash].isPreApproved) revert PaymentNotApproved(paymentDetailsHash);
-            SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.payer, address(this), value);
-        } else if (authType == AuthorizationType.ERC3009) {
-            // ERC3009 signature path
-            bytes memory innerSignature = _processERC6492Signature(signature);
-
-            IERC3009(paymentDetails.token).receiveWithAuthorization({
-                from: paymentDetails.payer,
-                to: address(this),
-                value: paymentDetails.value,
-                validAfter: 0,
-                validBefore: uint48(paymentDetails.preApprovalExpiry),
-                nonce: paymentDetailsHash,
-                signature: innerSignature
-            });
-
-            // Return excess funds to buyer
-            uint256 excessFunds = paymentDetails.value - value;
-            if (excessFunds > 0) {
-                SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, excessFunds);
-            }
-        } else if (authType == AuthorizationType.Permit2) {
-            // Permit2 signature path
-            bytes memory innerSignature = _processERC6492Signature(signature);
-
-            permit2.permitTransferFrom(
-                ISignatureTransfer.PermitTransferFrom({
-                    permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
-                    nonce: uint256(paymentDetailsHash),
-                    deadline: paymentDetails.preApprovalExpiry
-                }),
-                ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: value}),
-                paymentDetails.payer,
-                innerSignature
-            );
-        } else if (authType == AuthorizationType.SpendPermission) {
-            // assume signature also includes an encoded withdraw
-            (bytes memory sig, bytes memory encodedWithdraw) = abi.decode(signature, (bytes, bytes));
-
-            // Regular SpendPermission path
-            SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-                account: paymentDetails.payer,
-                spender: address(this),
-                token: paymentDetails.token,
-                allowance: uint160(paymentDetails.value),
-                period: type(uint48).max,
-                start: 0,
-                end: uint48(paymentDetails.preApprovalExpiry),
-                salt: uint256(paymentDetailsHash),
-                extraData: hex""
-            });
-
-            // approve with signature if present
-            if (signature.length > 0) {
-                bool approved = spendPermissionManager.approveWithSignature(permission, signature);
-                if (!approved) revert PermissionApprovalFailed();
-            }
-
-            // spend with withdraw if WithdrawRequest provided
-            if (encodedWithdraw.length == 0) {
-                spendPermissionManager.spend(permission, uint160(value));
-            } else {
-                MagicSpend.WithdrawRequest memory withdraw = abi.decode(encodedWithdraw, (MagicSpend.WithdrawRequest));
-                spendPermissionManager.spendWithWithdraw(permission, uint160(value), withdraw);
-            }
-        }
-    }
-
-    /// @notice Process ERC-6492 signature if present
-    function _processERC6492Signature(bytes calldata signature) internal returns (bytes memory) {
-        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-            // parse inner signature from ERC-6492 format
-            address target;
-            bytes memory prepareData;
-            bytes memory innerSignature;
-            (target, prepareData, innerSignature) =
-                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
-
-            // construct call to target with prepareData
-            IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
-            calls[0] = IMulticall3.Call(target, prepareData);
-            multicall3.tryAggregate({requireSuccess: false, calls: calls});
-
-            return innerSignature;
-        }
-        return signature;
+        IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(paymentDetails, paymentDetailsHash, value, signature);
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient

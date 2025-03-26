@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {ERC20PullTokensHook} from "../../../../src/hooks/ERC20PullTokensHook.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
@@ -13,8 +14,9 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
             payer: payerEOA,
             value: amount,
             token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC20Approval
+            hook: PullTokensHook.ERC20
         });
+        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -23,25 +25,18 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         // Try to authorize without pre-approval
         vm.prank(operator);
-        vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.PaymentNotApproved.selector, keccak256(abi.encode(paymentDetails)))
-        );
+        vm.expectRevert(abi.encodeWithSelector(ERC20PullTokensHook.PaymentNotApproved.selector, paymentDetailsHash));
         paymentEscrow.authorize(amount, paymentDetails, "");
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            payer: payerEOA,
-            value: amount,
-            token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC20Approval
-        });
-
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token), PullTokensHook.ERC20);
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        paymentEscrow.preApprove(paymentDetails);
+        ERC20PullTokensHook(address(hooks[PullTokensHook.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -55,21 +50,16 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
-            payer: payerEOA,
-            value: amount,
-            token: address(mockERC3009Token),
-            authType: PaymentEscrow.AuthorizationType.ERC20Approval
-        });
-
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token), PullTokensHook.ERC20);
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        paymentEscrow.preApprove(paymentDetails);
+        ERC20PullTokensHook(address(hooks[PullTokensHook.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(payerEOA);
-        mockERC3009Token.approve(address(paymentEscrow), amount);
+        mockERC3009Token.approve(address(hooks[PullTokensHook.ERC20]), amount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
