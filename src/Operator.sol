@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
+/// @notice Minimal contract for PaymentEscrow operations
+/// @dev Enables batch execution and multiple executors for higher throughput potential and convenience
 contract Operator {
-    address escrow;
+    address immutable escrow;
     address owner;
     mapping(address executor => bool allowed) allowedExecutors;
 
