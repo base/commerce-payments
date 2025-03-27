@@ -26,7 +26,7 @@ contract ERC20PullTokensHook is IPullTokensHook {
 
         // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-        if (paymentEscrow.isAuthorized(paymentDetailsHash)) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        if (paymentEscrow.hasAuthorized(paymentDetailsHash)) revert PaymentAlreadyAuthorized(paymentDetailsHash);
         if (isPreApproved[paymentDetailsHash]) revert PaymentAlreadyPreApproved(paymentDetailsHash);
         isPreApproved[paymentDetailsHash] = true;
         emit PaymentApproved(paymentDetailsHash);

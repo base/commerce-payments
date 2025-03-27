@@ -321,7 +321,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         paymentEscrow.refundWithSponsor(
             amount,
             paymentDetails,
-            PaymentEscrow.RefundDetails({
+            PaymentEscrow.SponsoredRefundDetails({
                 sponsor: _sponsor,
                 refundDeadline: refundDeadline,
                 pullTokensHook: address(hooks[PullTokensHook.ERC3009]),
