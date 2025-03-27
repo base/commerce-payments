@@ -5,6 +5,7 @@ import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWall
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ERC20PullTokensHook} from "../../../../src/hooks/ERC20PullTokensHook.sol";
+import {ERC20UnsafeTransferPullTokensHook} from "../../../../test/mocks/ERC20UnsafeTransferPullTokensHook.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
@@ -44,6 +45,30 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
+        paymentEscrow.authorize(amount, paymentDetails, "", "");
+    }
+
+    function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(
+            payerEOA, amount, address(mockERC20Token), PullTokensHook.ERC20UnsafeTransfer
+        );
+
+        // approve hook to transfer tokens
+        vm.prank(payerEOA);
+        mockERC20Token.approve(address(hooks[PullTokensHook.ERC20UnsafeTransfer]), amount);
+
+        // Pre-approve in hook
+        vm.prank(payerEOA);
+        ERC20UnsafeTransferPullTokensHook(address(hooks[PullTokensHook.ERC20UnsafeTransfer])).preApprove(paymentDetails);
+
+        // mint tokens to buyer
+        mockERC20Token.mint(payerEOA, amount);
+
+        // Try to authorize - should fail on token transfer
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenPullFailed.selector));
         paymentEscrow.authorize(amount, paymentDetails, "", "");
     }
 

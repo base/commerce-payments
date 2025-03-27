@@ -5,6 +5,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IERC3009} from "./interfaces/IERC3009.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -95,6 +96,9 @@ contract PaymentEscrow {
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender);
+
+    /// @notice Token pull failed
+    error TokenPullFailed();
 
     /// @notice Payment has already been authorized
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
@@ -426,9 +430,12 @@ contract PaymentEscrow {
         bytes calldata signature,
         bytes calldata hookData
     ) internal {
+        uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
         IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(
             paymentDetails, paymentDetailsHash, value, signature, hookData
         );
+        uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
+        if (escrowBalanceAfter - escrowBalanceBefore != value) revert TokenPullFailed();
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient

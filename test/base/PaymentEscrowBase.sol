@@ -14,11 +14,13 @@ import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.s
 import {MagicSpend} from "magic-spend/MagicSpend.sol";
 import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
+import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
 import {ERC3009PullTokensHook} from "../../src/hooks/ERC3009PullTokensHook.sol";
 import {ERC20PullTokensHook} from "../../src/hooks/ERC20PullTokensHook.sol";
 import {Permit2PullTokensHook} from "../../src/hooks/Permit2PullTokensHook.sol";
 import {SpendPermissionPullTokensHook} from "../../src/hooks/SpendPermissionPullTokensHook.sol";
+import {ERC20UnsafeTransferPullTokensHook} from "../../test/mocks/ERC20UnsafeTransferPullTokensHook.sol";
 
 contract PaymentEscrowBase is Test, DeployPermit2 {
     using PermitHash for ISignatureTransfer.PermitTransferFrom;
@@ -28,11 +30,13 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         ERC3009,
         ERC20,
         Permit2,
-        SpendPermission
+        SpendPermission,
+        ERC20UnsafeTransfer
     }
 
     PaymentEscrow public paymentEscrow;
     MockERC3009Token public mockERC3009Token;
+    MockERC20 public mockERC20Token;
     address public multicall3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
     address public permit2;
     SpendPermissionManager public spendPermissionManager;
@@ -44,6 +48,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     ERC20PullTokensHook public erc20Hook;
     Permit2PullTokensHook public permit2Hook;
     SpendPermissionPullTokensHook public spendPermissionHook;
+    ERC20UnsafeTransferPullTokensHook public erc20UnsafeTransferHook;
 
     // Mapping to store hook addresses
     mapping(PullTokensHook => address) public hooks;
@@ -73,6 +78,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
 
         // deploy token and permit2
         mockERC3009Token = new MockERC3009Token("Mock USDC", "mUSDC", 6);
+        mockERC20Token = new MockERC20("Mock USDC", "mUSDC", 6);
         permit2 = address(deployPermit2());
         publicERC6592Validator = new PublicERC6492Validator();
 
@@ -88,12 +94,14 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         erc20Hook = new ERC20PullTokensHook(address(paymentEscrow));
         permit2Hook = new Permit2PullTokensHook(permit2, address(paymentEscrow));
         spendPermissionHook = new SpendPermissionPullTokensHook(address(spendPermissionManager), address(paymentEscrow));
+        erc20UnsafeTransferHook = new ERC20UnsafeTransferPullTokensHook(address(paymentEscrow));
 
         // Store hook addresses in mapping
         hooks[PullTokensHook.ERC3009] = address(erc3009Hook);
         hooks[PullTokensHook.ERC20] = address(erc20Hook);
         hooks[PullTokensHook.Permit2] = address(permit2Hook);
         hooks[PullTokensHook.SpendPermission] = address(spendPermissionHook);
+        hooks[PullTokensHook.ERC20UnsafeTransfer] = address(erc20UnsafeTransferHook);
 
         // Setup roles
         operator = vm.addr(1);
