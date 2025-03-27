@@ -7,19 +7,10 @@ import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract Permit2PullTokensHook is IPullTokensHook {
-    error OnlyPaymentEscrow();
-
     IPermit2 public immutable permit2;
-    PaymentEscrow public immutable paymentEscrow;
 
-    modifier onlyPaymentEscrow() {
-        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
-        _;
-    }
-
-    constructor(address _permit2, address _paymentEscrow) {
+    constructor(address _permit2, address _paymentEscrow) IPullTokensHook(_paymentEscrow) {
         permit2 = IPermit2(_permit2);
-        paymentEscrow = PaymentEscrow(_paymentEscrow);
     }
 
     function pullTokens(

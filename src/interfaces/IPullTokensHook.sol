@@ -3,9 +3,20 @@ pragma solidity ^0.8.13;
 
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-/// @title IPullTokensHook
-/// @notice Interface for hooks that implement token pulling logic for different authorization types
-interface IPullTokensHook {
+abstract contract IPullTokensHook {
+    error OnlyPaymentEscrow();
+
+    PaymentEscrow public immutable paymentEscrow;
+
+    constructor(address _paymentEscrow) {
+        paymentEscrow = PaymentEscrow(_paymentEscrow);
+    }
+
+    modifier onlyPaymentEscrow() {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _;
+    }
+
     /// @notice Pull tokens from payer to escrow using hook-specific authorization logic
     /// @param paymentDetails Payment details for use as nonce/salt
     /// @param paymentDetailsHash Hash of payment details for use as nonce/salt
@@ -17,5 +28,5 @@ interface IPullTokensHook {
         uint256 value,
         bytes calldata signature,
         bytes calldata hookData
-    ) external;
+    ) external virtual;
 }

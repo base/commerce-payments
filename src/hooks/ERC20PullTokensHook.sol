@@ -12,20 +12,10 @@ contract ERC20PullTokensHook is IPullTokensHook {
     error PaymentNotApproved(bytes32 paymentDetailsHash);
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
     error InvalidSender(address sender);
-    error OnlyPaymentEscrow();
 
     mapping(bytes32 => bool) public isPreApproved;
 
-    PaymentEscrow public immutable paymentEscrow;
-
-    constructor(address _paymentEscrow) {
-        paymentEscrow = PaymentEscrow(_paymentEscrow);
-    }
-
-    modifier onlyPaymentEscrow() {
-        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
-        _;
-    }
+    constructor(address _paymentEscrow) IPullTokensHook(_paymentEscrow) {}
 
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
