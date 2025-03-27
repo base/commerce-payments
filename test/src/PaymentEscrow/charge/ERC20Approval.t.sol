@@ -12,7 +12,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });
@@ -33,7 +33,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });
@@ -56,7 +56,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });

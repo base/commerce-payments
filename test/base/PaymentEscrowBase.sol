@@ -116,15 +116,15 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         mockERC3009Token.mint(payerEOA, 1000e9);
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 value)
+    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount)
         internal
         view
         returns (PaymentEscrow.PaymentDetails memory)
     {
-        return _createPaymentEscrowAuthorization(payer, value, address(mockERC3009Token), PullTokensHook.ERC3009);
+        return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token), PullTokensHook.ERC3009);
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 value, address token, PullTokensHook hook)
+    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token, PullTokensHook hook)
         internal
         view
         returns (PaymentEscrow.PaymentDetails memory)
@@ -134,7 +134,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             payer: payer,
             receiver: receiver,
             token: token,
-            value: value,
+            maxAmount: maxAmount,
             preApprovalExpiry: type(uint48).max,
             authorizationExpiry: type(uint48).max,
             minFeeBps: FEE_BPS,
@@ -153,7 +153,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         return _signERC3009({
             from: paymentDetails.payer,
             to: paymentDetails.pullTokensHook,
-            value: paymentDetails.value,
+            value: paymentDetails.maxAmount,
             validAfter: 0,
             validBefore: paymentDetails.preApprovalExpiry,
             nonce: keccak256(abi.encode(paymentDetails)),

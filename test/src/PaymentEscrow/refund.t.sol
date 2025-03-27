@@ -7,7 +7,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 contract RefundTest is PaymentEscrowBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1}); // Any non-zero value
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroValue.selector);
@@ -18,7 +18,7 @@ contract RefundTest is PaymentEscrowBase {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));

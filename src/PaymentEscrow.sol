@@ -25,7 +25,7 @@ contract PaymentEscrow {
         /// @dev The ERC-3009 token contract address
         address token;
         /// @dev The amount of tokens that will be transferred from the buyer to the escrow
-        uint256 value;
+        uint256 maxAmount;
         /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
         uint48 preApprovalExpiry;
         /// @dev Timestamp when an authorization can no longer be captured and the buyer can reclaim from escrow
@@ -256,7 +256,7 @@ contract PaymentEscrow {
         PullTokensData memory pullTokensData = PullTokensData({
             payer: paymentDetails.payer,
             token: paymentDetails.token,
-            maxAmount: paymentDetails.value,
+            maxAmount: paymentDetails.maxAmount,
             preApprovalExpiry: paymentDetails.preApprovalExpiry,
             pullTokensHook: paymentDetails.pullTokensHook,
             nonce: paymentDetailsHash,
@@ -300,7 +300,7 @@ contract PaymentEscrow {
         PullTokensData memory pullTokensData = PullTokensData({
             payer: paymentDetails.payer,
             token: paymentDetails.token,
-            maxAmount: paymentDetails.value,
+            maxAmount: paymentDetails.maxAmount,
             preApprovalExpiry: paymentDetails.preApprovalExpiry,
             pullTokensHook: paymentDetails.pullTokensHook,
             nonce: paymentDetailsHash,
@@ -466,7 +466,7 @@ contract PaymentEscrow {
         internal
         view
     {
-        if (value > paymentDetails.value) revert ValueLimitExceeded(value);
+        if (value > paymentDetails.maxAmount) revert ValueLimitExceeded(value);
         if (block.timestamp >= paymentDetails.preApprovalExpiry) {
             revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentDetails.preApprovalExpiry));
         }

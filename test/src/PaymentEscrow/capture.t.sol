@@ -26,7 +26,7 @@ contract CaptureTest is PaymentEscrowBase {
 
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1}); // Any non-zero value
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroValue.selector);
@@ -37,7 +37,7 @@ contract CaptureTest is PaymentEscrowBase {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
@@ -320,7 +320,7 @@ contract CaptureTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, authorizedAmount);
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: authorizedAmount,
+            maxAmount: authorizedAmount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC3009
         });

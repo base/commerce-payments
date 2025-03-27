@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 contract AuthorizeWithERC3009Test is PaymentEscrowBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1}); // Any non-zero value
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -21,7 +21,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -36,7 +36,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -68,7 +68,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         paymentDetails.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -89,7 +89,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         paymentDetails.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -110,7 +110,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set authorize deadline after capture deadline
         uint48 authorizationExpiry = uint48(block.timestamp + 1 days);
@@ -132,7 +132,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set fee bps > 100%
         paymentDetails.maxFeeBps = 10_001;
@@ -148,7 +148,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -212,7 +212,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set both fee recipient and fee bps to zero - this should be valid
         paymentDetails.feeRecipient = address(0);

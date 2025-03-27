@@ -12,7 +12,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
@@ -25,7 +25,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -47,7 +47,7 @@ contract PreApproveTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });
@@ -69,7 +69,7 @@ contract PreApproveTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });
@@ -88,7 +88,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 

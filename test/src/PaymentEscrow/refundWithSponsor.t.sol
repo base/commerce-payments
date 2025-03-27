@@ -18,7 +18,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: initialAmount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: initialAmount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, initialAmount);
@@ -47,13 +47,13 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(overflowValue > type(uint120).max);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: 1});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
     //     uint48 refundDeadline = uint48(block.timestamp + 1 days);
     //     uint256 refundSalt = 123;
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: 1,
+    //         maxAmount: 1,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -81,7 +81,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     mockERC3009Token.mint(payerEOA, amount);
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     // First authorize and capture
@@ -92,7 +92,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -155,7 +155,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
@@ -182,7 +182,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
@@ -195,7 +195,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -222,7 +222,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     mockERC3009Token.mint(payerEOA, amount);
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     // First authorize and capture
@@ -233,7 +233,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -259,7 +259,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
@@ -272,7 +272,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -291,7 +291,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         vm.assume(refundDeadline > block.timestamp);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         mockERC3009Token.mint(payerEOA, amount);
@@ -340,7 +340,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     // Mint tokens for payer
@@ -357,7 +357,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
@@ -379,7 +379,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
     //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
     //     // Mint tokens for payer
@@ -398,7 +398,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
     //         paymentDetails: paymentDetails,
-    //         value: amount,
+    //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
     //         salt: refundSalt,
