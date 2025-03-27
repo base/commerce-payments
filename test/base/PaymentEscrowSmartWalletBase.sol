@@ -63,6 +63,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint256 maxAmount,
         uint48 preApprovalExpiry,
         uint48 authorizationExpiry,
+        uint48 refundExpiry,
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
@@ -77,6 +78,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     maxAmount: maxAmount,
                     preApprovalExpiry: preApprovalExpiry,
                     authorizationExpiry: authorizationExpiry,
+                    refundExpiry: refundExpiry,
                     minFeeBps: FEE_BPS,
                     maxFeeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
@@ -132,12 +134,14 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint256 value,
         uint48 preApprovalExpiry,
         uint48 authorizationExpiry,
+        uint48 refundExpiry,
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
         // First get the normal smart wallet signature
-        bytes memory signature =
-            _signSmartWalletERC3009(payer, receiver, value, preApprovalExpiry, authorizationExpiry, ownerPk, ownerIndex);
+        bytes memory signature = _signSmartWalletERC3009(
+            payer, receiver, value, preApprovalExpiry, authorizationExpiry, refundExpiry, ownerPk, ownerIndex
+        );
 
         // Prepare the factory call data
         bytes[] memory allInitialOwners = new bytes[](1);

@@ -30,6 +30,8 @@ contract PaymentEscrow {
         uint48 preApprovalExpiry;
         /// @dev Timestamp when an authorization can no longer be captured and the buyer can reclaim from escrow
         uint48 authorizationExpiry;
+        /// @dev Timestamp when a successful payment can no longer be refunded
+        uint48 refundExpiry;
         /// @dev Minimum fee percentage in basis points
         uint16 minFeeBps;
         /// @dev Maximum fee percentage in basis points
@@ -144,14 +146,17 @@ contract PaymentEscrow {
     /// @notice Authorization attempted after pre-approval expiry
     error AfterPreApprovalExpiry(uint48 timestamp, uint48 expiry);
 
-    /// @notice Pre-approval expiry after authorization expiry
-    error InvalidExpiries(uint48 preApproval, uint48 authorization);
+    /// @notice Expiry timestamps violate preApproval <= authorization <= refund
+    error InvalidExpiries(uint48 preApproval, uint48 authorization, uint48 refund);
 
-    /// @notice Capture attempted after authorization expiry
+    /// @notice Capture attempted at or after authorization expiry
     error AfterAuthorizationExpiry(uint48 timestamp, uint48 expiry);
 
     /// @notice Reclaim attempted before authorization expiry
     error BeforeAuthorizationExpiry(uint48 timestamp, uint48 expiry);
+
+    /// @notice Refund attempted at or after refund expiry
+    error AfterRefundExpiry(uint48 timestamp, uint48 expiry);
 
     /// @notice Refund attempt exceeds captured amount
     error RefundExceedsCapture(uint256 refund, uint256 captured);
@@ -419,8 +424,10 @@ contract PaymentEscrow {
     function refund(uint256 amount, PaymentDetails calldata paymentDetails) external validAmount(amount) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
-        // validate refund
-        _refund(amount, paymentDetails.operator, paymentDetails.receiver, paymentDetailsHash);
+        // validate and register refund
+        _registerRefund(
+            amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
+        );
 
         // return tokens to buyer
         SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
@@ -440,8 +447,10 @@ contract PaymentEscrow {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, refundDetails.refundSalt));
 
-        // validate refund
-        _refund(amount, paymentDetails.operator, paymentDetails.receiver, paymentDetailsHash);
+        // validate and register refund
+        _registerRefund(
+            amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
+        );
 
         PullTokensData memory pullTokensData = PullTokensData({
             payer: refundDetails.sponsor,
@@ -470,8 +479,13 @@ contract PaymentEscrow {
         if (block.timestamp >= paymentDetails.preApprovalExpiry) {
             revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentDetails.preApprovalExpiry));
         }
-        if (paymentDetails.preApprovalExpiry > paymentDetails.authorizationExpiry) {
-            revert InvalidExpiries(uint48(paymentDetails.preApprovalExpiry), paymentDetails.authorizationExpiry);
+        if (
+            paymentDetails.preApprovalExpiry > paymentDetails.authorizationExpiry
+                || paymentDetails.authorizationExpiry > paymentDetails.refundExpiry
+        ) {
+            revert InvalidExpiries(
+                paymentDetails.preApprovalExpiry, paymentDetails.authorizationExpiry, paymentDetails.refundExpiry
+            );
         }
         if (paymentDetails.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentDetails.maxFeeBps);
         if (paymentDetails.minFeeBps > paymentDetails.maxFeeBps) {
@@ -508,13 +522,20 @@ contract PaymentEscrow {
     }
 
     /// @notice Validate and update state for refund
-    function _refund(uint256 amount, address operator, address originalPaymentReceiver, bytes32 paymentDetailsHash)
-        internal
-    {
+    function _registerRefund(
+        uint256 amount,
+        address operator,
+        address originalPaymentReceiver,
+        uint48 refundExpiry,
+        bytes32 paymentDetailsHash
+    ) internal {
         // Check sender is operator or original payment receiver
         if (msg.sender != operator && msg.sender != originalPaymentReceiver) {
             revert InvalidSender(msg.sender);
         }
+
+        // Check refund has not expired
+        if (block.timestamp >= refundExpiry) revert AfterRefundExpiry(uint48(block.timestamp), refundExpiry);
 
         // Limit refund amount to previously captured
         uint120 captured = _paymentState[paymentDetailsHash].refundable;

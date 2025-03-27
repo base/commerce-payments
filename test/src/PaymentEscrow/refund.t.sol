@@ -38,6 +38,24 @@ contract RefundTest is PaymentEscrowBase {
         paymentEscrow.refund(refundAmount, paymentDetails);
     }
 
+    function test_reverts_afterRefundExpiry(uint120 authorizedAmount, uint120 refundAmount, uint48 refundExpiry)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(refundAmount > 0);
+        vm.assume(refundExpiry < uint48(block.timestamp));
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        paymentDetails.refundExpiry = refundExpiry;
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.AfterRefundExpiry.selector, uint48(block.timestamp), refundExpiry)
+        );
+        paymentEscrow.refund(refundAmount, paymentDetails);
+    }
+
     function test_reverts_whenRefundExceedsCaptured(uint120 authorizedAmount) public {
         uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
 

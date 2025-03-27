@@ -26,6 +26,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             amount,
             paymentDetails.preApprovalExpiry,
             paymentDetails.authorizationExpiry,
+            paymentDetails.refundExpiry,
             DEPLOYED_WALLET_OWNER_PK,
             0
         );
@@ -63,6 +64,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             amount,
             paymentDetails.preApprovalExpiry,
             paymentDetails.authorizationExpiry,
+            paymentDetails.refundExpiry,
             COUNTERFACTUAL_WALLET_OWNER_PK,
             0
         );
