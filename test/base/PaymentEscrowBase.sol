@@ -87,7 +87,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
 
         // Deploy PaymentEscrow
-        paymentEscrow = new PaymentEscrow(address(multicall3));
+        paymentEscrow = new PaymentEscrow();
 
         // Deploy hook contracts
         erc3009Hook = new ERC3009PullTokensHook(multicall3, address(paymentEscrow));
