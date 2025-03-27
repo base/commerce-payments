@@ -137,6 +137,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             maxAmount: maxAmount,
             preApprovalExpiry: type(uint48).max,
             authorizationExpiry: type(uint48).max,
+            refundExpiry: type(uint48).max,
             minFeeBps: FEE_BPS,
             maxFeeBps: FEE_BPS,
             feeRecipient: feeRecipient,

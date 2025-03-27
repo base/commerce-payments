@@ -108,24 +108,64 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
 
-    function test_reverts_whenPreApprovalExpiryAfterAuthorizationExpiry(uint120 amount) public {
+    function test_reverts_whenPreApprovalExpiryAfterAuthorizationExpiry(
+        uint120 amount,
+        uint48 preApprovalExpiry,
+        uint48 authorizationExpiry,
+        uint48 refundExpiry
+    ) public {
         vm.assume(amount > 0);
+        vm.assume(preApprovalExpiry > block.timestamp);
+        vm.assume(preApprovalExpiry > authorizationExpiry);
+        vm.assume(authorizationExpiry <= refundExpiry);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set authorize deadline after capture deadline
-        uint48 authorizationExpiry = uint48(block.timestamp + 1 days);
-        uint48 preApprovalExpiry = authorizationExpiry + 1; // One second later
-        paymentDetails.authorizationExpiry = authorizationExpiry;
         paymentDetails.preApprovalExpiry = preApprovalExpiry;
+        paymentDetails.authorizationExpiry = authorizationExpiry;
+        paymentDetails.refundExpiry = refundExpiry;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry)
+            abi.encodeWithSelector(
+                PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
+            )
+        );
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+    }
+
+    function test_reverts_whenAuthorizationExpiryAfterRefundExpiry(
+        uint120 amount,
+        uint48 preApprovalExpiry,
+        uint48 authorizationExpiry,
+        uint48 refundExpiry
+    ) public {
+        vm.assume(amount > 0);
+        vm.assume(preApprovalExpiry > block.timestamp);
+        vm.assume(preApprovalExpiry <= authorizationExpiry);
+        vm.assume(authorizationExpiry > refundExpiry);
+
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+
+        // Set authorize deadline after capture deadline
+        paymentDetails.preApprovalExpiry = preApprovalExpiry;
+        paymentDetails.authorizationExpiry = authorizationExpiry;
+        paymentDetails.refundExpiry = refundExpiry;
+
+        bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+
+        mockERC3009Token.mint(payerEOA, amount);
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
+            )
         );
         paymentEscrow.authorize(amount, paymentDetails, signature, "");
     }
