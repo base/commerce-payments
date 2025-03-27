@@ -146,16 +146,16 @@ contract PaymentEscrow {
     /// @notice Authorization attempted after pre-approval expiry
     error AfterPreApprovalExpiry(uint48 timestamp, uint48 expiry);
 
-    /// @notice Expiry timestampes violated preApproval <= authorization <= refund
+    /// @notice Expiry timestamps violate preApproval <= authorization <= refund
     error InvalidExpiries(uint48 preApproval, uint48 authorization, uint48 refund);
 
-    /// @notice Capture attempted after authorization expiry
+    /// @notice Capture attempted at or after authorization expiry
     error AfterAuthorizationExpiry(uint48 timestamp, uint48 expiry);
 
     /// @notice Reclaim attempted before authorization expiry
     error BeforeAuthorizationExpiry(uint48 timestamp, uint48 expiry);
 
-    /// @notice Refund attempted after refund expiry
+    /// @notice Refund attempted at or after refund expiry
     error AfterRefundExpiry(uint48 timestamp, uint48 expiry);
 
     /// @notice Refund attempt exceeds captured amount
@@ -534,7 +534,7 @@ contract PaymentEscrow {
             revert InvalidSender(msg.sender);
         }
 
-        // Check not past refund expiry
+        // Check refund has not expired
         if (block.timestamp >= refundExpiry) revert AfterRefundExpiry(uint48(block.timestamp), refundExpiry);
 
         // Limit refund amount to previously captured
