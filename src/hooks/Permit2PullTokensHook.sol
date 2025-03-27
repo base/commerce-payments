@@ -13,22 +13,22 @@ contract Permit2PullTokensHook is IPullTokensHook {
         permit2 = IPermit2(_permit2);
     }
 
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata
-    ) external override onlyPaymentEscrow {
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external override onlyPaymentEscrow {
         permit2.permitTransferFrom(
             ISignatureTransfer.PermitTransferFrom({
-                permitted: ISignatureTransfer.TokenPermissions({token: paymentDetails.token, amount: value}),
-                nonce: uint256(paymentDetailsHash),
-                deadline: paymentDetails.preApprovalExpiry
+                permitted: ISignatureTransfer.TokenPermissions({
+                    token: pullTokensData.token,
+                    amount: pullTokensData.maxAmount
+                }),
+                nonce: uint256(pullTokensData.nonce),
+                deadline: pullTokensData.preApprovalExpiry
             }),
-            ISignatureTransfer.SignatureTransferDetails({to: address(paymentEscrow), requestedAmount: value}),
-            paymentDetails.payer,
-            signature
+            ISignatureTransfer.SignatureTransferDetails({
+                to: address(paymentEscrow),
+                requestedAmount: pullTokensData.value
+            }),
+            pullTokensData.payer,
+            pullTokensData.signature
         );
     }
 }

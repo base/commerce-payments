@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IERC3009} from "./interfaces/IERC3009.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -43,6 +42,42 @@ contract PaymentEscrow {
         address pullTokensHook;
     }
 
+    struct RefundDetails {
+        /// @dev The address of the sponsor providing liquidity for the refund
+        address sponsor;
+        /// @dev The deadline for the sponsored refund
+        uint48 refundDeadline;
+        /// @dev The hook contract to use for retrieving liquidity for the refund
+        address pullTokensHook;
+        /// @dev A source of entropy to ensure unique hashes across different refund details
+        uint256 refundSalt;
+        /// @dev The signature of the sponsor authorizing the payment
+        bytes signature;
+        /// @dev The data to pass to the pull tokens hook
+        bytes hookData;
+    }
+
+    struct PullTokensData {
+        /// @dev The payer's address authorizing the payment
+        address payer;
+        /// @dev The ERC-20 token contract address
+        address token;
+        /// @dev The maximum amount of tokens that can be pulled
+        uint256 maxAmount;
+        /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
+        uint48 preApprovalExpiry;
+        /// @dev Contract implementing token pull logic
+        address pullTokensHook;
+        /// @dev A unique identifier for the payment
+        bytes32 nonce;
+        /// @dev The amount of tokens to pull
+        uint256 value;
+        /// @dev The signature of the payer authorizing the payment
+        bytes signature;
+        /// @dev The data to pass to the pull tokens hook
+        bytes hookData;
+    }
+
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
@@ -52,9 +87,6 @@ contract PaymentEscrow {
         /// @dev Value of tokens previously captured that can be refunded
         uint120 refundable;
     }
-
-    /// @notice ERC-6492 magic value
-    bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
     /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
     IMulticall3 public immutable multicall3;
@@ -221,7 +253,19 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: paymentDetails.payer,
+            token: paymentDetails.token,
+            maxAmount: paymentDetails.value,
+            preApprovalExpiry: paymentDetails.preApprovalExpiry,
+            pullTokensHook: paymentDetails.pullTokensHook,
+            nonce: paymentDetailsHash,
+            value: value,
+            signature: signature,
+            hookData: hookData
+        });
+
+        _pullTokens(pullTokensData);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, value);
@@ -253,10 +297,22 @@ contract PaymentEscrow {
         // update authorized amount for capture accounting
         _paymentState[paymentDetailsHash].capturable = uint120(value);
 
-        // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: paymentDetails.payer,
+            token: paymentDetails.token,
+            maxAmount: paymentDetails.value,
+            preApprovalExpiry: paymentDetails.preApprovalExpiry,
+            pullTokensHook: paymentDetails.pullTokensHook,
+            nonce: paymentDetailsHash,
+            value: value,
+            signature: signature,
+            hookData: hookData
+        });
+
+        _pullTokens(pullTokensData);
 
         _paymentState[paymentDetailsHash].isAuthorized = true;
+
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -372,32 +428,34 @@ contract PaymentEscrow {
 
     /// @notice Return previously-captured tokens to buyer
     /// @dev Can be called by operator or captureAddress
-    /// @dev Funds are transferred from the sponsor via ERC-3009 authorization
-    /// @dev The value to refund and the value authorized in the ERC-3009 authorization must be identical
+    /// @dev TODO docs
     /// @param value Amount to refund
     /// @param paymentDetails PaymentDetails struct
+    /// @param refundDetails RefundDetails struct
     function refundWithSponsor(
         uint256 value,
         PaymentDetails calldata paymentDetails,
-        address sponsor,
-        uint48 refundDeadline,
-        uint256 refundSalt,
-        bytes calldata signature
+        RefundDetails calldata refundDetails
     ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, refundDetails.refundSalt));
 
         // validate refund
         _refund(value, paymentDetails.operator, paymentDetails.receiver, paymentDetailsHash);
 
-        // pull the refund amount from the sponsor
-        _receiveWithAuthorization({
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: refundDetails.sponsor,
             token: paymentDetails.token,
-            from: sponsor,
+            maxAmount: value, // TODO: should a refundDetails have a maxAmount that can differ from value?
+            preApprovalExpiry: refundDetails.refundDeadline,
+            pullTokensHook: refundDetails.pullTokensHook,
+            nonce: nonce,
             value: value,
-            validBefore: refundDeadline,
-            nonce: keccak256(abi.encode(keccak256(abi.encode(paymentDetails)), refundSalt)),
-            signature: signature
+            signature: refundDetails.signature,
+            hookData: refundDetails.hookData
         });
+
+        _pullTokens(pullTokensData);
 
         // return tokens to buyer
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, value);
@@ -423,19 +481,12 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfer tokens into this contract
-    function _pullTokens(
-        PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata hookData
-    ) internal {
-        uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
-        IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(
-            paymentDetails, paymentDetailsHash, value, signature, hookData
-        );
-        uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
-        if (escrowBalanceAfter - escrowBalanceBefore != value) revert TokenPullFailed();
+    function _pullTokens(PullTokensData memory pullTokensData) internal {
+        uint256 escrowBalanceBefore = IERC20(pullTokensData.token).balanceOf(address(this));
+        IPullTokensHook(pullTokensData.pullTokensHook).pullTokens(pullTokensData);
+        uint256 escrowBalanceAfter = IERC20(pullTokensData.token).balanceOf(address(this));
+        // Check that the tokens were transferred into the escrow
+        if (escrowBalanceAfter - escrowBalanceBefore != pullTokensData.value) revert TokenPullFailed();
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient
@@ -454,41 +505,6 @@ contract PaymentEscrow {
         uint256 feeAmount = uint256(value) * feeBps / 10_000;
         if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
         if (value - feeAmount > 0) SafeTransferLib.safeTransfer(token, captureAddress, value - feeAmount);
-    }
-
-    /// @notice Use ERC-3009 receiveWithAuthorization with optional ERC-6492 preparation call
-    function _receiveWithAuthorization(
-        address token,
-        address from,
-        uint256 value,
-        uint48 validBefore,
-        bytes32 nonce,
-        bytes calldata signature
-    ) internal {
-        bytes memory innerSignature = signature;
-        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-            // parse inner signature from ERC-6492 format
-            address target;
-            bytes memory prepareData;
-            (target, prepareData, innerSignature) =
-                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
-
-            // construct call to target with prepareData
-            IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
-            calls[0] = IMulticall3.Call(target, prepareData);
-            multicall3.tryAggregate({requireSuccess: false, calls: calls});
-        }
-
-        // receive tokens from authorization signer
-        IERC3009(token).receiveWithAuthorization({
-            from: from,
-            to: address(this),
-            value: value,
-            validAfter: 0,
-            validBefore: validBefore,
-            nonce: nonce,
-            signature: innerSignature
-        });
     }
 
     /// @notice Validate and update state for refund

@@ -32,16 +32,12 @@ contract ERC20PullTokensHook is IPullTokensHook {
         emit PaymentApproved(paymentDetailsHash);
     }
 
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata,
-        bytes calldata
-    ) external override onlyPaymentEscrow {
-        if (!isPreApproved[paymentDetailsHash]) {
-            revert PaymentNotApproved(paymentDetailsHash);
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external override onlyPaymentEscrow {
+        if (!isPreApproved[pullTokensData.nonce]) {
+            revert PaymentNotApproved(pullTokensData.nonce);
         }
-        SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.payer, address(paymentEscrow), value);
+        SafeTransferLib.safeTransferFrom(
+            pullTokensData.token, pullTokensData.payer, address(paymentEscrow), pullTokensData.value
+        );
     }
 }

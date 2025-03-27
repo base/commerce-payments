@@ -183,7 +183,9 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
 
-    function test_succeeds_whenValueLessThanAuthorized(uint120 authorizedAmount, uint120 confirmAmount) public {
+    function test_authorize_succeeds_whenValueLessThanAuthorized(uint120 authorizedAmount, uint120 confirmAmount)
+        public
+    {
         uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);

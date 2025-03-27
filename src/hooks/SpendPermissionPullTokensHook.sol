@@ -16,38 +16,34 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
         spendPermissionManager = SpendPermissionManager(payable(_spendPermissionManager));
     }
 
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata hookData
-    ) external override onlyPaymentEscrow {
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external override onlyPaymentEscrow {
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-            account: paymentDetails.payer,
+            account: pullTokensData.payer,
             spender: address(this),
-            token: paymentDetails.token,
-            allowance: uint160(paymentDetails.value),
+            token: pullTokensData.token,
+            allowance: uint160(pullTokensData.value),
             period: type(uint48).max,
             start: 0,
-            end: paymentDetails.preApprovalExpiry,
-            salt: uint256(paymentDetailsHash),
+            end: pullTokensData.preApprovalExpiry,
+            salt: uint256(pullTokensData.nonce),
             extraData: hex""
         });
 
-        if (signature.length > 0) {
-            bool approved = spendPermissionManager.approveWithSignature(permission, signature);
+        if (pullTokensData.signature.length > 0) {
+            bool approved = spendPermissionManager.approveWithSignature(permission, pullTokensData.signature);
             if (!approved) revert InvalidSignature();
         }
 
-        if (hookData.length == 0) {
-            spendPermissionManager.spend(permission, uint160(value));
+        if (pullTokensData.hookData.length == 0) {
+            spendPermissionManager.spend(permission, uint160(pullTokensData.value));
         } else {
             spendPermissionManager.spendWithWithdraw(
-                permission, uint160(value), abi.decode(hookData, (MagicSpend.WithdrawRequest))
+                permission,
+                uint160(pullTokensData.value),
+                abi.decode(pullTokensData.hookData, (MagicSpend.WithdrawRequest))
             );
         }
 
-        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), value);
+        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.value);
     }
 }
