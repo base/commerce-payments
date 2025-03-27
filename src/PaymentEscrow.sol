@@ -43,6 +43,42 @@ contract PaymentEscrow {
         address pullTokensHook;
     }
 
+    struct RefundDetails {
+        /// @dev The address of the sponsor providing liquidity for the refund
+        address sponsor;
+        /// @dev The deadline for the sponsored refund
+        uint48 refundDeadline;
+        /// @dev The hook contract to use for retrieving liquidity for the refund
+        address pullTokensHook;
+        /// @dev A source of entropy to ensure unique hashes across different refund details
+        uint256 refundSalt;
+        /// @dev The signature of the sponsor authorizing the payment
+        bytes signature;
+        /// @dev The data to pass to the pull tokens hook
+        bytes hookData;
+    }
+
+    struct PullTokensData {
+        /// @dev The payer's address authorizing the payment
+        address payer;
+        /// @dev The ERC-20 token contract address
+        address token;
+        /// @dev The maximum amount of tokens that can be pulled
+        uint256 maxAmount;
+        /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
+        uint48 preApprovalExpiry;
+        /// @dev Contract implementing token pull logic
+        address pullTokensHook;
+        /// @dev A unique identifier for the payment
+        bytes32 nonce;
+        /// @dev The amount of tokens to pull
+        uint256 value;
+        /// @dev The signature of the payer authorizing the payment
+        bytes signature;
+        /// @dev The data to pass to the pull tokens hook
+        bytes hookData;
+    }
+
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
@@ -221,7 +257,19 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: paymentDetails.payer,
+            token: paymentDetails.token,
+            maxAmount: paymentDetails.value,
+            preApprovalExpiry: paymentDetails.preApprovalExpiry,
+            pullTokensHook: paymentDetails.pullTokensHook,
+            nonce: paymentDetailsHash,
+            value: value,
+            signature: signature,
+            hookData: hookData
+        });
+
+        _pullTokens(pullTokensData);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, value);
@@ -253,10 +301,22 @@ contract PaymentEscrow {
         // update authorized amount for capture accounting
         _paymentState[paymentDetailsHash].capturable = uint120(value);
 
-        // transfer tokens into escrow
-        _pullTokens(paymentDetails, paymentDetailsHash, value, signature, hookData);
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: paymentDetails.payer,
+            token: paymentDetails.token,
+            maxAmount: paymentDetails.value,
+            preApprovalExpiry: paymentDetails.preApprovalExpiry,
+            pullTokensHook: paymentDetails.pullTokensHook,
+            nonce: paymentDetailsHash,
+            value: value,
+            signature: signature,
+            hookData: hookData
+        });
+
+        _pullTokens(pullTokensData);
 
         _paymentState[paymentDetailsHash].isAuthorized = true;
+
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -379,25 +439,27 @@ contract PaymentEscrow {
     function refundWithSponsor(
         uint256 value,
         PaymentDetails calldata paymentDetails,
-        address sponsor,
-        uint48 refundDeadline,
-        uint256 refundSalt,
-        bytes calldata signature
+        RefundDetails calldata refundDetails
     ) external validValue(value) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, refundDetails.refundSalt));
 
         // validate refund
         _refund(value, paymentDetails.operator, paymentDetails.receiver, paymentDetailsHash);
 
-        // pull the refund amount from the sponsor
-        _receiveWithAuthorization({
+        PullTokensData memory pullTokensData = PullTokensData({
+            payer: refundDetails.sponsor,
             token: paymentDetails.token,
-            from: sponsor,
+            maxAmount: value,
+            preApprovalExpiry: refundDetails.refundDeadline,
+            pullTokensHook: refundDetails.pullTokensHook,
+            nonce: nonce,
             value: value,
-            validBefore: refundDeadline,
-            nonce: keccak256(abi.encode(keccak256(abi.encode(paymentDetails)), refundSalt)),
-            signature: signature
+            signature: refundDetails.signature,
+            hookData: refundDetails.hookData
         });
+
+        _pullTokens(pullTokensData);
 
         // return tokens to buyer
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, value);
@@ -423,19 +485,11 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfer tokens into this contract
-    function _pullTokens(
-        PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata hookData
-    ) internal {
-        uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
-        IPullTokensHook(paymentDetails.pullTokensHook).pullTokens(
-            paymentDetails, paymentDetailsHash, value, signature, hookData
-        );
-        uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
-        if (escrowBalanceAfter - escrowBalanceBefore != value) revert TokenPullFailed();
+    function _pullTokens(PullTokensData memory pullTokensData) internal {
+        uint256 escrowBalanceBefore = IERC20(pullTokensData.token).balanceOf(address(this));
+        IPullTokensHook(pullTokensData.pullTokensHook).pullTokens(pullTokensData);
+        uint256 escrowBalanceAfter = IERC20(pullTokensData.token).balanceOf(address(this));
+        if (escrowBalanceAfter - escrowBalanceBefore != pullTokensData.value) revert TokenPullFailed();
     }
 
     /// @notice Sends tokens to captureAddress and/or feeRecipient

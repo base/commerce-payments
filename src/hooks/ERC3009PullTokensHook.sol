@@ -15,20 +15,26 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         multicall3 = IMulticall3(_multicall3);
     }
 
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata
-    ) external override onlyPaymentEscrow {
-        bytes memory innerSignature = signature;
-        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external override onlyPaymentEscrow {
+        bytes memory innerSignature = pullTokensData.signature;
+        bytes memory signature = pullTokensData.signature;
+        // Check for ERC-6492 signature format
+        bytes32 magicValue;
+        if (signature.length >= 32) {
+            assembly {
+                magicValue := mload(add(add(signature, 32), sub(mload(signature), 32)))
+            }
+        }
+
+        if (signature.length >= 32 && magicValue == ERC6492_MAGIC_VALUE) {
             // parse inner signature from ERC-6492 format
             address target;
             bytes memory prepareData;
-            (target, prepareData, innerSignature) =
-                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
+            bytes memory erc6492Data = new bytes(signature.length - 32);
+            for (uint256 i = 0; i < signature.length - 32; i++) {
+                erc6492Data[i] = signature[i];
+            }
+            (target, prepareData, innerSignature) = abi.decode(erc6492Data, (address, bytes, bytes));
 
             // construct call to target with prepareData
             IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
@@ -37,23 +43,23 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         }
 
         // First receive the tokens to this contract
-        IERC3009(paymentDetails.token).receiveWithAuthorization({
-            from: paymentDetails.payer,
+        IERC3009(pullTokensData.token).receiveWithAuthorization({
+            from: pullTokensData.payer,
             to: address(this),
-            value: paymentDetails.value,
+            value: pullTokensData.maxAmount,
             validAfter: 0,
-            validBefore: paymentDetails.preApprovalExpiry,
-            nonce: paymentDetailsHash,
+            validBefore: pullTokensData.preApprovalExpiry,
+            nonce: pullTokensData.nonce,
             signature: innerSignature
         });
 
         // Return excess funds to buyer
-        uint256 excessFunds = paymentDetails.value - value;
+        uint256 excessFunds = pullTokensData.maxAmount - pullTokensData.value;
         if (excessFunds > 0) {
-            SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, excessFunds);
+            SafeTransferLib.safeTransfer(pullTokensData.token, pullTokensData.payer, excessFunds);
         }
 
         // Then transfer them to the escrow
-        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), value);
+        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.value);
     }
 }

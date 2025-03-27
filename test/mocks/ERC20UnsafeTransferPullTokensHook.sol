@@ -33,17 +33,13 @@ contract ERC20UnsafeTransferPullTokensHook is IPullTokensHook {
         emit PaymentApproved(paymentDetailsHash);
     }
 
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata,
-        bytes calldata
-    ) external override onlyPaymentEscrow {
-        if (!isPreApproved[paymentDetailsHash]) {
-            revert PaymentNotApproved(paymentDetailsHash);
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external override onlyPaymentEscrow {
+        if (!isPreApproved[pullTokensData.nonce]) {
+            revert PaymentNotApproved(pullTokensData.nonce);
         }
         // transfer too few token to escrow
-        IERC20(paymentDetails.token).transferFrom(paymentDetails.payer, address(paymentEscrow), value - 1);
+        IERC20(pullTokensData.token).transferFrom(
+            pullTokensData.payer, address(paymentEscrow), pullTokensData.value - 1
+        );
     }
 }

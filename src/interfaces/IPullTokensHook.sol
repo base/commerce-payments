@@ -18,15 +18,6 @@ abstract contract IPullTokensHook {
     }
 
     /// @notice Pull tokens from payer to escrow using hook-specific authorization logic
-    /// @param paymentDetails Payment details for use as nonce/salt
-    /// @param paymentDetailsHash Hash of payment details for use as nonce/salt
-    /// @param value Amount of tokens to transfer
-    /// @param signature Authorization signature (format depends on hook implementation)
-    function pullTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
-        bytes32 paymentDetailsHash,
-        uint256 value,
-        bytes calldata signature,
-        bytes calldata hookData
-    ) external virtual;
+    /// @param pullTokensData Data required to pull tokens from payer to escrow
+    function pullTokens(PaymentEscrow.PullTokensData memory pullTokensData) external virtual;
 }
