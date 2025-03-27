@@ -82,9 +82,9 @@ contract PaymentEscrow {
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
         bool isAuthorized;
-        /// @dev Value of tokens currently on hold in escrow that can be captured
+        /// @dev Amount of tokens currently on hold in escrow that can be captured
         uint120 capturable;
-        /// @dev Value of tokens previously captured that can be refunded
+        /// @dev Amount of tokens previously captured that can be refunded
         uint120 refundable;
     }
 
@@ -136,10 +136,10 @@ contract PaymentEscrow {
     error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
 
     /// @notice Payment authorization is insufficient for a requested capture
-    error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedValue, uint256 requestedValue);
+    error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedAmount, uint256 requestedAmount);
 
-    /// @notice Requested authorization amount exceeds limit on payment details
-    error ValueLimitExceeded(uint256 amount);
+    /// @notice Requested authorization amount exceeds `PaymentDetails.maxAmount`
+    error ExceedsMaxAmount(uint256 amount, uint256 maxAmount);
 
     /// @notice Authorization attempted after pre-approval expiry
     error AfterPreApprovalExpiry(uint48 timestamp, uint48 expiry);
@@ -162,11 +162,11 @@ contract PaymentEscrow {
     /// @notice Fee recipient is zero address
     error ZeroFeeRecipient();
 
-    /// @notice Value is zero
-    error ZeroValue();
+    /// @notice Amount is zero
+    error ZeroAmount();
 
-    /// @notice Value overflows allowed storage size of uint120
-    error ValueOverflow(uint256 amount, uint256 limit);
+    /// @notice Amount overflows allowed storage size of uint120
+    error AmountOverflow(uint256 amount, uint256 limit);
 
     /// @notice Authorization is zero
     error ZeroAuthorization(bytes32 paymentDetailsHash);
@@ -181,9 +181,9 @@ contract PaymentEscrow {
     error InvalidFeeRecipient(address attempted, address expected);
 
     /// @notice Ensures amount is non-zero and does not overflow storage
-    modifier validValue(uint256 amount) {
-        if (amount == 0) revert ZeroValue();
-        if (amount > type(uint120).max) revert ValueOverflow(amount, type(uint120).max);
+    modifier validAmount(uint256 amount) {
+        if (amount == 0) revert ZeroAmount();
+        if (amount > type(uint120).max) revert AmountOverflow(amount, type(uint120).max);
         _;
     }
 
@@ -229,7 +229,7 @@ contract PaymentEscrow {
         bytes calldata hookData,
         uint16 feeBps,
         address feeRecipient
-    ) external validValue(amount) {
+    ) external validAmount(amount) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
@@ -280,7 +280,7 @@ contract PaymentEscrow {
         PaymentDetails calldata paymentDetails,
         bytes calldata signature,
         bytes calldata hookData
-    ) external validValue(amount) {
+    ) external validAmount(amount) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // check sender is operator
@@ -332,7 +332,7 @@ contract PaymentEscrow {
     /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
     function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient)
         external
-        validValue(amount)
+        validAmount(amount)
     {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
@@ -376,13 +376,13 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
-        uint256 authorizedValue = _paymentState[paymentDetailsHash].capturable;
-        if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
+        uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
+        if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // return any escrowed funds
         _paymentState[paymentDetailsHash].capturable = 0;
-        emit PaymentVoided(paymentDetailsHash, authorizedValue, msg.sender);
-        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, authorizedValue);
+        emit PaymentVoided(paymentDetailsHash, authorizedAmount, msg.sender);
+        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, authorizedAmount);
     }
 
     /// @notice Returns any escrowed funds to buyer
@@ -402,13 +402,13 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
-        uint256 authorizedValue = _paymentState[paymentDetailsHash].capturable;
-        if (authorizedValue == 0) revert ZeroAuthorization(paymentDetailsHash);
+        uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
+        if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
         // return any escrowed funds
         _paymentState[paymentDetailsHash].capturable = 0;
-        emit PaymentReclaimed(paymentDetailsHash, authorizedValue);
-        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, authorizedValue);
+        emit PaymentReclaimed(paymentDetailsHash, authorizedAmount);
+        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, authorizedAmount);
     }
 
     /// @notice Return previously-captured tokens to buyer
@@ -416,7 +416,7 @@ contract PaymentEscrow {
     /// @dev Funds are transferred from the caller
     /// @param amount Amount to refund
     /// @param paymentDetails PaymentDetails struct
-    function refund(uint256 amount, PaymentDetails calldata paymentDetails) external validValue(amount) {
+    function refund(uint256 amount, PaymentDetails calldata paymentDetails) external validAmount(amount) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
 
         // validate refund
@@ -436,7 +436,7 @@ contract PaymentEscrow {
         uint256 amount,
         PaymentDetails calldata paymentDetails,
         RefundDetails calldata refundDetails
-    ) external validValue(amount) {
+    ) external validAmount(amount) {
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, refundDetails.refundSalt));
 
@@ -466,7 +466,7 @@ contract PaymentEscrow {
         internal
         view
     {
-        if (amount > paymentDetails.maxAmount) revert ValueLimitExceeded(amount);
+        if (amount > paymentDetails.maxAmount) revert ExceedsMaxAmount(amount, paymentDetails.maxAmount);
         if (block.timestamp >= paymentDetails.preApprovalExpiry) {
             revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentDetails.preApprovalExpiry));
         }

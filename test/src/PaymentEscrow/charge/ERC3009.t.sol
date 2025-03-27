@@ -13,11 +13,11 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
         paymentEscrow.charge(0, paymentDetails, signature, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient);
     }
 
-    function test_reverts_whenValueOverflows(uint256 overflowValue) public {
+    function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -26,7 +26,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
         paymentEscrow.charge(
             overflowValue, paymentDetails, signature, "", paymentDetails.minFeeBps, paymentDetails.feeRecipient
         );
@@ -62,7 +62,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.warp(paymentDetails.authorizationExpiry - 1);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, chargeAmount));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ExceedsMaxAmount.selector, chargeAmount, authorizedAmount));
         paymentEscrow.charge(
             chargeAmount, paymentDetails, "", "", paymentDetails.minFeeBps, paymentDetails.feeRecipient
         );

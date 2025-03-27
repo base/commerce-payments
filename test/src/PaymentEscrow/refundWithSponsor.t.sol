@@ -39,11 +39,11 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     });
 
     //     vm.prank(operator);
-    //     vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+    //     vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
     //     paymentEscrow.refundWithSponsor(0, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
     // }
 
-    // function test_refundWithSponsor_reverts_whenValueOverflows(uint256 overflowValue) public {
+    // function test_refundWithSponsor_reverts_whenAmountOverflows(uint256 overflowValue) public {
     //     vm.assume(overflowValue > type(uint120).max);
 
     //     PaymentEscrow.PaymentDetails memory paymentDetails =
@@ -61,7 +61,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     });
 
     //     vm.prank(operator);
-    //     vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+    //     vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
     //     paymentEscrow.refundWithSponsor(
     //         overflowValue, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature
     //     );

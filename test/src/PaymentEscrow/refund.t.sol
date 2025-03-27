@@ -10,18 +10,18 @@ contract RefundTest is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
         paymentEscrow.refund(0, paymentDetails);
     }
 
-    function test_reverts_whenValueOverflows(uint256 overflowValue) public {
+    function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
         paymentEscrow.refund(overflowValue, paymentDetails);
     }
 
