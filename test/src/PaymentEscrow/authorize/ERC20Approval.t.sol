@@ -13,7 +13,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.ERC20
         });

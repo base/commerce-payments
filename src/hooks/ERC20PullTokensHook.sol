@@ -37,7 +37,7 @@ contract ERC20PullTokensHook is IPullTokensHook {
             revert PaymentNotApproved(pullTokensData.nonce);
         }
         SafeTransferLib.safeTransferFrom(
-            pullTokensData.token, pullTokensData.payer, address(paymentEscrow), pullTokensData.value
+            pullTokensData.token, pullTokensData.payer, address(paymentEscrow), pullTokensData.amount
         );
     }
 }

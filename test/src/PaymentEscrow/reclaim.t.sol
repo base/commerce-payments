@@ -11,7 +11,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -34,7 +34,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(currentTime < authorizationExpiry);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         // Set both deadlines - ensure preApprovalExpiry is before authorizationExpiry
         paymentDetails.authorizationExpiry = authorizationExpiry;
         paymentDetails.preApprovalExpiry = authorizationExpiry - 1 hours; // Set authorize deadline before capture deadline
@@ -59,7 +59,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Try to reclaim without any authorization
         vm.warp(paymentDetails.authorizationExpiry);
@@ -74,7 +74,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -104,7 +104,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(timeAfterDeadline < type(uint48).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         // Set both deadlines - ensure preApprovalExpiry is before authorizationExpiry
         paymentDetails.authorizationExpiry = authorizationExpiry;
         paymentDetails.preApprovalExpiry = authorizationExpiry - 1 hours; // Set authorize deadline before capture deadline
@@ -133,7 +133,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);

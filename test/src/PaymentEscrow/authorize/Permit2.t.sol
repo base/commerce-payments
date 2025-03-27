@@ -30,7 +30,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
-            value: amount,
+            maxAmount: amount,
             token: address(plainToken),
             hook: PullTokensHook.Permit2
         });

@@ -16,7 +16,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         // Create payment details with SpendPermission auth type
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: address(smartWalletDeployed),
-            value: amount,
+            maxAmount: amount,
             token: address(mockERC3009Token),
             hook: PullTokensHook.SpendPermission
         });

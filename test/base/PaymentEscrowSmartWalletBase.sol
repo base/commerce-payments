@@ -60,7 +60,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     function _signSmartWalletERC3009(
         address payer,
         address receiver,
-        uint256 value,
+        uint256 maxAmount,
         uint48 preApprovalExpiry,
         uint48 authorizationExpiry,
         uint256 ownerPk,
@@ -74,7 +74,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     payer: payer,
                     receiver: receiver,
                     token: address(mockERC3009Token),
-                    value: value,
+                    maxAmount: maxAmount,
                     preApprovalExpiry: preApprovalExpiry,
                     authorizationExpiry: authorizationExpiry,
                     minFeeBps: FEE_BPS,
@@ -87,7 +87,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         );
 
         // This is what needs to be signed by the smart wallet
-        bytes32 erc3009Digest = _getERC3009Digest(payer, value, 0, preApprovalExpiry, nonce);
+        bytes32 erc3009Digest = _getERC3009Digest(payer, maxAmount, 0, preApprovalExpiry, nonce);
 
         // Now wrap the ERC3009 digest in the smart wallet's domain
         bytes32 domainSeparator = keccak256(
@@ -162,7 +162,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             account: paymentDetails.payer,
             spender: paymentDetails.pullTokensHook,
             token: address(paymentDetails.token),
-            allowance: uint160(paymentDetails.value),
+            allowance: uint160(paymentDetails.maxAmount),
             period: type(uint48).max,
             start: 0,
             end: uint48(paymentDetails.preApprovalExpiry),

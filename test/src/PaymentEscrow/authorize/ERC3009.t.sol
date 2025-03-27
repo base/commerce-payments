@@ -8,25 +8,25 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 contract AuthorizeWithERC3009Test is PaymentEscrowBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1}); // Any non-zero value
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroValue.selector);
+        vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
         paymentEscrow.authorize(0, paymentDetails, signature, "");
     }
 
-    function test_reverts_whenValueOverflows(uint256 overflowValue) public {
+    function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: 1});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueOverflow.selector, overflowValue, type(uint120).max));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
         paymentEscrow.authorize(overflowValue, paymentDetails, signature, "");
     }
 
@@ -36,7 +36,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -58,7 +58,9 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ValueLimitExceeded.selector, confirmAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.ExceedsMaxAmount.selector, confirmAmount, authorizedAmount)
+        );
         paymentEscrow.authorize(confirmAmount, paymentDetails, signature, "");
     }
 
@@ -68,7 +70,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         paymentDetails.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -89,7 +91,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
         paymentDetails.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
@@ -110,7 +112,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set authorize deadline after capture deadline
         uint48 authorizationExpiry = uint48(block.timestamp + 1 days);
@@ -132,7 +134,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set fee bps > 100%
         paymentDetails.maxFeeBps = 10_001;
@@ -148,7 +150,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
@@ -212,7 +214,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization({payer: payerEOA, value: amount});
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set both fee recipient and fee bps to zero - this should be valid
         paymentDetails.feeRecipient = address(0);
