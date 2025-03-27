@@ -54,12 +54,12 @@ contract ERC3009PullTokensHook is IPullTokensHook {
         });
 
         // Return excess funds to buyer
-        uint256 excessFunds = pullTokensData.maxAmount - pullTokensData.value;
+        uint256 excessFunds = pullTokensData.maxAmount - pullTokensData.amount;
         if (excessFunds > 0) {
             SafeTransferLib.safeTransfer(pullTokensData.token, pullTokensData.payer, excessFunds);
         }
 
         // Then transfer them to the escrow
-        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.value);
+        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.amount);
     }
 }

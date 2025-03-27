@@ -39,7 +39,7 @@ contract ERC20UnsafeTransferPullTokensHook is IPullTokensHook {
         }
         // transfer too few token to escrow
         IERC20(pullTokensData.token).transferFrom(
-            pullTokensData.payer, address(paymentEscrow), pullTokensData.value - 1
+            pullTokensData.payer, address(paymentEscrow), pullTokensData.amount - 1
         );
     }
 }

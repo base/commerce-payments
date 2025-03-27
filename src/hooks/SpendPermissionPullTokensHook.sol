@@ -21,7 +21,7 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
             account: pullTokensData.payer,
             spender: address(this),
             token: pullTokensData.token,
-            allowance: uint160(pullTokensData.value),
+            allowance: uint160(pullTokensData.amount),
             period: type(uint48).max,
             start: 0,
             end: pullTokensData.preApprovalExpiry,
@@ -35,15 +35,15 @@ contract SpendPermissionPullTokensHook is IPullTokensHook {
         }
 
         if (pullTokensData.hookData.length == 0) {
-            spendPermissionManager.spend(permission, uint160(pullTokensData.value));
+            spendPermissionManager.spend(permission, uint160(pullTokensData.amount));
         } else {
             spendPermissionManager.spendWithWithdraw(
                 permission,
-                uint160(pullTokensData.value),
+                uint160(pullTokensData.amount),
                 abi.decode(pullTokensData.hookData, (MagicSpend.WithdrawRequest))
             );
         }
 
-        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.value);
+        SafeTransferLib.safeTransfer(pullTokensData.token, address(paymentEscrow), pullTokensData.amount);
     }
 }

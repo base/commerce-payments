@@ -25,7 +25,7 @@ contract Permit2PullTokensHook is IPullTokensHook {
             }),
             ISignatureTransfer.SignatureTransferDetails({
                 to: address(paymentEscrow),
-                requestedAmount: pullTokensData.value
+                requestedAmount: pullTokensData.amount
             }),
             pullTokensData.payer,
             pullTokensData.signature
