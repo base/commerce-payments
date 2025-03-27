@@ -52,7 +52,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture partial amount
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
         paymentEscrow.capture(chargeAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -80,7 +80,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -116,7 +116,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -153,7 +153,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature);
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 

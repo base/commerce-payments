@@ -18,11 +18,11 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // payer needs to approve Permit2 to spend their tokens
         vm.startPrank(payerEOA);
-        plainToken.approve(address(paymentEscrow.permit2()), type(uint256).max);
+        plainToken.approve(permit2, type(uint256).max);
         vm.stopPrank();
     }
 
-    function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
+    function test_permit2_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
 
         // Mint enough tokens to the payer
@@ -32,7 +32,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
             payer: payerEOA,
             value: amount,
             token: address(plainToken),
-            authType: PaymentEscrow.AuthorizationType.Permit2
+            hook: PullTokensHook.Permit2
         });
 
         // Generate Permit2 signature using the same deadline as paymentDetails
@@ -46,7 +46,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // Should succeed via Permit2 authorization
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature);
+        paymentEscrow.authorize(amount, paymentDetails, signature, "");
 
         // Verify the transfer worked
         assertEq(plainToken.balanceOf(address(paymentEscrow)), amount);

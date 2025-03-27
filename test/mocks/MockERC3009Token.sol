@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {ERC20} from "solady/tokens/ERC20.sol";
-import {IERC3009} from "../../src/IERC3009.sol";
+import {IERC3009} from "../../src/interfaces/IERC3009.sol";
 import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 
 contract MockERC3009Token is ERC20, IERC3009 {

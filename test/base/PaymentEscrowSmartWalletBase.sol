@@ -81,7 +81,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     maxFeeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
                     salt: uint256(0),
-                    authType: PaymentEscrow.AuthorizationType.ERC3009
+                    pullTokensHook: hooks[PullTokensHook.ERC3009]
                 })
             )
         );
@@ -116,7 +116,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             abi.encode(
                 mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 payer,
-                address(paymentEscrow),
+                hooks[PullTokensHook.ERC3009],
                 value,
                 validAfter,
                 validBefore,
@@ -160,7 +160,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         return SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
-            spender: address(paymentEscrow),
+            spender: paymentDetails.pullTokensHook,
             token: address(paymentDetails.token),
             allowance: uint160(paymentDetails.value),
             period: type(uint48).max,
@@ -215,18 +215,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             abi.encodeCall(CoinbaseSmartWalletFactory.createAccount, (allInitialOwners, ownerIndex));
         bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, wrappedSignature);
         return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
-    }
-
-    function _signSpendPermissionWithMagicSpend(
-        SpendPermissionManager.SpendPermission memory spendPermission,
-        MagicSpend.WithdrawRequest memory withdrawRequest,
-        uint256 ownerPk,
-        uint256 ownerIndex
-    ) internal view returns (bytes memory) {
-        bytes memory spendPermissionSig = _signSpendPermission(spendPermission, ownerPk, ownerIndex);
-
-        // Concatenate length prefix and spend permission sig, then append encoded withdraw request
-        return abi.encode(spendPermissionSig, abi.encode(withdrawRequest));
     }
 
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
