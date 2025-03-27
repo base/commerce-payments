@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IERC3009} from "./interfaces/IERC3009.sol";
 import {IMulticall3} from "./interfaces/IMulticall3.sol";
 import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -88,9 +87,6 @@ contract PaymentEscrow {
         /// @dev Value of tokens previously captured that can be refunded
         uint120 refundable;
     }
-
-    /// @notice ERC-6492 magic value
-    bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
     /// @notice Public Multicall3 contract, used to apply ERC-6492 preparation data
     IMulticall3 public immutable multicall3;
@@ -432,10 +428,10 @@ contract PaymentEscrow {
 
     /// @notice Return previously-captured tokens to buyer
     /// @dev Can be called by operator or captureAddress
-    /// @dev Funds are transferred from the sponsor via ERC-3009 authorization
-    /// @dev The value to refund and the value authorized in the ERC-3009 authorization must be identical
+    /// @dev TODO docs
     /// @param value Amount to refund
     /// @param paymentDetails PaymentDetails struct
+    /// @param refundDetails RefundDetails struct
     function refundWithSponsor(
         uint256 value,
         PaymentDetails calldata paymentDetails,
@@ -450,7 +446,7 @@ contract PaymentEscrow {
         PullTokensData memory pullTokensData = PullTokensData({
             payer: refundDetails.sponsor,
             token: paymentDetails.token,
-            maxAmount: value,
+            maxAmount: value, // TODO: should a refundDetails have a maxAmount that can differ from value?
             preApprovalExpiry: refundDetails.refundDeadline,
             pullTokensHook: refundDetails.pullTokensHook,
             nonce: nonce,
@@ -489,6 +485,7 @@ contract PaymentEscrow {
         uint256 escrowBalanceBefore = IERC20(pullTokensData.token).balanceOf(address(this));
         IPullTokensHook(pullTokensData.pullTokensHook).pullTokens(pullTokensData);
         uint256 escrowBalanceAfter = IERC20(pullTokensData.token).balanceOf(address(this));
+        // Check that the tokens were transferred into the escrow
         if (escrowBalanceAfter - escrowBalanceBefore != pullTokensData.value) revert TokenPullFailed();
     }
 
@@ -508,41 +505,6 @@ contract PaymentEscrow {
         uint256 feeAmount = uint256(value) * feeBps / 10_000;
         if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
         if (value - feeAmount > 0) SafeTransferLib.safeTransfer(token, captureAddress, value - feeAmount);
-    }
-
-    /// @notice Use ERC-3009 receiveWithAuthorization with optional ERC-6492 preparation call
-    function _receiveWithAuthorization(
-        address token,
-        address from,
-        uint256 value,
-        uint48 validBefore,
-        bytes32 nonce,
-        bytes calldata signature
-    ) internal {
-        bytes memory innerSignature = signature;
-        if (signature.length >= 32 && bytes32(signature[signature.length - 32:]) == ERC6492_MAGIC_VALUE) {
-            // parse inner signature from ERC-6492 format
-            address target;
-            bytes memory prepareData;
-            (target, prepareData, innerSignature) =
-                abi.decode(signature[0:signature.length - 32], (address, bytes, bytes));
-
-            // construct call to target with prepareData
-            IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
-            calls[0] = IMulticall3.Call(target, prepareData);
-            multicall3.tryAggregate({requireSuccess: false, calls: calls});
-        }
-
-        // receive tokens from authorization signer
-        IERC3009(token).receiveWithAuthorization({
-            from: from,
-            to: address(this),
-            value: value,
-            validAfter: 0,
-            validBefore: validBefore,
-            nonce: nonce,
-            signature: innerSignature
-        });
     }
 
     /// @notice Validate and update state for refund
