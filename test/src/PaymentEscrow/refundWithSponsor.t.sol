@@ -385,7 +385,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     // Mint tokens for payer
     //     mockERC3009Token.mint(payerEOA, amount);
 
-    //     bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+    //     bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
@@ -421,7 +421,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
         uint256 salt,
         uint256 privateKey
     ) internal view returns (bytes memory) {
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, salt));
 
         // Use the same ERC3009 signing pattern as in PaymentEscrowBase

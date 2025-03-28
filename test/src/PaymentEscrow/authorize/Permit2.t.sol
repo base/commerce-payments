@@ -36,7 +36,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
             token: address(plainToken),
             amount: amount,
             deadline: paymentDetails.preApprovalExpiry,
-            nonce: uint256(keccak256(abi.encode(paymentDetails))),
+            nonce: uint256(paymentEscrow.getHash(paymentDetails)),
             privateKey: payer_EOA_PK
         });
 

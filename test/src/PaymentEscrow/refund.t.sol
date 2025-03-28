@@ -165,7 +165,7 @@ contract RefundTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 

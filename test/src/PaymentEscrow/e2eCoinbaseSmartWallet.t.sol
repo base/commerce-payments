@@ -17,7 +17,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(address(smartWalletDeployed), amount);
 
-        // bytes32 nonce = keccak256(abi.encode(paymentDetails)); // Use paymentDetailsHash as nonce
+        // bytes32 nonce = paymentEscrow.getHash(paymentDetails); // Use paymentDetailsHash as nonce
 
         // Create signature
         bytes memory signature = _signSmartWalletERC3009(
