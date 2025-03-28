@@ -201,9 +201,9 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         // Try to authorize again with same payment details
         mockERC3009Token.mint(payerEOA, amount);
-        vm.prank(operator);
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyCollected.selector, paymentDetailsHash));
+        vm.prank(operator);
         paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
@@ -285,7 +285,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 

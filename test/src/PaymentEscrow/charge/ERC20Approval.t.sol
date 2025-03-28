@@ -12,7 +12,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(payerEOA);

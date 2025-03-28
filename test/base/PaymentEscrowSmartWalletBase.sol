@@ -68,23 +68,21 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
         // First compute the ERC3009 digest that needs to be signed
-        bytes32 nonce = keccak256(
-            abi.encode(
-                PaymentEscrow.PaymentDetails({
-                    operator: operator,
-                    payer: payer,
-                    receiver: receiver,
-                    token: address(mockERC3009Token),
-                    maxAmount: maxAmount,
-                    preApprovalExpiry: preApprovalExpiry,
-                    authorizationExpiry: authorizationExpiry,
-                    refundExpiry: refundExpiry,
-                    minFeeBps: FEE_BPS,
-                    maxFeeBps: FEE_BPS,
-                    feeReceiver: feeReceiver,
-                    salt: uint256(0)
-                })
-            )
+        bytes32 nonce = paymentEscrow.getHash(
+            PaymentEscrow.PaymentDetails({
+                operator: operator,
+                payer: payer,
+                receiver: receiver,
+                token: address(mockERC3009Token),
+                maxAmount: maxAmount,
+                preApprovalExpiry: preApprovalExpiry,
+                authorizationExpiry: authorizationExpiry,
+                refundExpiry: refundExpiry,
+                minFeeBps: FEE_BPS,
+                maxFeeBps: FEE_BPS,
+                feeReceiver: feeReceiver,
+                salt: uint256(0)
+            })
         );
 
         // This is what needs to be signed by the smart wallet
@@ -159,7 +157,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         view
         returns (SpendPermissionManager.SpendPermission memory)
     {
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
 
         return SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,

@@ -63,10 +63,10 @@ contract ReclaimTest is PaymentEscrowBase {
 
         // Try to reclaim without any authorization
         vm.warp(paymentDetails.authorizationExpiry);
-        vm.prank(payerEOA);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, keccak256(abi.encode(paymentDetails)))
+            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentEscrow.getHash(paymentDetails))
         );
+        vm.prank(payerEOA);
         paymentEscrow.reclaim(paymentDetails);
     }
 
@@ -89,10 +89,10 @@ contract ReclaimTest is PaymentEscrowBase {
         paymentEscrow.reclaim(paymentDetails);
 
         // Try to reclaim again
-        vm.prank(payerEOA);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, keccak256(abi.encode(paymentDetails)))
+            abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentEscrow.getHash(paymentDetails))
         );
+        vm.prank(payerEOA);
         paymentEscrow.reclaim(paymentDetails);
     }
 
@@ -145,7 +145,7 @@ contract ReclaimTest is PaymentEscrowBase {
         // Prepare for reclaim
         vm.warp(paymentDetails.authorizationExpiry);
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentReclaimed(paymentDetailsHash, amount);
 
