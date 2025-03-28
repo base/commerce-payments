@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IMulticall3} from "./interfaces/IMulticall3.sol";
-import {IPullTokensHook} from "./interfaces/IPullTokensHook.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
+import {TokenCollector} from "./token-collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -37,53 +37,15 @@ contract PaymentEscrow {
         /// @dev Maximum fee percentage in basis points
         uint16 maxFeeBps;
         /// @dev Address that receives the fee portion of payments, if 0 then operator can set at capture
-        address feeRecipient;
+        address feeReceiver;
         /// @dev A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
-        /// @dev Contract implementing token pull logic
-        address pullTokensHook;
-    }
-
-    struct PullTokensData {
-        /// @dev The payer's address authorizing the payment
-        address payer;
-        /// @dev The ERC-20 token contract address
-        address token;
-        /// @dev The maximum amount of tokens that can be pulled
-        uint256 maxAmount;
-        /// @dev The amount of tokens to pull
-        uint256 amount;
-        /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
-        uint48 preApprovalExpiry;
-        /// @dev A unique identifier for the payment
-        bytes32 nonce;
-        /// @dev Contract implementing token pull logic
-        address pullTokensHook;
-        /// @dev The signature of the payer authorizing the payment
-        bytes signature;
-        /// @dev The data to pass to the pull tokens hook
-        bytes hookData;
-    }
-
-    struct SponsoredRefundDetails {
-        /// @dev The address of the sponsor providing liquidity for the refund
-        address sponsor;
-        /// @dev The deadline for the sponsored refund
-        uint48 refundDeadline;
-        /// @dev A source of entropy to ensure unique hashes across different refund details
-        uint256 refundSalt;
-        /// @dev The hook contract to use for retrieving liquidity for the refund
-        address pullTokensHook;
-        /// @dev The signature of the sponsor authorizing the payment
-        bytes signature;
-        /// @dev The data to pass to the pull tokens hook
-        bytes hookData;
     }
 
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
-        bool hasAuthorized;
+        bool hasCollected;
         /// @dev Amount of tokens currently on hold in escrow that can be captured
         uint120 capturable;
         /// @dev Amount of tokens previously captured that can be refunded
@@ -98,7 +60,7 @@ contract PaymentEscrow {
         bytes32 indexed paymentDetailsHash,
         address operator,
         address payer,
-        address captureAddress,
+        address receiver,
         address token,
         uint256 amount
     );
@@ -108,7 +70,7 @@ contract PaymentEscrow {
         bytes32 indexed paymentDetailsHash,
         address operator,
         address payer,
-        address captureAddress,
+        address receiver,
         address token,
         uint256 amount
     );
@@ -132,7 +94,7 @@ contract PaymentEscrow {
     error TokenPullFailed();
 
     /// @notice Payment has already been authorized
-    error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
+    error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
 
     /// @notice Payment authorization is insufficient for a requested capture
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedAmount, uint256 requestedAmount);
@@ -189,32 +151,35 @@ contract PaymentEscrow {
         _;
     }
 
-    /// @notice Transfers funds from payer to captureAddress in one step
+    /// @notice Transfers funds from payer to receiver in one step
     /// @dev If amount is less than the authorized amount, difference is returned to payer
     /// @dev Reverts if the authorization has been voided or expired
     /// @param amount Amount to charge and capture
     /// @param paymentDetails PaymentDetails struct
+    /// @param tokenCollector Address of the token collector
+    /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
-    /// @param signature Authorization signature from payer
+    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function charge(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
-        bytes calldata signature,
-        bytes calldata hookData,
+        address tokenCollector,
+        bytes calldata collectorData,
         uint16 feeBps,
-        address feeRecipient
+        address feeReceiver
     ) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
+        // check payment not already collected
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
+        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
+
         // validate payment details
-        _validatePaymentDetails(paymentDetails, paymentDetailsHash, amount);
+        _validatePayment(paymentDetails, amount);
 
         // validate fee parameters
-        _validateFee(paymentDetails, feeBps, feeRecipient);
+        _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // update captured amount for refund accounting
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
@@ -228,50 +193,35 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(
-            PullTokensData({
-                payer: paymentDetails.payer,
-                token: paymentDetails.token,
-                maxAmount: paymentDetails.maxAmount,
-                preApprovalExpiry: paymentDetails.preApprovalExpiry,
-                pullTokensHook: paymentDetails.pullTokensHook,
-                nonce: paymentDetailsHash,
-                amount: amount,
-                signature: signature,
-                hookData: hookData
-            })
-        );
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
 
         // distribute tokens to capture address and fee recipient
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
     }
 
     /// @notice Transfers funds from payer to escrow
     /// @param amount Amount to authorize
     /// @param paymentDetails PaymentDetails struct
-    /// @param signature Signature of the payer authorizing the payment
+    /// @param collectorData Data to pass to the token collector
     function authorize(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
-        bytes calldata signature,
-        bytes calldata hookData
+        address tokenCollector,
+        bytes calldata collectorData
     ) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
-        // check if payment is already authorized
-        if (_paymentState[paymentDetailsHash].hasAuthorized) {
-            revert PaymentAlreadyAuthorized(paymentDetailsHash);
-        }
+        // check payment not already collected
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
+        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
 
         // validate payment details
-        _validatePaymentDetails(paymentDetails, paymentDetailsHash, amount);
+        _validatePayment(paymentDetails, amount);
 
         // set payment state
         _paymentState[paymentDetailsHash] =
-            PaymentState({hasAuthorized: true, capturable: uint120(amount), refundable: 0});
+            PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -282,34 +232,20 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _pullTokens(
-            PullTokensData({
-                payer: paymentDetails.payer,
-                token: paymentDetails.token,
-                maxAmount: paymentDetails.maxAmount,
-                preApprovalExpiry: paymentDetails.preApprovalExpiry,
-                pullTokensHook: paymentDetails.pullTokensHook,
-                nonce: paymentDetailsHash,
-                amount: amount,
-                signature: signature,
-                hookData: hookData
-            })
-        );
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
     }
 
-    /// @notice Transfer previously-escrowed funds to captureAddress
+    /// @notice Transfer previously-escrowed funds to receiver
     /// @dev Can be called multiple times up to cumulative authorized amount
     /// @dev Can only be called by the operator
     /// @param amount Amount to capture
     /// @param paymentDetails PaymentDetails struct
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
-    function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient)
+    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver)
         external
         validAmount(amount)
     {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) {
             revert InvalidSender(msg.sender);
@@ -321,11 +257,12 @@ contract PaymentEscrow {
         }
 
         // check sufficient escrow to capture
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         PaymentState memory state = _paymentState[paymentDetailsHash];
         if (state.capturable < amount) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, amount);
 
         // validate fee parameters
-        _validateFee(paymentDetails, feeBps, feeRecipient);
+        _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // update state
         state.capturable -= uint120(amount);
@@ -334,22 +271,21 @@ contract PaymentEscrow {
         emit PaymentCaptured(paymentDetailsHash, amount, msg.sender);
 
         // distribute tokens including fees
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
     }
 
     /// @notice Permanently voids a payment authorization
     /// @dev Returns any escrowed funds to payer
-    /// @dev Can only be called by the operator or captureAddress
+    /// @dev Can only be called by the operator or receiver
     /// @param paymentDetails PaymentDetails struct
     function void(PaymentDetails calldata paymentDetails) external {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
-        // check sender is operator or captureAddress
+        // check sender is operator or receiver
         if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
             revert InvalidSender(msg.sender);
         }
 
         // check authorization non-zero
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
@@ -365,8 +301,6 @@ contract PaymentEscrow {
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentDetails PaymentDetails struct
     function reclaim(PaymentDetails calldata paymentDetails) external {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is payer
         if (msg.sender != paymentDetails.payer) {
             revert InvalidSender(msg.sender);
@@ -378,6 +312,7 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
@@ -394,60 +329,48 @@ contract PaymentEscrow {
     /// @dev Funds are transferred from the caller
     /// @param amount Amount to refund
     /// @param paymentDetails PaymentDetails struct
-    function refund(uint256 amount, PaymentDetails calldata paymentDetails) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
-        // validate and register refund
-        _registerRefund(
-            amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
-        );
-
-        // transfer tokens to payer
-        SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
-    }
-
-    /// @notice Return previously-captured tokens to payer
-    /// @dev Can be called by operator or captureAddress
-    /// @dev TODO docs
-    /// @param amount Amount to refund
-    /// @param paymentDetails PaymentDetails struct
-    /// @param refundDetails SponsoredRefundDetails struct
-    function refundWithSponsor(
+    /// @param tokenCollector Address of the token collector
+    /// @param collectorData Data to pass to the token collector
+    function refund(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
-        SponsoredRefundDetails calldata refundDetails
+        address tokenCollector,
+        bytes calldata collectorData
     ) external validAmount(amount) {
+        // check sender is operator or original payment receiver
+        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
+            revert InvalidSender(msg.sender);
+        }
+
+        // check refund has not expired
+        if (block.timestamp >= paymentDetails.refundExpiry) {
+            revert AfterRefundExpiry(uint48(block.timestamp), paymentDetails.refundExpiry);
+        }
+
+        // limit refund amount to previously captured
         bytes32 paymentDetailsHash = getHash(paymentDetails);
-        bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, refundDetails.refundSalt));
+        uint120 captured = _paymentState[paymentDetailsHash].refundable;
+        if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
-        // validate and register refund
-        _registerRefund(
-            amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
-        );
+        // update capturable amount
+        _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
+        emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
 
-        PullTokensData memory pullTokensData = PullTokensData({
-            payer: refundDetails.sponsor,
-            token: paymentDetails.token,
-            maxAmount: amount, // TODO: should a refundDetails have a maxAmount that can differ from amount?
-            preApprovalExpiry: refundDetails.refundDeadline,
-            pullTokensHook: refundDetails.pullTokensHook,
-            nonce: nonce,
-            amount: amount,
-            signature: refundDetails.signature,
-            hookData: refundDetails.hookData
-        });
-
-        _pullTokens(pullTokensData);
-
-        // return tokens to payer
-        SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
+        if (tokenCollector != address(0)) {
+            // collect tokens into escrow then transfer to original payer
+            _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
+            SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
+        } else {
+            // transfer tokens from caller to original payer
+            SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
+        }
     }
 
     /// @notice Check if a payment has been authorized
     /// @param paymentDetailsHash Hash of the payment details
     /// @return True if the payment has been authorized
-    function hasAuthorized(bytes32 paymentDetailsHash) external view returns (bool) {
-        return _paymentState[paymentDetailsHash].hasAuthorized;
+    function hasCollected(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].hasCollected;
     }
 
     /// @notice Get the amount of tokens currently authorized (held in escrow)
@@ -472,61 +395,34 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfer tokens into this contract
-    function _pullTokens(PullTokensData memory pullTokensData) internal {
-        uint256 escrowBalanceBefore = IERC20(pullTokensData.token).balanceOf(address(this));
-        IPullTokensHook(pullTokensData.pullTokensHook).pullTokens(pullTokensData);
-        uint256 escrowBalanceAfter = IERC20(pullTokensData.token).balanceOf(address(this));
-        // Check that the tokens were transferred into the escrow
-        if (escrowBalanceAfter - escrowBalanceBefore != pullTokensData.amount) revert TokenPullFailed();
+    function _collectTokens(
+        PaymentDetails calldata paymentDetails,
+        uint256 amount,
+        address tokenCollector,
+        bytes calldata collectorData
+    ) internal {
+        uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
+        TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
+        uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
+        if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenPullFailed();
     }
 
-    /// @notice Sends tokens to captureAddress and/or feeRecipient
+    /// @notice Sends tokens to receiver and/or feeReceiver
     /// @param token Token to transfer
-    /// @param captureAddress Address to receive payment
-    /// @param feeRecipient Address to receive fees
+    /// @param receiver Address to receive payment
+    /// @param feeReceiver Address to receive fees
     /// @param feeBps Fee percentage in basis points
     /// @param amount Total amount to split between payment and fees
-    function _distributeTokens(
-        address token,
-        address captureAddress,
-        address feeRecipient,
-        uint16 feeBps,
-        uint256 amount
-    ) internal {
+    function _distributeTokens(address token, address receiver, address feeReceiver, uint16 feeBps, uint256 amount)
+        internal
+    {
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
-        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
-        if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, captureAddress, amount - feeAmount);
-    }
-
-    /// @notice Validate and update state for refund
-    function _registerRefund(
-        uint256 amount,
-        address operator,
-        address originalPaymentReceiver,
-        uint48 refundExpiry,
-        bytes32 paymentDetailsHash
-    ) internal {
-        // Check sender is operator or original payment receiver
-        if (msg.sender != operator && msg.sender != originalPaymentReceiver) {
-            revert InvalidSender(msg.sender);
-        }
-
-        // Check refund has not expired
-        if (block.timestamp >= refundExpiry) revert AfterRefundExpiry(uint48(block.timestamp), refundExpiry);
-
-        // Limit refund amount to previously captured
-        uint120 captured = _paymentState[paymentDetailsHash].refundable;
-        if (captured < amount) revert RefundExceedsCapture(amount, captured);
-
-        _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
-        emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
+        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeReceiver, feeAmount);
+        if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);
     }
 
     /// @notice Validates required properties of a payment
-    function _validatePaymentDetails(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 amount)
-        internal
-        view
-    {
+    function _validatePayment(PaymentDetails calldata paymentDetails, uint256 amount) internal view {
         // check amount does not exceed maximum
         if (amount > paymentDetails.maxAmount) revert ExceedsMaxAmount(amount, paymentDetails.maxAmount);
 
@@ -552,24 +448,21 @@ contract PaymentEscrow {
         if (paymentDetails.minFeeBps > paymentDetails.maxFeeBps) {
             revert InvalidFeeBpsRange(paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
         }
-
-        // check payment not is already authorized
-        if (_paymentState[paymentDetailsHash].hasAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment details.
-    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient) internal pure {
+    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver) internal pure {
         // check fee bps within [min, max]
         if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
             revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
         }
 
         // check fee recipient only zero address if zero fee bps
-        if (feeBps > 0 && feeRecipient == address(0)) revert ZeroFeeRecipient();
+        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeRecipient();
 
         // check fee recipient matches payment details if non-zero
-        if (paymentDetails.feeRecipient != address(0) && paymentDetails.feeRecipient != feeRecipient) {
-            revert InvalidFeeRecipient(feeRecipient, paymentDetails.feeRecipient);
+        if (paymentDetails.feeReceiver != address(0) && paymentDetails.feeReceiver != feeReceiver) {
+            revert InvalidFeeRecipient(feeReceiver, paymentDetails.feeReceiver);
         }
     }
 }

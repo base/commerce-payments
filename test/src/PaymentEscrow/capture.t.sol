@@ -17,11 +17,11 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         vm.prank(sender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenValueIsZero() public {
@@ -30,7 +30,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-        paymentEscrow.capture(0, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(0, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
@@ -41,7 +41,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.capture(overflowValue, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(overflowValue, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenAfterAuthorizationExpiry(
@@ -64,7 +64,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.warp(paymentDetails.preApprovalExpiry - 1);
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         vm.warp(authorizationExpiry + 1);
         vm.prank(operator);
@@ -73,7 +73,7 @@ contract CaptureTest is PaymentEscrowBase {
                 PaymentEscrow.AfterAuthorizationExpiry.selector, block.timestamp, authorizationExpiry
             )
         );
-        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenInsufficientAuthorization(uint120 authorizedAmount) public {
@@ -91,7 +91,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // Try to capture more than authorized
         vm.prank(operator);
@@ -100,7 +100,7 @@ contract CaptureTest is PaymentEscrowBase {
                 PaymentEscrow.InsufficientAuthorization.selector, paymentDetailsHash, authorizedAmount, captureAmount
             )
         );
-        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_receiverSender(uint120 authorizedAmount) public {
@@ -115,12 +115,12 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // Then capture the full amount
         vm.prank(paymentDetails.receiver);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, paymentDetails.receiver));
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_succeeds_withFullAmount(uint120 authorizedAmount) public {
@@ -135,18 +135,18 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         uint256 feeAmount = authorizedAmount * FEE_BPS / 10_000;
         uint256 receiverExpectedBalance = authorizedAmount - feeAmount;
 
         // Then capture the full amount
         vm.prank(operator);
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(receiver), receiverExpectedBalance);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
@@ -163,18 +163,18 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         uint256 feeAmount = captureAmount * FEE_BPS / 10_000;
         uint256 receiverExpectedBalance = captureAmount - feeAmount;
 
         // Then capture partial amount
         vm.prank(operator);
-        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
 
         // Verify balances and state
         assertEq(mockERC3009Token.balanceOf(receiver), receiverExpectedBalance);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), authorizedAmount - captureAmount);
     }
 
@@ -192,17 +192,15 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // First capture
         vm.prank(operator);
-        paymentEscrow.capture(firstCaptureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(firstCaptureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
 
         // Second capture
         vm.prank(operator);
-        paymentEscrow.capture(
-            secondCaptureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient
-        );
+        paymentEscrow.capture(secondCaptureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
 
         // Calculate fees for each capture separately to match contract behavior
         uint256 firstFeesAmount = firstCaptureAmount * FEE_BPS / 10_000;
@@ -215,7 +213,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // Verify final state
         assertEq(mockERC3009Token.balanceOf(receiver), receiverExpectedBalance);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), totalFeeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), totalFeeAmount);
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), 0);
     }
 
@@ -232,7 +230,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // First confirm the authorization
         vm.prank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
@@ -240,7 +238,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // Execute capture
         vm.prank(operator);
-        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenFeeBpsBelowMin(
@@ -265,13 +263,13 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
-        paymentEscrow.capture(authorizedAmount, paymentDetails, captureFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, captureFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_reverts_whenFeeBpsAboveMax(
@@ -297,13 +295,13 @@ contract CaptureTest is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
-        paymentEscrow.capture(authorizedAmount, paymentDetails, captureFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, captureFeeBps, paymentDetails.feeReceiver);
     }
 
     function test_succeeds_withOperatorSetFeeRecipient(
@@ -321,17 +319,16 @@ contract CaptureTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: payerEOA,
             maxAmount: authorizedAmount,
-            token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            token: address(mockERC3009Token)
         });
-        paymentDetails.feeRecipient = address(0);
+        paymentDetails.feeReceiver = address(0);
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
 
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(paymentDetails.operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         address newFeeRecipient = address(0xdead);
 

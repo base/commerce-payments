@@ -14,7 +14,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-        paymentEscrow.authorize(0, paymentDetails, signature, "");
+        paymentEscrow.authorize(0, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
@@ -27,7 +27,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.authorize(overflowValue, paymentDetails, signature, "");
+        paymentEscrow.authorize(overflowValue, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
@@ -43,7 +43,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenValueExceedsAuthorized(uint120 authorizedAmount) public {
@@ -61,7 +61,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.ExceedsMaxAmount.selector, confirmAmount, authorizedAmount)
         );
-        paymentEscrow.authorize(confirmAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(confirmAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_exactlyAtPreApprovalExpiry(uint120 amount) public {
@@ -82,7 +82,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry, preApprovalExpiry)
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_afterPreApprovalExpiry(uint120 amount) public {
@@ -105,7 +105,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
                 PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry + 1, preApprovalExpiry
             )
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenPreApprovalExpiryAfterAuthorizationExpiry(
@@ -136,7 +136,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
                 PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
             )
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenAuthorizationExpiryAfterRefundExpiry(
@@ -167,7 +167,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
                 PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
             )
         );
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenFeeBpsTooHigh(uint120 amount) public {
@@ -183,7 +183,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
@@ -197,14 +197,14 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         // First authorization
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // Try to authorize again with same payment details
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyAuthorized.selector, paymentDetailsHash));
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyCollected.selector, paymentDetailsHash));
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
@@ -219,7 +219,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
@@ -241,7 +241,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(confirmAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(confirmAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), confirmAmount);
         assertEq(
@@ -257,7 +257,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set both fee recipient and fee bps to zero - this should be valid
-        paymentDetails.feeRecipient = address(0);
+        paymentDetails.feeReceiver = address(0);
         paymentDetails.minFeeBps = 0;
         paymentDetails.maxFeeBps = 0;
 
@@ -269,7 +269,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature, "");
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
 
         // Verify balances - full amount should go to escrow since fees are 0
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
@@ -302,6 +302,6 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         // Execute confirmation
         vm.prank(operator);
-        paymentEscrow.authorize(valueToConfirm, paymentDetails, signature, "");
+        paymentEscrow.authorize(valueToConfirm, paymentDetails, hooks[TokenCollector.ERC3009], signature);
     }
 }
