@@ -14,8 +14,6 @@ contract PreApproveTest is PaymentEscrowBase {
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
-
         vm.prank(invalidSender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
@@ -37,7 +35,7 @@ contract PreApproveTest is PaymentEscrowBase {
         // Now try to pre-approve
         vm.prank(payerEOA);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalTokenCollector.PaymentAlreadyAuthorized.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalTokenCollector.PaymentAlreadyCollected.selector, paymentDetailsHash)
         );
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
     }

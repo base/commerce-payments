@@ -45,7 +45,7 @@ contract PaymentEscrow {
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
-        bool hasAuthorized;
+        bool hasCollected;
         /// @dev Amount of tokens currently on hold in escrow that can be captured
         uint120 capturable;
         /// @dev Amount of tokens previously captured that can be refunded
@@ -94,7 +94,7 @@ contract PaymentEscrow {
     error TokenPullFailed();
 
     /// @notice Payment has already been authorized
-    error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
+    error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
 
     /// @notice Payment authorization is insufficient for a requested capture
     error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedAmount, uint256 requestedAmount);
@@ -168,13 +168,15 @@ contract PaymentEscrow {
         uint16 feeBps,
         address feeRecipient
     ) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
+        // check payment not already collected
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
+        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
+
         // validate payment details
-        _validatePaymentDetails(paymentDetails, paymentDetailsHash, amount);
+        _validatePayment(paymentDetails, amount);
 
         // validate fee parameters
         _validateFee(paymentDetails, feeBps, feeRecipient);
@@ -207,17 +209,19 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
+        // check payment not already collected
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
+        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
+
         // validate payment details
-        _validatePaymentDetails(paymentDetails, paymentDetailsHash, amount);
+        _validatePayment(paymentDetails, amount);
 
         // set payment state
         _paymentState[paymentDetailsHash] =
-            PaymentState({hasAuthorized: true, capturable: uint120(amount), refundable: 0});
+            PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -242,8 +246,6 @@ contract PaymentEscrow {
         external
         validAmount(amount)
     {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator
         if (msg.sender != paymentDetails.operator) {
             revert InvalidSender(msg.sender);
@@ -255,6 +257,7 @@ contract PaymentEscrow {
         }
 
         // check sufficient escrow to capture
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         PaymentState memory state = _paymentState[paymentDetailsHash];
         if (state.capturable < amount) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, amount);
 
@@ -276,14 +279,13 @@ contract PaymentEscrow {
     /// @dev Can only be called by the operator or receiver
     /// @param paymentDetails PaymentDetails struct
     function void(PaymentDetails calldata paymentDetails) external {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is operator or receiver
         if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
             revert InvalidSender(msg.sender);
         }
 
         // check authorization non-zero
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
@@ -299,8 +301,6 @@ contract PaymentEscrow {
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentDetails PaymentDetails struct
     function reclaim(PaymentDetails calldata paymentDetails) external {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
         // check sender is payer
         if (msg.sender != paymentDetails.payer) {
             revert InvalidSender(msg.sender);
@@ -312,6 +312,7 @@ contract PaymentEscrow {
         }
 
         // check authorization non-zero
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentDetailsHash);
 
@@ -336,19 +337,18 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external validAmount(amount) {
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-
-        // Check sender is operator or original payment receiver
+        // check sender is operator or original payment receiver
         if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
             revert InvalidSender(msg.sender);
         }
 
-        // Check refund has not expired
+        // check refund has not expired
         if (block.timestamp >= paymentDetails.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentDetails.refundExpiry);
         }
 
-        // Limit refund amount to previously captured
+        // limit refund amount to previously captured
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint120 captured = _paymentState[paymentDetailsHash].refundable;
         if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
@@ -357,8 +357,8 @@ contract PaymentEscrow {
         emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
 
         if (tokenCollector != address(0)) {
+            // collect tokens into escrow then transfer to original payer
             _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
-            // transfer tokens from escrow to original payer
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
         } else {
             // transfer tokens from caller to original payer
@@ -369,8 +369,8 @@ contract PaymentEscrow {
     /// @notice Check if a payment has been authorized
     /// @param paymentDetailsHash Hash of the payment details
     /// @return True if the payment has been authorized
-    function hasAuthorized(bytes32 paymentDetailsHash) external view returns (bool) {
-        return _paymentState[paymentDetailsHash].hasAuthorized;
+    function hasCollected(bytes32 paymentDetailsHash) external view returns (bool) {
+        return _paymentState[paymentDetailsHash].hasCollected;
     }
 
     /// @notice Get the amount of tokens currently authorized (held in escrow)
@@ -422,10 +422,7 @@ contract PaymentEscrow {
     }
 
     /// @notice Validates required properties of a payment
-    function _validatePaymentDetails(PaymentDetails calldata paymentDetails, bytes32 paymentDetailsHash, uint256 amount)
-        internal
-        view
-    {
+    function _validatePayment(PaymentDetails calldata paymentDetails, uint256 amount) internal view {
         // check amount does not exceed maximum
         if (amount > paymentDetails.maxAmount) revert ExceedsMaxAmount(amount, paymentDetails.maxAmount);
 
@@ -451,9 +448,6 @@ contract PaymentEscrow {
         if (paymentDetails.minFeeBps > paymentDetails.maxFeeBps) {
             revert InvalidFeeBpsRange(paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
         }
-
-        // check payment not is already authorized
-        if (_paymentState[paymentDetailsHash].hasAuthorized) revert PaymentAlreadyAuthorized(paymentDetailsHash);
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment details.

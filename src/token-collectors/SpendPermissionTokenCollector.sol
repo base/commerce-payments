@@ -17,6 +17,7 @@ contract SpendPermissionTokenCollector is TokenCollector {
         spendPermissionManager = SpendPermissionManager(payable(_spendPermissionManager));
     }
 
+    /// @inheritdoc TokenCollector
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,

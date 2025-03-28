@@ -38,7 +38,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
         // Pre-approve in escrow
         vm.prank(payerEOA);
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
@@ -64,7 +64,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
+
         // Pre-approve in escrow
         vm.prank(payerEOA);
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);

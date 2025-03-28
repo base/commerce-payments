@@ -11,7 +11,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
 
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
     error PaymentNotApproved(bytes32 paymentDetailsHash);
-    error PaymentAlreadyAuthorized(bytes32 paymentDetailsHash);
+    error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
     error InvalidSender(address sender);
 
     mapping(bytes32 => bool) public isPreApproved;
@@ -27,13 +27,13 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
 
         // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
-        if (paymentEscrow.hasAuthorized(paymentDetailsHash)) revert PaymentAlreadyAuthorized(paymentDetailsHash);
+        if (paymentEscrow.hasCollected(paymentDetailsHash)) revert PaymentAlreadyCollected(paymentDetailsHash);
         if (isPreApproved[paymentDetailsHash]) revert PaymentAlreadyPreApproved(paymentDetailsHash);
         isPreApproved[paymentDetailsHash] = true;
         emit PaymentApproved(paymentDetailsHash);
     }
 
-    function collectTokens(PaymentEscrow.PaymentDetails calldata paymentDetails, uint256 amount, bytes calldata)
+    function collectTokens(PaymentEscrow.PaymentDetails calldata paymentDetails, uint256, bytes calldata)
         external
         override
         onlyPaymentEscrow

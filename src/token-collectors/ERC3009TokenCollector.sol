@@ -10,12 +10,14 @@ import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract ERC3009TokenCollector is TokenCollector {
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
+
     IMulticall3 public immutable multicall3;
 
     constructor(address _multicall3, address _paymentEscrow) TokenCollector(_paymentEscrow) {
         multicall3 = IMulticall3(_multicall3);
     }
 
+    /// @inheritdoc TokenCollector
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
