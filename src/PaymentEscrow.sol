@@ -144,6 +144,10 @@ contract PaymentEscrow {
     /// @notice Fee recipient cannot be changed
     error InvalidFeeRecipient(address attempted, address expected);
 
+    bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
+        "PaymentDetails(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
+    );
+
     /// @notice Ensures amount is non-zero and does not overflow storage
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert ZeroAmount();
@@ -390,8 +394,25 @@ contract PaymentEscrow {
     /// @notice Get hash of PaymentDetails struct
     /// @param paymentDetails PaymentDetails struct
     /// @return hash Hash of payment details
-    function getHash(PaymentDetails calldata paymentDetails) public pure returns (bytes32) {
-        return keccak256(abi.encode(paymentDetails));
+    function getHash(PaymentDetails calldata paymentDetails) public view returns (bytes32) {
+        bytes32 detailsHash = keccak256(
+            abi.encode(
+                PAYMENT_DETAILS_TYPEHASH,
+                paymentDetails.operator,
+                paymentDetails.payer,
+                paymentDetails.receiver,
+                paymentDetails.token,
+                paymentDetails.maxAmount,
+                paymentDetails.preApprovalExpiry,
+                paymentDetails.authorizationExpiry,
+                paymentDetails.refundExpiry,
+                paymentDetails.minFeeBps,
+                paymentDetails.maxFeeBps,
+                paymentDetails.feeReceiver,
+                paymentDetails.salt
+            )
+        );
+        return keccak256(abi.encode(block.chainid, address(this), detailsHash));
     }
 
     /// @notice Transfer tokens into this contract

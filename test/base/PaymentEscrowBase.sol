@@ -156,7 +156,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             value: paymentDetails.maxAmount,
             validAfter: 0,
             validBefore: paymentDetails.preApprovalExpiry,
-            nonce: keccak256(abi.encode(paymentDetails)),
+            nonce: paymentEscrow.getHash(paymentDetails),
             signerPk: signerPk
         });
     }
