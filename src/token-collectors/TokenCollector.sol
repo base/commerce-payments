@@ -32,5 +32,7 @@ abstract contract TokenCollector {
         bytes calldata collectorData
     ) external virtual;
 
+    /// @notice Get the type of token collector
+    /// @return collectorType Type of token collector
     function getCollectorType() external view virtual returns (CollectorType);
 }

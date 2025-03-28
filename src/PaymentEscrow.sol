@@ -22,9 +22,9 @@ contract PaymentEscrow {
         address payer;
         /// @dev Address that receives the payment (minus fees)
         address receiver;
-        /// @dev The ERC-3009 token contract address
+        /// @dev The token contract address
         address token;
-        /// @dev The amount of tokens that will be transferred from the payer to the escrow
+        /// @dev The amount of tokens that can be authorized
         uint256 maxAmount;
         /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
         uint48 preApprovalExpiry;
@@ -95,7 +95,7 @@ contract PaymentEscrow {
     error InvalidSender(address sender);
 
     /// @notice Token pull failed
-    error TokenPullFailed();
+    error TokenCollectionFailed();
 
     /// @notice Payment has already been authorized
     error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
@@ -163,7 +163,7 @@ contract PaymentEscrow {
     }
 
     /// @notice Transfers funds from payer to receiver in one step
-    /// @dev If amount is less than the authorized amount, difference is returned to payer
+    /// @dev If amount is less than the authorized amount, only amount is taken from payer
     /// @dev Reverts if the authorization has been voided or expired
     /// @param amount Amount to charge and capture
     /// @param paymentDetails PaymentDetails struct
@@ -339,7 +339,7 @@ contract PaymentEscrow {
 
     /// @notice Return previously-captured tokens to payer
     /// @dev Can be called by operator or receiver
-    /// @dev Funds are transferred from the caller
+    /// @dev Funds are transferred from the caller or from the escrow if token collector retrieves external liquidity
     /// @param amount Amount to refund
     /// @param paymentDetails PaymentDetails struct
     /// @param tokenCollector Address of the token collector
@@ -402,7 +402,7 @@ contract PaymentEscrow {
 
     /// @notice Get hash of PaymentDetails struct
     /// @param paymentDetails PaymentDetails struct
-    /// @return hash Hash of payment details
+    /// @return hash Hash of payment details for the current chain and contract address
     function getHash(PaymentDetails calldata paymentDetails) public view returns (bytes32) {
         bytes32 detailsHash = keccak256(
             abi.encode(
@@ -438,7 +438,7 @@ contract PaymentEscrow {
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
         TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
-        if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenPullFailed();
+        if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenCollectionFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
