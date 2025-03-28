@@ -32,7 +32,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(plainToken),
-            hook: PullTokensHook.Permit2
+            hook: TokenCollector.Permit2
         });
 
         // Generate Permit2 signature using the same deadline as paymentDetails

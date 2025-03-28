@@ -14,7 +14,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
 
         // Create payment details with SpendPermissionWithMagicSpend auth type
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization(
-            address(smartWalletDeployed), amount, address(mockERC3009Token), PullTokensHook.SpendPermission
+            address(smartWalletDeployed), amount, address(mockERC3009Token), TokenCollector.SpendPermission
         );
 
         // Create the spend permission

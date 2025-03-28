@@ -322,7 +322,7 @@ contract CaptureTest is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: authorizedAmount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            hook: TokenCollector.ERC3009
         });
         paymentDetails.feeRecipient = address(0);
         paymentDetails.minFeeBps = minFeeBps;

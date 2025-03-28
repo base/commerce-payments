@@ -83,7 +83,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     maxFeeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
                     salt: uint256(0),
-                    pullTokensHook: hooks[PullTokensHook.ERC3009]
+                    tokenCollector: hooks[TokenCollector.ERC3009]
                 })
             )
         );
@@ -118,7 +118,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             abi.encode(
                 mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 payer,
-                hooks[PullTokensHook.ERC3009],
+                hooks[TokenCollector.ERC3009],
                 value,
                 validAfter,
                 validBefore,
@@ -164,7 +164,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         return SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
-            spender: paymentDetails.pullTokensHook,
+            spender: paymentDetails.tokenCollector,
             token: address(paymentDetails.token),
             allowance: uint160(paymentDetails.maxAmount),
             period: type(uint48).max,

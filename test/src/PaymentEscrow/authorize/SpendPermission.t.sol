@@ -18,7 +18,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
             payer: address(smartWalletDeployed),
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.SpendPermission
+            hook: TokenCollector.SpendPermission
         });
 
         // Create and sign the spend permission

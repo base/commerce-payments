@@ -322,7 +322,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            hook: TokenCollector.ERC3009
         });
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
@@ -352,7 +352,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            hook: TokenCollector.ERC3009
         });
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
@@ -377,7 +377,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            hook: TokenCollector.ERC3009
         });
         paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;
@@ -413,7 +413,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC3009
+            hook: TokenCollector.ERC3009
         });
         paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;

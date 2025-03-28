@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {ERC20PullTokensHook} from "../../../../src/hooks/ERC20PullTokensHook.sol";
+import {PreApprovalTokenCollector} from "../../../../src/token-collectorsPreApprovalTokenCollector.sol";
 
 contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
@@ -14,7 +14,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC20
+            hook: TokenCollector.ERC20
         });
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         // Give payer tokens and approve escrow
@@ -24,7 +24,9 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         // Try to charge without pre-approval in Escrow contract
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(ERC20PullTokensHook.PaymentNotApproved.selector, paymentDetailsHash));
+        vm.expectRevert(
+            abi.encodeWithSelector(PreApprovalTokenCollector.PaymentNotApproved.selector, paymentDetailsHash)
+        );
         paymentEscrow.charge(amount, paymentDetails, "", "", paymentDetails.minFeeBps, paymentDetails.feeRecipient);
     }
 
@@ -35,12 +37,12 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC20
+            hook: TokenCollector.ERC20
         });
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        ERC20PullTokensHook(address(hooks[PullTokensHook.ERC20])).preApprove(paymentDetails);
+        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -58,17 +60,17 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             payer: payerEOA,
             maxAmount: amount,
             token: address(mockERC3009Token),
-            hook: PullTokensHook.ERC20
+            hook: TokenCollector.ERC20
         });
         bytes32 paymentDetailsHash = keccak256(abi.encode(paymentDetails));
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        ERC20PullTokensHook(address(hooks[PullTokensHook.ERC20])).preApprove(paymentDetails);
+        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(payerEOA);
-        mockERC3009Token.approve(address(hooks[PullTokensHook.ERC20]), amount);
+        mockERC3009Token.approve(address(hooks[TokenCollector.ERC20]), amount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 receiverBalanceBefore = mockERC3009Token.balanceOf(receiver);

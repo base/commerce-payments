@@ -324,7 +324,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             PaymentEscrow.SponsoredRefundDetails({
                 sponsor: _sponsor,
                 refundDeadline: refundDeadline,
-                pullTokensHook: address(hooks[PullTokensHook.ERC3009]),
+                tokenCollector: address(hooks[TokenCollector.ERC3009]),
                 refundSalt: refundSalt,
                 signature: sponsorSignature,
                 hookData: ""
@@ -429,7 +429,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             abi.encode(
                 mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 sponsorAddress, // from
-                address(hooks[PullTokensHook.ERC3009]), // to
+                address(hooks[TokenCollector.ERC3009]), // to
                 value, // value
                 0, // validAfter
                 deadline, // validBefore
