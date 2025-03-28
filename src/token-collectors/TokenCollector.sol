@@ -6,6 +6,11 @@ import {PaymentEscrow} from "../PaymentEscrow.sol";
 abstract contract TokenCollector {
     PaymentEscrow public immutable paymentEscrow;
 
+    enum CollectorType {
+        Payment,
+        Refund
+    }
+
     error OnlyPaymentEscrow();
 
     constructor(address _paymentEscrow) {
@@ -26,4 +31,6 @@ abstract contract TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external virtual;
+
+    function getCollectorType() external view virtual returns (CollectorType);
 }

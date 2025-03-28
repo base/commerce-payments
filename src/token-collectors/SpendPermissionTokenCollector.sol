@@ -18,6 +18,11 @@ contract SpendPermissionTokenCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
+    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
+        return TokenCollector.CollectorType.Payment;
+    }
+
+    /// @inheritdoc TokenCollector
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,

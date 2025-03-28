@@ -148,6 +148,9 @@ contract PaymentEscrow {
     /// @notice Fee recipient cannot be changed
     error InvalidFeeRecipient(address attempted, address expected);
 
+    /// @notice Token collector is not valid for the operation
+    error InvalidCollectorForOperation();
+
     bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
         "PaymentDetails(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
@@ -202,7 +205,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
@@ -242,7 +245,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
     }
 
     /// @notice Transfer previously-escrowed funds to receiver
@@ -368,7 +371,7 @@ contract PaymentEscrow {
 
         if (tokenCollector != address(0)) {
             // collect tokens into escrow then transfer to original payer
-            _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
+            _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
         } else {
             // transfer tokens from caller to original payer
@@ -426,8 +429,12 @@ contract PaymentEscrow {
         PaymentDetails calldata paymentDetails,
         uint256 amount,
         address tokenCollector,
-        bytes calldata collectorData
+        bytes calldata collectorData,
+        TokenCollector.CollectorType collectorType
     ) internal {
+        if (TokenCollector(tokenCollector).getCollectorType() != collectorType) {
+            revert InvalidCollectorForOperation();
+        }
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
         TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
