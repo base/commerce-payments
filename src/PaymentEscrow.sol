@@ -58,6 +58,7 @@ contract PaymentEscrow {
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentDetailsHash,
+        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
@@ -68,6 +69,7 @@ contract PaymentEscrow {
     /// @notice Emitted when authorized (escrowed) amount is increased
     event PaymentAuthorized(
         bytes32 indexed paymentDetailsHash,
+        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
@@ -85,7 +87,9 @@ contract PaymentEscrow {
     event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when a captured payment is refunded
-    event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 amount, address sender);
+    event PaymentRefunded(
+        bytes32 indexed paymentDetailsHash, address indexed tokenCollector, uint256 amount, address sender
+    );
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender);
@@ -189,6 +193,7 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
         emit PaymentCharged(
             paymentDetailsHash,
+            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
@@ -228,6 +233,7 @@ contract PaymentEscrow {
             PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentDetailsHash,
+            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
@@ -358,7 +364,7 @@ contract PaymentEscrow {
 
         // update capturable amount
         _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
-        emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
+        emit PaymentRefunded(paymentDetailsHash, tokenCollector, amount, msg.sender);
 
         if (tokenCollector != address(0)) {
             // collect tokens into escrow then transfer to original payer
