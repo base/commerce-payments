@@ -11,7 +11,7 @@ contract RefundTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-        paymentEscrow.refund(0, paymentDetails);
+        paymentEscrow.refund(0, paymentDetails, address(0), hex"");
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
@@ -22,7 +22,7 @@ contract RefundTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.refund(overflowValue, paymentDetails);
+        paymentEscrow.refund(overflowValue, paymentDetails, address(0), hex"");
     }
 
     function test_reverts_whenSenderNotOperatorOrreceiver(uint120 authorizedAmount, uint120 refundAmount) public {
@@ -35,7 +35,7 @@ contract RefundTest is PaymentEscrowBase {
         address randomAddress = makeAddr("randomAddress");
         vm.prank(randomAddress);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress));
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
     }
 
     function test_reverts_afterRefundExpiry(uint120 authorizedAmount, uint120 refundAmount, uint48 refundExpiry)
@@ -53,7 +53,7 @@ contract RefundTest is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.AfterRefundExpiry.selector, uint48(block.timestamp), refundExpiry)
         );
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
     }
 
     function test_reverts_whenRefundExceedsCaptured(uint120 authorizedAmount) public {
@@ -70,7 +70,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture partial amount
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
         paymentEscrow.capture(chargeAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -82,7 +82,7 @@ contract RefundTest is PaymentEscrowBase {
         // Try to refund more than charged
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, refundAmount, chargeAmount));
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
     }
 
     function test_succeeds_whenCalledByOperator(uint120 authorizedAmount, uint120 refundAmount) public {
@@ -98,7 +98,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -114,7 +114,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
@@ -134,7 +134,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -150,7 +150,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // Execute refund
         vm.prank(receiver);
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(receiver), receiverBalanceBefore - refundAmount);
@@ -171,7 +171,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(authorizedAmount, paymentDetails, signature, "");
+        paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
         paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
         vm.stopPrank();
 
@@ -186,6 +186,6 @@ contract RefundTest is PaymentEscrowBase {
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(refundAmount, paymentDetails);
+        paymentEscrow.refund(refundAmount, paymentDetails, address(0), hex"");
     }
 }

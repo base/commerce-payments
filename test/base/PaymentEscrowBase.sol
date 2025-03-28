@@ -16,10 +16,10 @@ import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
-import {ERC3009TokenCollector} from "../../src/token-collectorsERC3009TokenCollector.sol";
-import {PreApprovalTokenCollector} from "../../src/token-collectorsPreApprovalTokenCollector.sol";
-import {Permit2TokenCollector} from "../../src/token-collectorsPermit2TokenCollector.sol";
-import {SpendPermissionTokenCollector} from "../../src/token-collectorsSpendPermissionTokenCollector.sol";
+import {ERC3009TokenCollector} from "../../src/token-collectors/ERC3009TokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {Permit2TokenCollector} from "../../src/token-collectors/Permit2TokenCollector.sol";
+import {SpendPermissionTokenCollector} from "../../src/token-collectors/SpendPermissionTokenCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract PaymentEscrowBase is Test, DeployPermit2 {
@@ -121,10 +121,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         view
         returns (PaymentEscrow.PaymentDetails memory)
     {
-        return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token), TokenCollector.ERC3009);
+        return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token, TokenCollector hook)
+    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token)
         internal
         view
         returns (PaymentEscrow.PaymentDetails memory)
@@ -141,8 +141,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             minFeeBps: FEE_BPS,
             maxFeeBps: FEE_BPS,
             feeRecipient: feeRecipient,
-            salt: 0,
-            tokenCollector: hooks[hook]
+            salt: 0
         });
     }
 
@@ -153,7 +152,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     {
         return _signERC3009({
             from: paymentDetails.payer,
-            to: paymentDetails.tokenCollector,
+            to: hooks[TokenCollector.ERC3009],
             value: paymentDetails.maxAmount,
             validAfter: 0,
             validBefore: paymentDetails.preApprovalExpiry,

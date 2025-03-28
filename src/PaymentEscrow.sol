@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IMulticall3} from "./interfaces/IMulticall3.sol";
-import {TokenCollector} from "./token-collectors/TokenCollector.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
+import {TokenCollector} from "./token-collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -212,11 +212,6 @@ contract PaymentEscrow {
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
 
-        // check if payment is already authorized
-        if (_paymentState[paymentDetailsHash].hasAuthorized) {
-            revert PaymentAlreadyAuthorized(paymentDetailsHash);
-        }
-
         // validate payment details
         _validatePaymentDetails(paymentDetails, paymentDetailsHash, amount);
 
@@ -343,12 +338,25 @@ contract PaymentEscrow {
     ) external validAmount(amount) {
         bytes32 paymentDetailsHash = getHash(paymentDetails);
 
-        // validate and register refund
-        _registerRefund(
-            amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
-        );
+        // Check sender is operator or original payment receiver
+        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
+            revert InvalidSender(msg.sender);
+        }
 
-        if (collectorData.length > 0) {
+        // Check refund has not expired
+        if (block.timestamp >= paymentDetails.refundExpiry) {
+            revert AfterRefundExpiry(uint48(block.timestamp), paymentDetails.refundExpiry);
+        }
+
+        // Limit refund amount to previously captured
+        uint120 captured = _paymentState[paymentDetailsHash].refundable;
+        if (captured < amount) revert RefundExceedsCapture(amount, captured);
+
+        // update capturable amount
+        _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
+        emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
+
+        if (tokenCollector != address(0)) {
             _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
             // transfer tokens from escrow to original payer
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
@@ -411,30 +419,6 @@ contract PaymentEscrow {
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
         if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
         if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);
-    }
-
-    /// @notice Validate and update state for refund
-    function _registerRefund(
-        uint256 amount,
-        address operator,
-        address originalPaymentReceiver,
-        uint48 refundExpiry,
-        bytes32 paymentDetailsHash
-    ) internal {
-        // Check sender is operator or original payment receiver
-        if (msg.sender != operator && msg.sender != originalPaymentReceiver) {
-            revert InvalidSender(msg.sender);
-        }
-
-        // Check refund has not expired
-        if (block.timestamp >= refundExpiry) revert AfterRefundExpiry(uint48(block.timestamp), refundExpiry);
-
-        // Limit refund amount to previously captured
-        uint120 captured = _paymentState[paymentDetailsHash].refundable;
-        if (captured < amount) revert RefundExceedsCapture(amount, captured);
-
-        _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
-        emit PaymentRefunded(paymentDetailsHash, amount, msg.sender);
     }
 
     /// @notice Validates required properties of a payment

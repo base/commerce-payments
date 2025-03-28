@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {TokenCollector} from "./TokenCollector.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
+import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract PreApprovalTokenCollector is TokenCollector {
@@ -38,9 +39,7 @@ contract PreApprovalTokenCollector is TokenCollector {
         onlyPaymentEscrow
     {
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
-        if (!isPreApproved[paymentDetailsHash]) {
-            revert PaymentNotApproved(paymentDetailsHash);
-        }
+        if (!isPreApproved[paymentDetailsHash]) revert PaymentNotApproved(paymentDetailsHash);
         SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.payer, address(paymentEscrow), amount);
     }
 }

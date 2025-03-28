@@ -4,9 +4,9 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 abstract contract TokenCollector {
-    error OnlyPaymentEscrow();
-
     PaymentEscrow public immutable paymentEscrow;
+
+    error OnlyPaymentEscrow();
 
     constructor(address _paymentEscrow) {
         paymentEscrow = PaymentEscrow(_paymentEscrow);

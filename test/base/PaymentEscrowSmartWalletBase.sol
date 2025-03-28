@@ -82,8 +82,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     minFeeBps: FEE_BPS,
                     maxFeeBps: FEE_BPS,
                     feeRecipient: feeRecipient,
-                    salt: uint256(0),
-                    tokenCollector: hooks[TokenCollector.ERC3009]
+                    salt: uint256(0)
                 })
             )
         );
@@ -164,7 +163,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         return SpendPermissionManager.SpendPermission({
             account: paymentDetails.payer,
-            spender: paymentDetails.tokenCollector,
+            spender: hooks[TokenCollector.SpendPermission],
             token: address(paymentDetails.token),
             allowance: uint160(paymentDetails.maxAmount),
             period: type(uint48).max,
