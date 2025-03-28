@@ -20,7 +20,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -40,7 +40,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -64,7 +64,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -86,7 +86,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             "",
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -116,7 +116,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -154,7 +154,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -192,7 +192,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -220,7 +220,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -243,12 +243,12 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
 
@@ -274,12 +274,12 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
 
         uint256 feeAmount = chargeAmount * FEE_BPS / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), chargeAmount - feeAmount);
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - chargeAmount);
     }
 
@@ -316,7 +316,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -342,7 +342,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
 
         // Fund operator for refund
@@ -392,7 +392,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
         paymentEscrow.charge(
-            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeRecipient
+            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
         );
     }
 
@@ -420,7 +420,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
         paymentEscrow.charge(
-            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeRecipient
+            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
         );
     }
 
@@ -433,7 +433,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
+        paymentDetails.feeReceiver = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
 
@@ -465,7 +465,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         PaymentEscrow.PaymentDetails memory paymentDetails =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        paymentDetails.feeRecipient = address(0); // Allow operator to set fee recipient
+        paymentDetails.feeReceiver = address(0); // Allow operator to set fee recipient
         paymentDetails.minFeeBps = minFeeBps;
         paymentDetails.maxFeeBps = maxFeeBps;
 

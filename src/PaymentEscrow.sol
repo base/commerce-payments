@@ -37,7 +37,7 @@ contract PaymentEscrow {
         /// @dev Maximum fee percentage in basis points
         uint16 maxFeeBps;
         /// @dev Address that receives the fee portion of payments, if 0 then operator can set at capture
-        address feeRecipient;
+        address feeReceiver;
         /// @dev A source of entropy to ensure unique hashes across different payment details
         uint256 salt;
     }
@@ -159,14 +159,14 @@ contract PaymentEscrow {
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
+    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function charge(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
         address tokenCollector,
         bytes calldata collectorData,
         uint16 feeBps,
-        address feeRecipient
+        address feeReceiver
     ) external validAmount(amount) {
         // check sender is operator
         if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
@@ -179,7 +179,7 @@ contract PaymentEscrow {
         _validatePayment(paymentDetails, amount);
 
         // validate fee parameters
-        _validateFee(paymentDetails, feeBps, feeRecipient);
+        _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // update captured amount for refund accounting
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
@@ -196,7 +196,7 @@ contract PaymentEscrow {
         _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
 
         // distribute tokens to capture address and fee recipient
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
     }
 
     /// @notice Transfers funds from payer to escrow
@@ -241,8 +241,8 @@ contract PaymentEscrow {
     /// @param amount Amount to capture
     /// @param paymentDetails PaymentDetails struct
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
-    function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient)
+    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver)
         external
         validAmount(amount)
     {
@@ -262,7 +262,7 @@ contract PaymentEscrow {
         if (state.capturable < amount) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, amount);
 
         // validate fee parameters
-        _validateFee(paymentDetails, feeBps, feeRecipient);
+        _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // update state
         state.capturable -= uint120(amount);
@@ -271,7 +271,7 @@ contract PaymentEscrow {
         emit PaymentCaptured(paymentDetailsHash, amount, msg.sender);
 
         // distribute tokens including fees
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
     }
 
     /// @notice Permanently voids a payment authorization
@@ -407,17 +407,17 @@ contract PaymentEscrow {
         if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenPullFailed();
     }
 
-    /// @notice Sends tokens to receiver and/or feeRecipient
+    /// @notice Sends tokens to receiver and/or feeReceiver
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
-    /// @param feeRecipient Address to receive fees
+    /// @param feeReceiver Address to receive fees
     /// @param feeBps Fee percentage in basis points
     /// @param amount Total amount to split between payment and fees
-    function _distributeTokens(address token, address receiver, address feeRecipient, uint16 feeBps, uint256 amount)
+    function _distributeTokens(address token, address receiver, address feeReceiver, uint16 feeBps, uint256 amount)
         internal
     {
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
-        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeRecipient, feeAmount);
+        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeReceiver, feeAmount);
         if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);
     }
 
@@ -451,18 +451,18 @@ contract PaymentEscrow {
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment details.
-    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeRecipient) internal pure {
+    function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver) internal pure {
         // check fee bps within [min, max]
         if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
             revert FeeBpsOutOfRange(feeBps, paymentDetails.minFeeBps, paymentDetails.maxFeeBps);
         }
 
         // check fee recipient only zero address if zero fee bps
-        if (feeBps > 0 && feeRecipient == address(0)) revert ZeroFeeRecipient();
+        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeRecipient();
 
         // check fee recipient matches payment details if non-zero
-        if (paymentDetails.feeRecipient != address(0) && paymentDetails.feeRecipient != feeRecipient) {
-            revert InvalidFeeRecipient(feeRecipient, paymentDetails.feeRecipient);
+        if (paymentDetails.feeReceiver != address(0) && paymentDetails.feeReceiver != feeReceiver) {
+            revert InvalidFeeRecipient(feeReceiver, paymentDetails.feeReceiver);
         }
     }
 }

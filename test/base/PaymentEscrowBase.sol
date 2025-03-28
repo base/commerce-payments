@@ -58,7 +58,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     address public operator;
     address public receiver;
     address public payerEOA;
-    address public feeRecipient;
+    address public feeReceiver;
     uint16 constant FEE_BPS = 100; // 1%
     uint256 internal constant payer_EOA_PK = 0x1234;
 
@@ -109,8 +109,8 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         receiver = vm.addr(2);
         vm.label(receiver, "receiver");
         payerEOA = vm.addr(payer_EOA_PK);
-        feeRecipient = vm.addr(4);
-        vm.label(feeRecipient, "feeRecipient");
+        feeReceiver = vm.addr(4);
+        vm.label(feeReceiver, "feeReceiver");
 
         // Mint tokens to payer
         mockERC3009Token.mint(payerEOA, 1000e9);
@@ -140,7 +140,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             refundExpiry: type(uint48).max,
             minFeeBps: FEE_BPS,
             maxFeeBps: FEE_BPS,
-            feeRecipient: feeRecipient,
+            feeReceiver: feeReceiver,
             salt: 0
         });
     }

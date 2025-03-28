@@ -29,7 +29,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -55,7 +55,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
     }
 
@@ -76,7 +76,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 receiverBalanceBefore = mockERC3009Token.balanceOf(receiver);
-        uint256 feeRecipientBalanceBefore = mockERC3009Token.balanceOf(feeRecipient);
+        uint256 feeReceiverBalanceBefore = mockERC3009Token.balanceOf(feeReceiver);
 
         // Charge with empty signature
         vm.prank(operator);
@@ -86,13 +86,13 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,
-            paymentDetails.feeRecipient
+            paymentDetails.feeReceiver
         );
 
         // Verify balances including fee distribution
         uint256 feeAmount = uint256(amount) * paymentDetails.minFeeBps / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), receiverBalanceBefore + (amount - feeAmount));
-        assertEq(mockERC3009Token.balanceOf(feeRecipient), feeRecipientBalanceBefore + feeAmount);
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeReceiverBalanceBefore + feeAmount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
 }

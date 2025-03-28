@@ -81,7 +81,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
                     refundExpiry: refundExpiry,
                     minFeeBps: FEE_BPS,
                     maxFeeBps: FEE_BPS,
-                    feeRecipient: feeRecipient,
+                    feeReceiver: feeReceiver,
                     salt: uint256(0)
                 })
             )

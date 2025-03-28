@@ -257,7 +257,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         // Set both fee recipient and fee bps to zero - this should be valid
-        paymentDetails.feeRecipient = address(0);
+        paymentDetails.feeReceiver = address(0);
         paymentDetails.minFeeBps = 0;
         paymentDetails.maxFeeBps = 0;
 

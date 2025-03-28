@@ -71,7 +71,7 @@ contract RefundTest is PaymentEscrowBase {
         // First confirm and capture partial amount
         vm.startPrank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
-        paymentEscrow.capture(chargeAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(chargeAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
         vm.stopPrank();
 
         // Fund operator for refund
@@ -99,7 +99,7 @@ contract RefundTest is PaymentEscrowBase {
         // First confirm and capture the payment
         vm.startPrank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
         vm.stopPrank();
 
         // Fund the operator for refund
@@ -135,7 +135,7 @@ contract RefundTest is PaymentEscrowBase {
         // First confirm and capture the payment
         vm.startPrank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
         vm.stopPrank();
 
         // Fund the receiver for refund
@@ -172,7 +172,7 @@ contract RefundTest is PaymentEscrowBase {
         // First confirm and capture the payment
         vm.startPrank(operator);
         paymentEscrow.authorize(authorizedAmount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
-        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeRecipient);
+        paymentEscrow.capture(authorizedAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
         vm.stopPrank();
 
         // Fund operator for refund
