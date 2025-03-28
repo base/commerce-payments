@@ -286,54 +286,44 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     );
     // }
 
-    // function test_succeeds_ifCalledByOperator(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
-    //     vm.assume(amount > 0);
-    //     vm.assume(refundDeadline > block.timestamp);
+    function test_refund_succeeds_withSponsor(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
+        vm.assume(amount > 0);
+        vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+        PaymentEscrow.PaymentDetails memory paymentDetails =
+            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
-    //     mockERC3009Token.mint(payerEOA, amount);
+        mockERC3009Token.mint(payerEOA, amount);
 
-    //     // First authorize and capture
-    //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
-    //     vm.stopPrank();
+        // First authorize and capture
+        vm.startPrank(operator);
+        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+        vm.stopPrank();
 
-    //     // Fund sponsor
-    //     mockERC3009Token.mint(_sponsor, amount);
+        // Fund sponsor
+        mockERC3009Token.mint(_sponsor, amount);
 
-    //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
-    //         value: amount,
-    //         sponsorAddress: _sponsor,
-    //         deadline: refundDeadline,
-    //         salt: refundSalt,
-    //         privateKey: _SPONSOR_PK
-    //     });
+        bytes memory sponsorSignature = _signRefundAuthorization({
+            paymentDetails: paymentDetails,
+            value: amount,
+            sponsorAddress: _sponsor,
+            deadline: refundDeadline,
+            salt: refundSalt,
+            privateKey: _SPONSOR_PK
+        });
 
-    //     uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-    //     uint256 sponsorBalanceBefore = mockERC3009Token.balanceOf(_sponsor);
+        uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
+        uint256 sponsorBalanceBefore = mockERC3009Token.balanceOf(_sponsor);
 
-    //     vm.prank(operator);
-    //     paymentEscrow.refundWithSponsor(
-    //         amount,
-    //         paymentDetails,
-    //         PaymentEscrow.SponsoredRefundDetails({
-    //             sponsor: _sponsor,
-    //             refundDeadline: refundDeadline,
-    //             tokenCollector: address(hooks[TokenCollector.ERC3009]),
-    //             refundSalt: refundSalt,
-    //             signature: sponsorSignature,
-    //             collectorData: ""
-    //         })
-    //     );
+        bytes memory collectorData = abi.encode(_sponsor, refundDeadline, refundSalt, sponsorSignature);
+        vm.prank(operator);
+        paymentEscrow.refund(amount, paymentDetails, hooks[TokenCollector.ERC3009Refund], collectorData);
 
-    //     assertEq(mockERC3009Token.balanceOf(_sponsor), sponsorBalanceBefore - amount);
-    //     assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + amount);
-    // }
+        assertEq(mockERC3009Token.balanceOf(_sponsor), sponsorBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + amount);
+    }
 
     // function test_succeeds_ifCalledByreceiver(uint120 amount, uint48 refundDeadline, uint256 refundSalt) public {
     //     vm.assume(amount > 0);
@@ -429,7 +419,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
             abi.encode(
                 mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
                 sponsorAddress, // from
-                address(hooks[TokenCollector.ERC3009]), // to
+                address(hooks[TokenCollector.ERC3009Refund]), // to
                 value, // value
                 0, // validAfter
                 deadline, // validBefore
