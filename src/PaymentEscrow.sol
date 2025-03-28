@@ -145,9 +145,7 @@ contract PaymentEscrow {
     error InvalidFeeRecipient(address attempted, address expected);
 
     bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
-        "PaymentDetails(" "address operator," "address payer," "address receiver," "address token," "uint256 maxAmount,"
-        "uint48 preApprovalExpiry," "uint48 authorizationExpiry," "uint48 refundExpiry," "uint16 minFeeBps,"
-        "uint16 maxFeeBps," "address feeReceiver," "uint256 salt" ")"
+        "PaymentDetails(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
     /// @notice Ensures amount is non-zero and does not overflow storage
