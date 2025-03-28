@@ -2,10 +2,11 @@
 pragma solidity ^0.8.13;
 
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step.sol";
 
 /// @notice Minimal contract for PaymentEscrow operations
 /// @dev Enables batch execution from multiple executors for optimal throughput and efficiency
-contract Operator is Ownable {
+contract Operator is Ownable2Step {
     struct Call {
         bytes32 id;
         address target;
@@ -19,36 +20,45 @@ contract Operator is Ownable {
 
     error InvalidExecutor(address executor);
 
-    constructor(address owner_, address[] memory executors) Ownable(owner_) {
-        for (uint256 i; i < executors.length; i++) {
-            isExecutor[executors[i]] = true;
-            emit ExecutorUpdated(executors[i], true);
-        }
-    }
+    constructor() Ownable(address(0)) {}
 
     modifier onlyExecutor() {
         if (isExecutor[msg.sender]) revert InvalidExecutor(msg.sender);
         _;
     }
 
+    function initialize(address owner_, address[] calldata executors) external {
+        if (owner() != address(0)) revert OwnableInvalidOwner(address(0));
+        _transferOwnership(owner_);
+
+        for (uint256 i; i < executors.length; i++) {
+            isExecutor[executors[i]] = true;
+            emit ExecutorUpdated(executors[i], true);
+        }
+    }
+
     function execute(Call calldata call) external onlyExecutor {
         _execute(call);
     }
 
-    function execute(Call calldata calls) external onlyExecutor {
+    function execute(Call[] calldata calls) external onlyExecutor {
         uint256 len = calls.length;
         for (uint256 i; i < len; i++) {
             _execute(calls[i]);
         }
     }
 
-    function _execute(Call calldata call) internal {
-        (bool success, bytes memory res) = call.target.call(call.data);
-        if (!success) emit CallFailed(call.id, msg.sender);
-    }
-
     function updateExecutor(address executor, bool allowed) external onlyOwner {
         isExecutor[executor] = allowed;
         emit ExecutorUpdated(executor, allowed);
+    }
+
+    function renounceOwnership() public override {
+        revert();
+    }
+
+    function _execute(Call calldata call) internal {
+        (bool success, bytes memory res) = call.target.call(call.data);
+        if (!success) emit CallFailed(call.id, msg.sender);
     }
 }
