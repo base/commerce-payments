@@ -157,14 +157,14 @@ contract PaymentEscrow {
     /// @param amount Amount to charge and capture
     /// @param paymentDetails PaymentDetails struct
     /// @param tokenCollector Address of the token collector
-    /// @param hookData Data to pass to the token collector
+    /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
     /// @param feeRecipient Address to receive fees (can only be set if original feeRecipient was 0)
     function charge(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
         address tokenCollector,
-        bytes calldata hookData,
+        bytes calldata collectorData,
         uint16 feeBps,
         address feeRecipient
     ) external validAmount(amount) {
@@ -191,7 +191,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, hookData);
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
 
         // distribute tokens to capture address and fee recipient
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeRecipient, feeBps, amount);
@@ -200,12 +200,12 @@ contract PaymentEscrow {
     /// @notice Transfers funds from payer to escrow
     /// @param amount Amount to authorize
     /// @param paymentDetails PaymentDetails struct
-    /// @param hookData Data to pass to the token collector
+    /// @param collectorData Data to pass to the token collector
     function authorize(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
         address tokenCollector,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external validAmount(amount) {
         bytes32 paymentDetailsHash = getHash(paymentDetails);
 
@@ -233,7 +233,7 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, hookData);
+        _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
     }
 
     /// @notice Transfer previously-escrowed funds to receiver
@@ -334,12 +334,12 @@ contract PaymentEscrow {
     /// @param amount Amount to refund
     /// @param paymentDetails PaymentDetails struct
     /// @param tokenCollector Address of the token collector
-    /// @param hookData Data to pass to the token collector
+    /// @param collectorData Data to pass to the token collector
     function refund(
         uint256 amount,
         PaymentDetails calldata paymentDetails,
         address tokenCollector,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external validAmount(amount) {
         bytes32 paymentDetailsHash = getHash(paymentDetails);
 
@@ -348,8 +348,8 @@ contract PaymentEscrow {
             amount, paymentDetails.operator, paymentDetails.receiver, paymentDetails.refundExpiry, paymentDetailsHash
         );
 
-        if (hookData.length > 0) {
-            _collectTokens(paymentDetails, amount, tokenCollector, hookData);
+        if (collectorData.length > 0) {
+            _collectTokens(paymentDetails, amount, tokenCollector, collectorData);
             // transfer tokens from escrow to original payer
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
         } else {
@@ -391,10 +391,10 @@ contract PaymentEscrow {
         PaymentDetails calldata paymentDetails,
         uint256 amount,
         address tokenCollector,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) internal {
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
-        TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, hookData);
+        TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
         if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenPullFailed();
     }

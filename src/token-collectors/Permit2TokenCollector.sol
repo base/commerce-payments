@@ -16,10 +16,10 @@ contract Permit2TokenCollector is TokenCollector {
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
-        (bytes memory signature) = abi.decode(hookData, (bytes));
+        (bytes memory signature) = abi.decode(collectorData, (bytes));
         permit2.permitTransferFrom(
             ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({

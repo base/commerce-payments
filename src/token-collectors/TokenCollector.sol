@@ -17,13 +17,13 @@ abstract contract TokenCollector {
         _;
     }
 
-    /// @notice Pull tokens from payer to escrow using hook-specific authorization logic
+    /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentDetails Payment details struct
     /// @param amount Amount of tokens to pull
-    /// @param hookData Data to pass to the token collector
+    /// @param collectorData Data to pass to the token collector
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external virtual;
 }

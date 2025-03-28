@@ -5,7 +5,7 @@ import {TokenCollector} from "../../src/token-collectors/TokenCollector.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-/// @notice Mock hook that does not transfer sufficient tokens
+/// @notice Mock token collector that does not transfer sufficient tokens
 contract ERC20UnsafeTransferTokenCollector is TokenCollector {
     event PaymentApproved(bytes32 indexed paymentDetailsHash);
 

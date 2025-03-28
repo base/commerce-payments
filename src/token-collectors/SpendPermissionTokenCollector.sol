@@ -19,7 +19,7 @@ contract SpendPermissionTokenCollector is TokenCollector {
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
@@ -35,7 +35,7 @@ contract SpendPermissionTokenCollector is TokenCollector {
         });
 
         (bytes memory signature, MagicSpend.WithdrawRequest memory withdrawRequest) =
-            abi.decode(hookData, (bytes, MagicSpend.WithdrawRequest));
+            abi.decode(collectorData, (bytes, MagicSpend.WithdrawRequest));
 
         if (signature.length > 0) {
             bool approved = spendPermissionManager.approveWithSignature(permission, signature);

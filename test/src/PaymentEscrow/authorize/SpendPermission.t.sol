@@ -36,7 +36,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, signature, ""); // Empty hookData for regular spend
+        paymentEscrow.authorize(amount, paymentDetails, signature, ""); // Empty collectorData for regular spend
 
         // Verify balances
         assertEq(

@@ -18,9 +18,9 @@ contract ERC3009TokenCollector is TokenCollector {
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
-        bytes calldata hookData
+        bytes calldata collectorData
     ) external override onlyPaymentEscrow {
-        bytes memory signature = abi.decode(hookData, (bytes));
+        bytes memory signature = abi.decode(collectorData, (bytes));
         bytes memory innerSignature = signature;
         // Check for ERC-6492 signature format
         bytes32 magicValue;

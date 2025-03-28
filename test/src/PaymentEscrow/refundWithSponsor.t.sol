@@ -327,7 +327,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
                 tokenCollector: address(hooks[TokenCollector.ERC3009]),
                 refundSalt: refundSalt,
                 signature: sponsorSignature,
-                hookData: ""
+                collectorData: ""
             })
         );
 

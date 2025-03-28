@@ -43,14 +43,14 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     PublicERC6492Validator public publicERC6592Validator;
     MagicSpend public magicSpend;
 
-    // Hook contracts
+    // TokenCollector contracts
     ERC3009TokenCollector public erc3009Hook;
     PreApprovalTokenCollector public erc20Hook;
     Permit2TokenCollector public permit2Hook;
     SpendPermissionTokenCollector public spendPermissionHook;
     ERC20UnsafeTransferTokenCollector public erc20UnsafeTransferHook;
 
-    // Mapping to store hook addresses
+    // Mapping to store token collector addresses
     mapping(TokenCollector => address) public hooks;
 
     uint256 public magicSpendOwnerPk = 0xC014BA53;
@@ -89,14 +89,14 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         // Deploy PaymentEscrow
         paymentEscrow = new PaymentEscrow();
 
-        // Deploy hook contracts
+        // Deploy token collector contracts
         erc3009Hook = new ERC3009TokenCollector(multicall3, address(paymentEscrow));
         erc20Hook = new PreApprovalTokenCollector(address(paymentEscrow));
         permit2Hook = new Permit2TokenCollector(permit2, address(paymentEscrow));
         spendPermissionHook = new SpendPermissionTokenCollector(address(spendPermissionManager), address(paymentEscrow));
         erc20UnsafeTransferHook = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
 
-        // Store hook addresses in mapping
+        // Store token collector addresses in mapping
         hooks[TokenCollector.ERC3009] = address(erc3009Hook);
         hooks[TokenCollector.ERC20] = address(erc20Hook);
         hooks[TokenCollector.Permit2] = address(permit2Hook);
