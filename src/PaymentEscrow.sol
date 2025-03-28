@@ -58,6 +58,7 @@ contract PaymentEscrow {
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentDetailsHash,
+        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
@@ -68,6 +69,7 @@ contract PaymentEscrow {
     /// @notice Emitted when authorized (escrowed) amount is increased
     event PaymentAuthorized(
         bytes32 indexed paymentDetailsHash,
+        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
@@ -185,6 +187,7 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
         emit PaymentCharged(
             paymentDetailsHash,
+            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
@@ -224,6 +227,7 @@ contract PaymentEscrow {
             PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentDetailsHash,
+            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
