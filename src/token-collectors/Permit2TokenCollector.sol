@@ -13,6 +13,11 @@ contract Permit2TokenCollector is TokenCollector {
         permit2 = ISignatureTransfer(_permit2);
     }
 
+    /// @inheritdoc TokenCollector
+    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
+        return TokenCollector.CollectorType.Payment;
+    }
+
     function collectTokens(
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,

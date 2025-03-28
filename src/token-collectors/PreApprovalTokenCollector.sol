@@ -18,6 +18,11 @@ contract PreApprovalTokenCollector is TokenCollector {
 
     constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
 
+    /// @inheritdoc TokenCollector
+    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
+        return TokenCollector.CollectorType.Payment;
+    }
+
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
     /// @param paymentDetails PaymentDetails struct
