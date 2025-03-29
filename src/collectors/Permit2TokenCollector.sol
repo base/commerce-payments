@@ -9,8 +9,8 @@ import {PaymentEscrow} from "../PaymentEscrow.sol";
 contract Permit2TokenCollector is TokenCollector {
     ISignatureTransfer public immutable permit2;
 
-    constructor(address _permit2, address _paymentEscrow) TokenCollector(_paymentEscrow) {
-        permit2 = ISignatureTransfer(_permit2);
+    constructor(address paymentEscrow_, address permit2_) TokenCollector(paymentEscrow_) {
+        permit2 = ISignatureTransfer(permit2_);
     }
 
     /// @inheritdoc TokenCollector

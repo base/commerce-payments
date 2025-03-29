@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
-import {PreApprovalTokenCollector} from "../../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../../src/collectors/PreApprovalTokenCollector.sol";
 
 contract PreApproveTest is PaymentEscrowBase {
     function test_reverts_ifSenderIsNotpayer(address invalidSender, uint120 amount) public {

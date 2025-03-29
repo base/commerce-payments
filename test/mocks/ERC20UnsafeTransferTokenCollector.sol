@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {TokenCollector} from "../../src/token-collectors/TokenCollector.sol";
+import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 

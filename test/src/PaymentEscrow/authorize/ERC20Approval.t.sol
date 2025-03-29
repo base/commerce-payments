@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PreApprovalTokenCollector} from "../../../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../../../src/collectors/PreApprovalTokenCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {

@@ -13,8 +13,8 @@ contract ERC3009TokenCollector is TokenCollector {
 
     IMulticall3 public immutable multicall3;
 
-    constructor(address _multicall3, address _paymentEscrow) TokenCollector(_paymentEscrow) {
-        multicall3 = IMulticall3(_multicall3);
+    constructor(address paymentEscrow_, address multicall3_) TokenCollector(paymentEscrow_) {
+        multicall3 = IMulticall3(multicall3_);
     }
 
     /// @inheritdoc TokenCollector

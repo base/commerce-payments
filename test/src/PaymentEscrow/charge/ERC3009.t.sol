@@ -301,12 +301,12 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentCharged(
             paymentDetailsHash,
-            hooks[TokenCollector.ERC3009],
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
             paymentDetails.token,
-            valueToCharge
+            valueToCharge,
+            hooks[TokenCollector.ERC3009]
         );
 
         // Execute charge

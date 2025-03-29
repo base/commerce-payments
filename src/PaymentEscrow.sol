@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-import {TokenCollector} from "./token-collectors/TokenCollector.sol";
+import {TokenCollector} from "./collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -58,23 +58,23 @@ contract PaymentEscrow {
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentDetailsHash,
-        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
         address token,
-        uint256 amount
+        uint256 amount,
+        address tokenCollector
     );
 
     /// @notice Emitted when authorized (escrowed) amount is increased
     event PaymentAuthorized(
         bytes32 indexed paymentDetailsHash,
-        address indexed tokenCollector,
         address operator,
         address payer,
         address receiver,
         address token,
-        uint256 amount
+        uint256 amount,
+        address tokenCollector
     );
 
     /// @notice Emitted when payment is captured from escrow
@@ -87,9 +87,7 @@ contract PaymentEscrow {
     event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when a captured payment is refunded
-    event PaymentRefunded(
-        bytes32 indexed paymentDetailsHash, address indexed tokenCollector, uint256 amount, address sender
-    );
+    event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 amount, address tokenCollector, address sender);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender);
@@ -196,12 +194,12 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
         emit PaymentCharged(
             paymentDetailsHash,
-            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
             paymentDetails.token,
-            amount
+            amount,
+            tokenCollector
         );
 
         // transfer tokens into escrow
@@ -236,12 +234,12 @@ contract PaymentEscrow {
             PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentDetailsHash,
-            tokenCollector,
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
             paymentDetails.token,
-            amount
+            amount,
+            tokenCollector
         );
 
         // transfer tokens into escrow
@@ -367,7 +365,7 @@ contract PaymentEscrow {
 
         // update capturable amount
         _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
-        emit PaymentRefunded(paymentDetailsHash, tokenCollector, amount, msg.sender);
+        emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector, msg.sender);
 
         if (tokenCollector != address(0)) {
             // collect tokens into escrow then transfer to original payer

@@ -293,12 +293,12 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentAuthorized(
             paymentDetailsHash,
-            hooks[TokenCollector.ERC3009],
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
             paymentDetails.token,
-            valueToConfirm
+            valueToConfirm,
+            hooks[TokenCollector.ERC3009]
         );
 
         // Execute confirmation

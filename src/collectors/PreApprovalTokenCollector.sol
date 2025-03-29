@@ -16,7 +16,7 @@ contract PreApprovalTokenCollector is TokenCollector {
 
     mapping(bytes32 => bool) public isPreApproved;
 
-    constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
+    constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
     function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
