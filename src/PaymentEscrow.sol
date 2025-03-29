@@ -357,13 +357,13 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
         emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector, msg.sender);
 
-        if (tokenCollector != address(0)) {
+        if (tokenCollector == address(0)) {
+            // transfer tokens from caller to original payer
+            SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
+        } else {
             // collect tokens into escrow then transfer to original payer
             _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
-        } else {
-            // transfer tokens from caller to original payer
-            SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
         }
     }
 
