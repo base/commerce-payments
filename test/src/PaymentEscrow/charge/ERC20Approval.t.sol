@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PreApprovalTokenCollector} from "../../../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../../../src/collectors/PreApprovalTokenCollector.sol";
 
 contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
@@ -24,8 +24,8 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             abi.encodeWithSelector(PreApprovalTokenCollector.PaymentNotApproved.selector, paymentDetailsHash)
         );
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,
@@ -50,8 +50,8 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,
@@ -81,8 +81,8 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Charge with empty signature
         vm.prank(operator);
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC20],
             "",
             paymentDetails.minFeeBps,

@@ -13,8 +13,8 @@ abstract contract TokenCollector {
 
     error OnlyPaymentEscrow();
 
-    constructor(address _paymentEscrow) {
-        paymentEscrow = PaymentEscrow(_paymentEscrow);
+    constructor(address paymentEscrow_) {
+        paymentEscrow = PaymentEscrow(paymentEscrow_);
     }
 
     modifier onlyPaymentEscrow() {

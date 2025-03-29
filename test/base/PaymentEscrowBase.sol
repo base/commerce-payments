@@ -16,10 +16,10 @@ import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
-import {ERC3009TokenCollector} from "../../src/token-collectors/ERC3009TokenCollector.sol";
-import {PreApprovalTokenCollector} from "../../src/token-collectors/PreApprovalTokenCollector.sol";
-import {Permit2TokenCollector} from "../../src/token-collectors/Permit2TokenCollector.sol";
-import {SpendPermissionTokenCollector} from "../../src/token-collectors/SpendPermissionTokenCollector.sol";
+import {ERC3009TokenCollector} from "../../src/collectors/ERC3009TokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../src/collectors/PreApprovalTokenCollector.sol";
+import {Permit2TokenCollector} from "../../src/collectors/Permit2TokenCollector.sol";
+import {SpendPermissionTokenCollector} from "../../src/collectors/SpendPermissionTokenCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract PaymentEscrowBase is Test, DeployPermit2 {
@@ -90,10 +90,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         paymentEscrow = new PaymentEscrow();
 
         // Deploy token collector contracts
-        erc3009Hook = new ERC3009TokenCollector(multicall3, address(paymentEscrow));
+        erc3009Hook = new ERC3009TokenCollector(address(paymentEscrow), multicall3);
         erc20Hook = new PreApprovalTokenCollector(address(paymentEscrow));
-        permit2Hook = new Permit2TokenCollector(permit2, address(paymentEscrow));
-        spendPermissionHook = new SpendPermissionTokenCollector(address(spendPermissionManager), address(paymentEscrow));
+        permit2Hook = new Permit2TokenCollector(address(paymentEscrow), permit2);
+        spendPermissionHook = new SpendPermissionTokenCollector(address(paymentEscrow), address(spendPermissionManager));
         erc20UnsafeTransferHook = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
 
         // Store token collector addresses in mapping

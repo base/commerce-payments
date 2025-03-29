@@ -15,8 +15,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
         paymentEscrow.charge(
-            0,
             paymentDetails,
+            0,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -35,8 +35,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
         paymentEscrow.charge(
-            overflowValue,
             paymentDetails,
+            overflowValue,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -44,7 +44,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         );
     }
 
-    function test_reverts_whenCallerIsNotOperatorOrreceiver(address invalidSender, uint120 amount) public {
+    function test_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != operator);
         vm.assume(invalidSender != receiver);
         vm.assume(invalidSender != address(0));
@@ -57,10 +57,12 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.operator)
+        );
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -81,8 +83,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ExceedsMaxAmount.selector, chargeAmount, authorizedAmount));
         paymentEscrow.charge(
-            chargeAmount,
             paymentDetails,
+            chargeAmount,
             hooks[TokenCollector.ERC3009],
             "",
             paymentDetails.minFeeBps,
@@ -111,8 +113,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             )
         );
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -149,8 +151,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             )
         );
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -187,8 +189,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             )
         );
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -207,7 +209,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         // First authorization
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Try to charge now with same payment details
         mockERC3009Token.mint(payerEOA, amount);
@@ -215,8 +217,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyCollected.selector, paymentDetailsHash));
         vm.prank(operator);
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -238,8 +240,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.charge(
-            amount,
             paymentDetails,
+            amount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -269,8 +271,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.charge(
-            chargeAmount,
             paymentDetails,
+            chargeAmount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -301,19 +303,19 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentCharged(
             paymentDetailsHash,
-            hooks[TokenCollector.ERC3009],
             paymentDetails.operator,
             paymentDetails.payer,
             paymentDetails.receiver,
             paymentDetails.token,
-            valueToCharge
+            valueToCharge,
+            hooks[TokenCollector.ERC3009]
         );
 
         // Execute charge
         vm.prank(operator);
         paymentEscrow.charge(
-            valueToCharge,
             paymentDetails,
+            valueToCharge,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -338,8 +340,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         // First charge the payment
         vm.prank(operator);
         paymentEscrow.charge(
-            chargeAmount,
             paymentDetails,
+            chargeAmount,
             hooks[TokenCollector.ERC3009],
             signature,
             paymentDetails.minFeeBps,
@@ -356,7 +358,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(refundAmount, paymentDetails, address(0), "");
+        paymentEscrow.refund(paymentDetails, refundAmount, address(0), "");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
@@ -368,7 +370,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, chargeAmount, remainingCaptured)
         );
         vm.prank(operator);
-        paymentEscrow.refund(chargeAmount, paymentDetails, address(0), "");
+        paymentEscrow.refund(paymentDetails, chargeAmount, address(0), "");
     }
 
     function test_reverts_whenFeeBpsBelowMin(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps, uint16 captureFeeBps)
@@ -393,7 +395,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
         paymentEscrow.charge(
-            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
+            paymentDetails, amount, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
         );
     }
 
@@ -421,7 +423,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
         paymentEscrow.charge(
-            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
+            paymentDetails, amount, hooks[TokenCollector.ERC3009], signature, captureFeeBps, paymentDetails.feeReceiver
         );
     }
 
@@ -441,8 +443,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroFeeRecipient.selector);
-        paymentEscrow.charge(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, minFeeBps, address(0));
+        vm.expectRevert(PaymentEscrow.ZeroFeeReceiver.selector);
+        paymentEscrow.charge(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature, minFeeBps, address(0));
     }
 
     function test_succeeds_withOperatorSetFeeRecipient(
@@ -474,7 +476,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.charge(
-            amount, paymentDetails, hooks[TokenCollector.ERC3009], signature, captureFeeBps, newFeeRecipient
+            paymentDetails, amount, hooks[TokenCollector.ERC3009], signature, captureFeeBps, newFeeRecipient
         );
 
         uint256 feeAmount = (uint256(amount) * uint256(captureFeeBps)) / 10_000;

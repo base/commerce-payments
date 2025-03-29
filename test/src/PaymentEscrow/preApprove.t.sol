@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
-import {PreApprovalTokenCollector} from "../../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../../src/collectors/PreApprovalTokenCollector.sol";
 
 contract PreApproveTest is PaymentEscrowBase {
-    function test_reverts_ifSenderIsNotpayer(address invalidSender, uint120 amount) public {
+    function test_reverts_ifSenderIsNotPayer(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != payerEOA);
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
@@ -15,7 +15,9 @@ contract PreApproveTest is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.payer)
+        );
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
     }
 
@@ -30,7 +32,7 @@ contract PreApproveTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         // Now try to pre-approve
         vm.prank(payerEOA);
@@ -55,7 +57,7 @@ contract PreApproveTest is PaymentEscrowBase {
         vm.stopPrank();
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC20], ""); // ERC20Approval should work after pre-approval
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], ""); // ERC20Approval should work after pre-approval
     }
 
     function test_reverts_ifCalledBypayerMultipleTimes(uint120 amount) public {

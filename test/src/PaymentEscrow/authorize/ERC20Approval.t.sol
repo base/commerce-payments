@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PreApprovalTokenCollector} from "../../../../src/token-collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalTokenCollector} from "../../../../src/collectors/PreApprovalTokenCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
@@ -25,7 +25,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.expectRevert(
             abi.encodeWithSelector(PreApprovalTokenCollector.PaymentNotApproved.selector, paymentDetailsHash)
         );
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], "");
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
@@ -43,7 +43,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], "");
     }
 
     function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
@@ -66,7 +66,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenCollectionFailed.selector));
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC20UnsafeTransfer], "");
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20UnsafeTransfer], "");
     }
 
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
@@ -88,7 +88,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         // Authorize with ERC20Approval method
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], "");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);

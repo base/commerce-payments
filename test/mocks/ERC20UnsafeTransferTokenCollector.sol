@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {TokenCollector} from "../../src/token-collectors/TokenCollector.sol";
+import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
@@ -12,7 +12,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
     error PaymentNotApproved(bytes32 paymentDetailsHash);
     error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
-    error InvalidSender(address sender);
+    error InvalidSender(address sender, address expected);
 
     mapping(bytes32 => bool) public isPreApproved;
 
@@ -28,7 +28,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
     /// @param paymentDetails PaymentDetails struct
     function preApprove(PaymentEscrow.PaymentDetails calldata paymentDetails) external {
         // check sender is buyer
-        if (msg.sender != paymentDetails.payer) revert InvalidSender(msg.sender);
+        if (msg.sender != paymentDetails.payer) revert InvalidSender(msg.sender, paymentDetails.payer);
 
         // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);

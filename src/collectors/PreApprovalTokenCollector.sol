@@ -12,11 +12,10 @@ contract PreApprovalTokenCollector is TokenCollector {
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
     error PaymentNotApproved(bytes32 paymentDetailsHash);
     error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
-    error InvalidSender(address sender);
 
     mapping(bytes32 => bool) public isPreApproved;
 
-    constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
+    constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
     function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
@@ -28,7 +27,7 @@ contract PreApprovalTokenCollector is TokenCollector {
     /// @param paymentDetails PaymentDetails struct
     function preApprove(PaymentEscrow.PaymentDetails calldata paymentDetails) external {
         // check sender is buyer
-        if (msg.sender != paymentDetails.payer) revert InvalidSender(msg.sender);
+        if (msg.sender != paymentDetails.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentDetails.payer);
 
         // check status is not authorized or already pre-approved
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);

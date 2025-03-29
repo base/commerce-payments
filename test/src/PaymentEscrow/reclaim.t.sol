@@ -18,12 +18,14 @@ contract ReclaimTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Try to reclaim with invalid sender
         vm.warp(paymentDetails.authorizationExpiry);
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.payer)
+        );
         paymentEscrow.reclaim(paymentDetails);
     }
 
@@ -44,7 +46,7 @@ contract ReclaimTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Try to reclaim before deadline
         vm.warp(currentTime);
@@ -81,7 +83,7 @@ contract ReclaimTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Reclaim the payment the first time
         vm.warp(paymentDetails.authorizationExpiry);
@@ -114,7 +116,7 @@ contract ReclaimTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
@@ -140,7 +142,7 @@ contract ReclaimTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(amount, paymentDetails, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Prepare for reclaim
         vm.warp(paymentDetails.authorizationExpiry);

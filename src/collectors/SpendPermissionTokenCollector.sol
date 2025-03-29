@@ -13,8 +13,8 @@ contract SpendPermissionTokenCollector is TokenCollector {
 
     error InvalidSignature();
 
-    constructor(address _spendPermissionManager, address _paymentEscrow) TokenCollector(_paymentEscrow) {
-        spendPermissionManager = SpendPermissionManager(payable(_spendPermissionManager));
+    constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
+        spendPermissionManager = SpendPermissionManager(payable(spendPermissionManager_));
     }
 
     /// @inheritdoc TokenCollector
