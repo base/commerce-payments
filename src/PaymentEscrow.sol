@@ -184,18 +184,19 @@ contract PaymentEscrow {
         uint16 feeBps,
         address feeReceiver
     ) external onlySender(paymentDetails.operator) validAmount(amount) {
-        // validate payment details
+        // check payment details valid
         _validatePayment(paymentDetails, amount);
 
-        // validate fee parameters
+        // check fee parameters valid
         _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // check payment not already collected
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
 
-        // update captured amount for refund accounting
-        _paymentState[paymentDetailsHash].refundable = uint120(amount);
+        // set payment state with refundable amount
+        _paymentState[paymentDetailsHash] =
+            PaymentState({hasCollected: true, capturable: 0, refundable: uint120(amount)});
         emit PaymentCharged(
             paymentDetailsHash,
             paymentDetails.operator,
@@ -209,7 +210,7 @@ contract PaymentEscrow {
         // transfer tokens into escrow
         _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
 
-        // distribute tokens to capture address and fee recipient
+        // transfer tokens to receiver and fee receiver
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, amount, feeBps, feeReceiver);
     }
 
@@ -224,14 +225,14 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external onlySender(paymentDetails.operator) validAmount(amount) {
-        // validate payment details
+        // check payment details valid
         _validatePayment(paymentDetails, amount);
 
         // check payment not already collected
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
 
-        // set payment state
+        // set payment state with capturable amount
         _paymentState[paymentDetailsHash] =
             PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
@@ -260,7 +261,7 @@ contract PaymentEscrow {
         onlySender(paymentDetails.operator)
         validAmount(amount)
     {
-        // validate fee parameters
+        // check fee parameters valid
         _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // check before authorization expiry
@@ -273,13 +274,13 @@ contract PaymentEscrow {
         PaymentState memory state = _paymentState[paymentDetailsHash];
         if (state.capturable < amount) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, amount);
 
-        // update state
+        // update payment state, converting amount from capturable to refundable
         state.capturable -= uint120(amount);
         state.refundable += uint120(amount);
         _paymentState[paymentDetailsHash] = state;
         emit PaymentCaptured(paymentDetailsHash, amount);
 
-        // distribute tokens including fees
+        // transfer tokens to receiver and fee receiver
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, amount, feeBps, feeReceiver);
     }
 
@@ -350,11 +351,10 @@ contract PaymentEscrow {
         _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
         emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector);
 
+        // transfer tokens from operator to payer or use token collector and then transfer to payer
         if (tokenCollector == address(0)) {
-            // transfer tokens from caller to original payer
             SafeTransferLib.safeTransferFrom(paymentDetails.token, msg.sender, paymentDetails.payer, amount);
         } else {
-            // collect tokens into escrow then transfer to original payer
             _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
             SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
         }
