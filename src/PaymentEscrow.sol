@@ -404,13 +404,14 @@ contract PaymentEscrow {
         bytes calldata collectorData,
         TokenCollector.CollectorType collectorType
     ) internal {
-        if (TokenCollector(tokenCollector).getCollectorType() != collectorType) {
-            revert InvalidCollectorForOperation();
-        }
+        // check token collector matches required type
+        if (TokenCollector(tokenCollector).getCollectorType() != collectorType) revert InvalidCollectorForOperation();
+
+        // measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
         TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
-        if (escrowBalanceAfter - escrowBalanceBefore != amount) revert TokenCollectionFailed();
+        if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
