@@ -234,7 +234,7 @@ contract CaptureTest is PaymentEscrowBase {
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentCaptured(paymentDetailsHash, captureAmount, operator);
+        emit PaymentEscrow.PaymentCaptured(paymentDetailsHash, captureAmount);
 
         // Execute capture
         vm.prank(operator);

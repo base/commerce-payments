@@ -78,7 +78,7 @@ contract PaymentEscrow {
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 amount, address sender);
+    event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
     event PaymentVoided(bytes32 indexed paymentDetailsHash, uint256 amount, address sender);
@@ -279,7 +279,7 @@ contract PaymentEscrow {
         state.capturable -= uint120(amount);
         state.refundable += uint120(amount);
         _paymentState[paymentDetailsHash] = state;
-        emit PaymentCaptured(paymentDetailsHash, amount, msg.sender);
+        emit PaymentCaptured(paymentDetailsHash, amount);
 
         // distribute tokens including fees
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
