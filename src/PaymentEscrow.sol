@@ -184,15 +184,15 @@ contract PaymentEscrow {
         uint16 feeBps,
         address feeReceiver
     ) external onlySender(paymentDetails.operator) validAmount(amount) {
-        // check payment not already collected
-        bytes32 paymentDetailsHash = getHash(paymentDetails);
-        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
-
         // validate payment details
         _validatePayment(paymentDetails, amount);
 
         // validate fee parameters
         _validateFee(paymentDetails, feeBps, feeReceiver);
+
+        // check payment not already collected
+        bytes32 paymentDetailsHash = getHash(paymentDetails);
+        if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
 
         // update captured amount for refund accounting
         _paymentState[paymentDetailsHash].refundable = uint120(amount);
@@ -224,12 +224,12 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external onlySender(paymentDetails.operator) validAmount(amount) {
+        // validate payment details
+        _validatePayment(paymentDetails, amount);
+
         // check payment not already collected
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
-
-        // validate payment details
-        _validatePayment(paymentDetails, amount);
 
         // set payment state
         _paymentState[paymentDetailsHash] =
@@ -260,6 +260,9 @@ contract PaymentEscrow {
         onlySender(paymentDetails.operator)
         validAmount(amount)
     {
+        // validate fee parameters
+        _validateFee(paymentDetails, feeBps, feeReceiver);
+
         // check before authorization expiry
         if (block.timestamp >= paymentDetails.authorizationExpiry) {
             revert AfterAuthorizationExpiry(uint48(block.timestamp), paymentDetails.authorizationExpiry);
@@ -269,9 +272,6 @@ contract PaymentEscrow {
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         PaymentState memory state = _paymentState[paymentDetailsHash];
         if (state.capturable < amount) revert InsufficientAuthorization(paymentDetailsHash, state.capturable, amount);
-
-        // validate fee parameters
-        _validateFee(paymentDetails, feeBps, feeReceiver);
 
         // update state
         state.capturable -= uint120(amount);
