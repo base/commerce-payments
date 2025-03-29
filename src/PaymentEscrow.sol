@@ -81,13 +81,13 @@ contract PaymentEscrow {
     event PaymentCaptured(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
-    event PaymentVoided(bytes32 indexed paymentDetailsHash, uint256 amount, address sender);
+    event PaymentVoided(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when an authorized payment is reclaimed, returning any escrowed funds to the payer
     event PaymentReclaimed(bytes32 indexed paymentDetailsHash, uint256 amount);
 
     /// @notice Emitted when a captured payment is refunded
-    event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 amount, address tokenCollector, address sender);
+    event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 amount, address tokenCollector);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
@@ -292,7 +292,7 @@ contract PaymentEscrow {
 
         // clear capturable state
         _paymentState[paymentDetailsHash].capturable = 0;
-        emit PaymentVoided(paymentDetailsHash, authorizedAmount, msg.sender);
+        emit PaymentVoided(paymentDetailsHash, authorizedAmount);
 
         // transfer tokens to payer
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, authorizedAmount);
@@ -345,7 +345,7 @@ contract PaymentEscrow {
 
         // update capturable amount
         _paymentState[paymentDetailsHash].refundable = captured - uint120(amount);
-        emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector, msg.sender);
+        emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector);
 
         if (tokenCollector == address(0)) {
             // transfer tokens from caller to original payer

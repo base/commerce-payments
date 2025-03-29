@@ -150,7 +150,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // Record expected event
         vm.expectEmit(true, true, false, true);
-        emit PaymentEscrow.PaymentRefunded(paymentDetailsHash, refundAmount, address(0), operator);
+        emit PaymentEscrow.PaymentRefunded(paymentDetailsHash, refundAmount, address(0));
 
         // Execute refund
         vm.prank(operator);
