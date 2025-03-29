@@ -23,7 +23,9 @@ contract ReclaimTest is PaymentEscrowBase {
         // Try to reclaim with invalid sender
         vm.warp(paymentDetails.authorizationExpiry);
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.payer)
+        );
         paymentEscrow.reclaim(paymentDetails);
     }
 

@@ -42,7 +42,9 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.operator)
+        );
         paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature);
     }
 

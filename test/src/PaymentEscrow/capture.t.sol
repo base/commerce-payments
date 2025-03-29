@@ -20,7 +20,7 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.authorize(paymentDetails, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
 
         vm.prank(sender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender));
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, sender, paymentDetails.operator));
         paymentEscrow.capture(paymentDetails, authorizedAmount, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 
@@ -119,7 +119,11 @@ contract CaptureTest is PaymentEscrowBase {
 
         // Then capture the full amount
         vm.prank(paymentDetails.receiver);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, paymentDetails.receiver));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.InvalidSender.selector, paymentDetails.receiver, paymentDetails.operator
+            )
+        );
         paymentEscrow.capture(paymentDetails, authorizedAmount, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
     }
 

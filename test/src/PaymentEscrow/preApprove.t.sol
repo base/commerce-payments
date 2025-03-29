@@ -6,7 +6,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {PreApprovalTokenCollector} from "../../../src/collectors/PreApprovalTokenCollector.sol";
 
 contract PreApproveTest is PaymentEscrowBase {
-    function test_reverts_ifSenderIsNotpayer(address invalidSender, uint120 amount) public {
+    function test_reverts_ifSenderIsNotPayer(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != payerEOA);
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
@@ -15,7 +15,9 @@ contract PreApproveTest is PaymentEscrowBase {
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
 
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.payer)
+        );
         PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
     }
 

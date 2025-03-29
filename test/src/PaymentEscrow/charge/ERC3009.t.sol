@@ -44,7 +44,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         );
     }
 
-    function test_reverts_whenCallerIsNotOperatorOrreceiver(address invalidSender, uint120 amount) public {
+    function test_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
         vm.assume(invalidSender != operator);
         vm.assume(invalidSender != receiver);
         vm.assume(invalidSender != address(0));
@@ -57,7 +57,9 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentDetails.operator)
+        );
         paymentEscrow.charge(
             paymentDetails,
             amount,

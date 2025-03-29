@@ -90,7 +90,7 @@ contract PaymentEscrow {
     event PaymentRefunded(bytes32 indexed paymentDetailsHash, uint256 amount, address tokenCollector, address sender);
 
     /// @notice Sender for a function call does not follow access control requirements
-    error InvalidSender(address sender);
+    error InvalidSender(address sender, address expected);
 
     /// @notice Token pull failed
     error TokenCollectionFailed();
@@ -154,7 +154,7 @@ contract PaymentEscrow {
     );
 
     modifier onlySender(address sender) {
-        if (msg.sender != sender) revert InvalidSender(msg.sender);
+        if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
         _;
     }
 
@@ -284,12 +284,7 @@ contract PaymentEscrow {
     /// @dev Returns any escrowed funds to payer
     /// @dev Can only be called by the operator or receiver
     /// @param paymentDetails PaymentDetails struct
-    function void(PaymentDetails calldata paymentDetails) external {
-        // check sender is operator or receiver
-        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
-            revert InvalidSender(msg.sender);
-        }
-
+    function void(PaymentDetails calldata paymentDetails) external onlySender(paymentDetails.operator) {
         // check authorization non-zero
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         uint256 authorizedAmount = _paymentState[paymentDetailsHash].capturable;
@@ -337,12 +332,7 @@ contract PaymentEscrow {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external validAmount(amount) {
-        // check sender is operator or original payment receiver
-        if (msg.sender != paymentDetails.operator && msg.sender != paymentDetails.receiver) {
-            revert InvalidSender(msg.sender);
-        }
-
+    ) external onlySender(paymentDetails.operator) validAmount(amount) {
         // check refund has not expired
         if (block.timestamp >= paymentDetails.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentDetails.refundExpiry);
