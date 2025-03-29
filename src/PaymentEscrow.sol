@@ -402,23 +402,7 @@ contract PaymentEscrow {
     /// @param paymentDetails PaymentDetails struct
     /// @return hash Hash of payment details for the current chain and contract address
     function getHash(PaymentDetails calldata paymentDetails) public view returns (bytes32) {
-        bytes32 detailsHash = keccak256(
-            abi.encode(
-                PAYMENT_DETAILS_TYPEHASH,
-                paymentDetails.operator,
-                paymentDetails.payer,
-                paymentDetails.receiver,
-                paymentDetails.token,
-                paymentDetails.maxAmount,
-                paymentDetails.preApprovalExpiry,
-                paymentDetails.authorizationExpiry,
-                paymentDetails.refundExpiry,
-                paymentDetails.minFeeBps,
-                paymentDetails.maxFeeBps,
-                paymentDetails.feeReceiver,
-                paymentDetails.salt
-            )
-        );
+        bytes32 detailsHash = keccak256(abi.encode(PAYMENT_DETAILS_TYPEHASH, paymentDetails));
         return keccak256(abi.encode(block.chainid, address(this), detailsHash));
     }
 
