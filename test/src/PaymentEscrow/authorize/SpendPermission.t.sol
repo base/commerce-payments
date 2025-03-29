@@ -36,7 +36,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         // Submit authorization
         vm.prank(operator);
         paymentEscrow.authorize(
-            amount, paymentDetails, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")
+            paymentDetails, amount, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")
         ); // Empty collectorData for regular spend
 
         // Verify balances

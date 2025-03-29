@@ -163,15 +163,15 @@ contract PaymentEscrow {
     /// @notice Transfers funds from payer to receiver in one step
     /// @dev If amount is less than the authorized amount, only amount is taken from payer
     /// @dev Reverts if the authorization has been voided or expired
-    /// @param amount Amount to charge and capture
     /// @param paymentDetails PaymentDetails struct
+    /// @param amount Amount to charge and capture
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function charge(
-        uint256 amount,
         PaymentDetails calldata paymentDetails,
+        uint256 amount,
         address tokenCollector,
         bytes calldata collectorData,
         uint16 feeBps,
@@ -206,16 +206,16 @@ contract PaymentEscrow {
         _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
 
         // distribute tokens to capture address and fee recipient
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, amount, feeBps, feeReceiver);
     }
 
     /// @notice Transfers funds from payer to escrow
-    /// @param amount Amount to authorize
     /// @param paymentDetails PaymentDetails struct
+    /// @param amount Amount to authorize
     /// @param collectorData Data to pass to the token collector
     function authorize(
-        uint256 amount,
         PaymentDetails calldata paymentDetails,
+        uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
     ) external validAmount(amount) {
@@ -249,11 +249,11 @@ contract PaymentEscrow {
     /// @notice Transfer previously-escrowed funds to receiver
     /// @dev Can be called multiple times up to cumulative authorized amount
     /// @dev Can only be called by the operator
-    /// @param amount Amount to capture
     /// @param paymentDetails PaymentDetails struct
+    /// @param amount Amount to capture
     /// @param feeBps Fee percentage to apply (must be within min/max range)
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
-    function capture(uint256 amount, PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver)
+    function capture(PaymentDetails calldata paymentDetails, uint256 amount, uint16 feeBps, address feeReceiver)
         external
         validAmount(amount)
     {
@@ -282,7 +282,7 @@ contract PaymentEscrow {
         emit PaymentCaptured(paymentDetailsHash, amount);
 
         // distribute tokens including fees
-        _distributeTokens(paymentDetails.token, paymentDetails.receiver, feeReceiver, feeBps, amount);
+        _distributeTokens(paymentDetails.token, paymentDetails.receiver, amount, feeBps, feeReceiver);
     }
 
     /// @notice Permanently voids a payment authorization
@@ -338,13 +338,13 @@ contract PaymentEscrow {
     /// @notice Return previously-captured tokens to payer
     /// @dev Can be called by operator or receiver
     /// @dev Funds are transferred from the caller or from the escrow if token collector retrieves external liquidity
-    /// @param amount Amount to refund
     /// @param paymentDetails PaymentDetails struct
+    /// @param amount Amount to refund
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     function refund(
-        uint256 amount,
         PaymentDetails calldata paymentDetails,
+        uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
     ) external validAmount(amount) {
@@ -445,7 +445,7 @@ contract PaymentEscrow {
     /// @param feeReceiver Address to receive fees
     /// @param feeBps Fee percentage in basis points
     /// @param amount Total amount to split between payment and fees
-    function _distributeTokens(address token, address receiver, address feeReceiver, uint16 feeBps, uint256 amount)
+    function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
