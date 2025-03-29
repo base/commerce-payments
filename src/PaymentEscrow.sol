@@ -92,14 +92,11 @@ contract PaymentEscrow {
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
 
-    /// @notice Token pull failed
-    error TokenCollectionFailed();
+    /// @notice Amount is zero
+    error ZeroAmount();
 
-    /// @notice Payment has already been authorized
-    error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
-
-    /// @notice Payment authorization is insufficient for a requested capture
-    error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedAmount, uint256 requestedAmount);
+    /// @notice Amount overflows allowed storage size of uint120
+    error AmountOverflow(uint256 amount, uint256 limit);
 
     /// @notice Requested authorization amount exceeds `PaymentDetails.maxAmount`
     error ExceedsMaxAmount(uint256 amount, uint256 maxAmount);
@@ -110,32 +107,8 @@ contract PaymentEscrow {
     /// @notice Expiry timestamps violate preApproval <= authorization <= refund
     error InvalidExpiries(uint48 preApproval, uint48 authorization, uint48 refund);
 
-    /// @notice Capture attempted at or after authorization expiry
-    error AfterAuthorizationExpiry(uint48 timestamp, uint48 expiry);
-
-    /// @notice Reclaim attempted before authorization expiry
-    error BeforeAuthorizationExpiry(uint48 timestamp, uint48 expiry);
-
-    /// @notice Refund attempted at or after refund expiry
-    error AfterRefundExpiry(uint48 timestamp, uint48 expiry);
-
-    /// @notice Refund attempt exceeds captured amount
-    error RefundExceedsCapture(uint256 refund, uint256 captured);
-
     /// @notice Fee bips overflows 10_000 maximum
     error FeeBpsOverflow(uint16 feeBps);
-
-    /// @notice Fee recipient is zero address
-    error ZeroFeeRecipient();
-
-    /// @notice Amount is zero
-    error ZeroAmount();
-
-    /// @notice Amount overflows allowed storage size of uint120
-    error AmountOverflow(uint256 amount, uint256 limit);
-
-    /// @notice Authorization is zero
-    error ZeroAuthorization(bytes32 paymentDetailsHash);
 
     /// @notice Fee bps range invalid due to min > max
     error InvalidFeeBpsRange(uint16 minFeeBps, uint16 maxFeeBps);
@@ -143,11 +116,38 @@ contract PaymentEscrow {
     /// @notice Fee bps outside of allowed range
     error FeeBpsOutOfRange(uint16 feeBps, uint16 minFeeBps, uint16 maxFeeBps);
 
+    /// @notice Fee receiver is zero address with a non-zero fee
+    error ZeroFeeReceiver();
+
     /// @notice Fee recipient cannot be changed
-    error InvalidFeeRecipient(address attempted, address expected);
+    error InvalidFeeReceiver(address attempted, address expected);
 
     /// @notice Token collector is not valid for the operation
     error InvalidCollectorForOperation();
+
+    /// @notice Token pull failed
+    error TokenCollectionFailed();
+
+    /// @notice Charge or authorize attempted on a payment has already been collected
+    error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
+
+    /// @notice Capture attempted at or after authorization expiry
+    error AfterAuthorizationExpiry(uint48 timestamp, uint48 expiry);
+
+    /// @notice Capture attempted with insufficient authorization amount
+    error InsufficientAuthorization(bytes32 paymentDetailsHash, uint256 authorizedAmount, uint256 requestedAmount);
+
+    /// @notice Void or reclaim attempted with zero authorization amount
+    error ZeroAuthorization(bytes32 paymentDetailsHash);
+
+    /// @notice Reclaim attempted before authorization expiry
+    error BeforeAuthorizationExpiry(uint48 timestamp, uint48 expiry);
+
+    /// @notice Refund attempted at or after refund expiry
+    error AfterRefundExpiry(uint48 timestamp, uint48 expiry);
+
+    /// @notice Refund attempted with amount exceeding previous non-refunded captures
+    error RefundExceedsCapture(uint256 refund, uint256 captured);
 
     /// @notice Typehash used for hashing PaymentDetails structs
     bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
@@ -468,11 +468,11 @@ contract PaymentEscrow {
         }
 
         // check fee recipient only zero address if zero fee bps
-        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeRecipient();
+        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
         // check fee recipient matches payment details if non-zero
         if (paymentDetails.feeReceiver != address(0) && paymentDetails.feeReceiver != feeReceiver) {
-            revert InvalidFeeRecipient(feeReceiver, paymentDetails.feeReceiver);
+            revert InvalidFeeReceiver(feeReceiver, paymentDetails.feeReceiver);
         }
     }
 }

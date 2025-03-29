@@ -443,7 +443,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroFeeRecipient.selector);
+        vm.expectRevert(PaymentEscrow.ZeroFeeReceiver.selector);
         paymentEscrow.charge(paymentDetails, amount, hooks[TokenCollector.ERC3009], signature, minFeeBps, address(0));
     }
 
