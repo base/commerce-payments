@@ -149,10 +149,12 @@ contract PaymentEscrow {
     /// @notice Token collector is not valid for the operation
     error InvalidCollectorForOperation();
 
+    /// @notice Typehash used for hashing PaymentDetails structs
     bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
         "PaymentDetails(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
+    /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
         if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
         _;
@@ -214,6 +216,7 @@ contract PaymentEscrow {
     /// @notice Transfers funds from payer to escrow
     /// @param paymentDetails PaymentDetails struct
     /// @param amount Amount to authorize
+    /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     function authorize(
         PaymentDetails calldata paymentDetails,
@@ -366,27 +369,32 @@ contract PaymentEscrow {
 
     /// @notice Get the amount of tokens currently authorized (held in escrow)
     /// @param paymentDetailsHash Hash of the payment details
-    /// @return Amount of tokens authorized
+    /// @return Amount of tokens capturable
     function getCapturableAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
         return _paymentState[paymentDetailsHash].capturable;
     }
 
-    /// @notice Get the amount of tokens that have been captured
+    /// @notice Get the amount of tokens currently refundable
     /// @param paymentDetailsHash Hash of the payment details
-    /// @return Amount of tokens captured
+    /// @return Amount of tokens refundable
     function getRefundableAmount(bytes32 paymentDetailsHash) external view returns (uint120) {
         return _paymentState[paymentDetailsHash].refundable;
     }
 
     /// @notice Get hash of PaymentDetails struct
     /// @param paymentDetails PaymentDetails struct
-    /// @return hash Hash of payment details for the current chain and contract address
+    /// @return Hash of payment details for the current chain and contract address
     function getHash(PaymentDetails calldata paymentDetails) public view returns (bytes32) {
         bytes32 detailsHash = keccak256(abi.encode(PAYMENT_DETAILS_TYPEHASH, paymentDetails));
         return keccak256(abi.encode(block.chainid, address(this), detailsHash));
     }
 
     /// @notice Transfer tokens into this contract
+    /// @param paymentDetails PaymentDetails struct
+    /// @param amount Amount of tokens to collect
+    /// @param tokenCollector Address of the token collector
+    /// @param collectorData Data to pass to the token collector
+    /// @param collectorType Type of collector to enforce (payment or refund)
     function _collectTokens(
         PaymentDetails calldata paymentDetails,
         uint256 amount,
@@ -407,9 +415,9 @@ contract PaymentEscrow {
     /// @notice Sends tokens to receiver and/or feeReceiver
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
-    /// @param feeReceiver Address to receive fees
-    /// @param feeBps Fee percentage in basis points
     /// @param amount Total amount to split between payment and fees
+    /// @param feeBps Fee percentage in basis points
+    /// @param feeReceiver Address to receive fees
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
@@ -419,6 +427,8 @@ contract PaymentEscrow {
     }
 
     /// @notice Validates required properties of a payment
+    /// @param paymentDetails PaymentDetails struct
+    /// @param amount Token amount to validate against
     function _validatePayment(PaymentDetails calldata paymentDetails, uint256 amount) internal view {
         // check amount does not exceed maximum
         if (amount > paymentDetails.maxAmount) revert ExceedsMaxAmount(amount, paymentDetails.maxAmount);
@@ -447,7 +457,10 @@ contract PaymentEscrow {
         }
     }
 
-    /// @notice Validates attempted fee adheres to constraints set by payment details.
+    /// @notice Validates attempted fee adheres to constraints set by payment details
+    /// @param paymentDetails PaymentDetails struct
+    /// @param feeBps Fee percentage in basis points
+    /// @param feeReceiver Address to receive fees
     function _validateFee(PaymentDetails calldata paymentDetails, uint16 feeBps, address feeReceiver) internal pure {
         // check fee bps within [min, max]
         if (feeBps < paymentDetails.minFeeBps || feeBps > paymentDetails.maxFeeBps) {
