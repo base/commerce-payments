@@ -153,6 +153,11 @@ contract PaymentEscrow {
         "PaymentDetails(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
+    modifier onlySender(address sender) {
+        if (msg.sender != sender) revert InvalidSender(msg.sender);
+        _;
+    }
+
     /// @notice Ensures amount is non-zero and does not overflow storage
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert ZeroAmount();
@@ -176,10 +181,7 @@ contract PaymentEscrow {
         bytes calldata collectorData,
         uint16 feeBps,
         address feeReceiver
-    ) external validAmount(amount) {
-        // check sender is operator
-        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
-
+    ) external onlySender(paymentDetails.operator) validAmount(amount) {
         // check payment not already collected
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
@@ -218,10 +220,7 @@ contract PaymentEscrow {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external validAmount(amount) {
-        // check sender is operator
-        if (msg.sender != paymentDetails.operator) revert InvalidSender(msg.sender);
-
+    ) external onlySender(paymentDetails.operator) validAmount(amount) {
         // check payment not already collected
         bytes32 paymentDetailsHash = getHash(paymentDetails);
         if (_paymentState[paymentDetailsHash].hasCollected) revert PaymentAlreadyCollected(paymentDetailsHash);
@@ -255,13 +254,9 @@ contract PaymentEscrow {
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function capture(PaymentDetails calldata paymentDetails, uint256 amount, uint16 feeBps, address feeReceiver)
         external
+        onlySender(paymentDetails.operator)
         validAmount(amount)
     {
-        // check sender is operator
-        if (msg.sender != paymentDetails.operator) {
-            revert InvalidSender(msg.sender);
-        }
-
         // check before authorization expiry
         if (block.timestamp >= paymentDetails.authorizationExpiry) {
             revert AfterAuthorizationExpiry(uint48(block.timestamp), paymentDetails.authorizationExpiry);
@@ -311,12 +306,7 @@ contract PaymentEscrow {
     /// @notice Returns any escrowed funds to payer
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentDetails PaymentDetails struct
-    function reclaim(PaymentDetails calldata paymentDetails) external {
-        // check sender is payer
-        if (msg.sender != paymentDetails.payer) {
-            revert InvalidSender(msg.sender);
-        }
-
+    function reclaim(PaymentDetails calldata paymentDetails) external onlySender(paymentDetails.payer) {
         // check not before authorization expiry
         if (block.timestamp < paymentDetails.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentDetails.authorizationExpiry);
