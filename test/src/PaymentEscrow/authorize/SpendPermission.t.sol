@@ -6,17 +6,17 @@ import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 
 contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
-    function test_succeeds_withDeployedSmartWallet(uint256 amount) public {
+    function test_succeeds_withDeployedSmartWallet(uint256 maxAmount, uint256 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
 
         // Assume reasonable values
-        vm.assume(amount > 0 && amount <= walletBalance);
+        vm.assume(walletBalance >= maxAmount && maxAmount >= amount && amount > 0);
 
         // Create payment details with SpendPermission auth type
         PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
             payer: address(smartWalletDeployed),
-            maxAmount: amount,
+            maxAmount: maxAmount,
             token: address(mockERC3009Token)
         });
 
