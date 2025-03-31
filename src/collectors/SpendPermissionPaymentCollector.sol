@@ -22,6 +22,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     function collectTokens(
+        bytes32 paymentDetailsHash,
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
         bytes calldata collectorData
@@ -34,7 +35,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
             period: type(uint48).max,
             start: 0,
             end: paymentDetails.preApprovalExpiry,
-            salt: uint256(paymentEscrow.getHash(paymentDetails)),
+            salt: uint256(paymentDetailsHash),
             extraData: hex""
         });
 

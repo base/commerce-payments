@@ -17,6 +17,7 @@ contract Permit2PaymentCollector is TokenCollector {
     }
 
     function collectTokens(
+        bytes32 paymentDetailsHash,
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
         bytes calldata signature
@@ -27,7 +28,7 @@ contract Permit2PaymentCollector is TokenCollector {
                     token: paymentDetails.token,
                     amount: paymentDetails.maxAmount
                 }),
-                nonce: uint256(paymentEscrow.getHash(paymentDetails)),
+                nonce: uint256(paymentDetailsHash),
                 deadline: paymentDetails.preApprovalExpiry
             }),
             ISignatureTransfer.SignatureTransferDetails({to: address(paymentEscrow), requestedAmount: amount}),

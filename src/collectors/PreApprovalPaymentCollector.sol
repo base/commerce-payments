@@ -36,13 +36,13 @@ contract PreApprovalPaymentCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
-    function collectTokens(PaymentEscrow.PaymentDetails calldata paymentDetails, uint256 amount, bytes calldata)
-        external
-        override
-        onlyPaymentEscrow
-    {
+    function collectTokens(
+        bytes32 paymentDetailsHash,
+        PaymentEscrow.PaymentDetails calldata paymentDetails,
+        uint256 amount,
+        bytes calldata
+    ) external override onlyPaymentEscrow {
         // check payment pre-approved
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         if (!isPreApproved[paymentDetailsHash]) revert PaymentNotApproved(paymentDetailsHash);
 
         // transfer tokens from payer to escrow

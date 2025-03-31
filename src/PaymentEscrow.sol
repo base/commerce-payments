@@ -208,7 +208,14 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
+        _collectTokens(
+            paymentDetailsHash,
+            paymentDetails,
+            amount,
+            tokenCollector,
+            collectorData,
+            TokenCollector.CollectorType.Payment
+        );
 
         // transfer tokens to receiver and fee receiver
         _distributeTokens(paymentDetails.token, paymentDetails.receiver, amount, feeBps, feeReceiver);
@@ -246,7 +253,14 @@ contract PaymentEscrow {
         );
 
         // transfer tokens into escrow
-        _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
+        _collectTokens(
+            paymentDetailsHash,
+            paymentDetails,
+            amount,
+            tokenCollector,
+            collectorData,
+            TokenCollector.CollectorType.Payment
+        );
     }
 
     /// @notice Transfer previously-escrowed funds to receiver
@@ -352,7 +366,14 @@ contract PaymentEscrow {
         emit PaymentRefunded(paymentDetailsHash, amount, tokenCollector);
 
         // transfer tokens into escrow and forward to payer
-        _collectTokens(paymentDetails, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
+        _collectTokens(
+            paymentDetailsHash,
+            paymentDetails,
+            amount,
+            tokenCollector,
+            collectorData,
+            TokenCollector.CollectorType.Refund
+        );
         SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, amount);
     }
 
@@ -392,6 +413,7 @@ contract PaymentEscrow {
     /// @param collectorData Data to pass to the token collector
     /// @param collectorType Type of collector to enforce (payment or refund)
     function _collectTokens(
+        bytes32 paymentDetailsHash,
         PaymentDetails calldata paymentDetails,
         uint256 amount,
         address tokenCollector,
@@ -403,7 +425,7 @@ contract PaymentEscrow {
 
         // measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));
-        TokenCollector(tokenCollector).collectTokens(paymentDetails, amount, collectorData);
+        TokenCollector(tokenCollector).collectTokens(paymentDetailsHash, paymentDetails, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentDetails.token).balanceOf(address(this));
         if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
     }

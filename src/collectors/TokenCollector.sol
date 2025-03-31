@@ -23,10 +23,12 @@ abstract contract TokenCollector {
     }
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
+    /// @param paymentDetailsHash Hash of payment details
     /// @param paymentDetails Payment details struct
     /// @param amount Amount of tokens to pull
     /// @param collectorData Data to pass to the token collector
     function collectTokens(
+        bytes32 paymentDetailsHash,
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
         bytes calldata collectorData

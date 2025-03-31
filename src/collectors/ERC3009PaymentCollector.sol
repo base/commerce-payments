@@ -22,13 +22,13 @@ contract ERC3009PaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     function collectTokens(
+        bytes32 paymentDetailsHash,
         PaymentEscrow.PaymentDetails calldata paymentDetails,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
         // First receive the tokens to this contract
         IERC3009(paymentDetails.token).receiveWithAuthorization({
             from: paymentDetails.payer,

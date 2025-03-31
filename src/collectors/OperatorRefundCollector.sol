@@ -15,11 +15,12 @@ contract OperatorRefundCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     /// @dev Requires previous ERC-20 allowance set by operator on this token collector
     /// @dev Only operator can initate token collection so authentication is inherited from Escrow
-    function collectTokens(PaymentEscrow.PaymentDetails calldata paymentDetails, uint256 amount, bytes calldata)
-        external
-        override
-        onlyPaymentEscrow
-    {
+    function collectTokens(
+        bytes32,
+        PaymentEscrow.PaymentDetails calldata paymentDetails,
+        uint256 amount,
+        bytes calldata
+    ) external override onlyPaymentEscrow {
         // transfer tokens from operator to escrow
         SafeTransferLib.safeTransferFrom(paymentDetails.token, paymentDetails.operator, address(paymentEscrow), amount);
     }
