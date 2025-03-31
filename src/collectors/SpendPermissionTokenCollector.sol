@@ -32,7 +32,7 @@ contract SpendPermissionTokenCollector is TokenCollector {
             account: paymentDetails.payer,
             spender: address(this),
             token: paymentDetails.token,
-            allowance: uint160(amount),
+            allowance: uint160(paymentDetails.maxAmount),
             period: type(uint48).max,
             start: 0,
             end: paymentDetails.preApprovalExpiry,
