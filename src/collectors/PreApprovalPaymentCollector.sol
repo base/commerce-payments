@@ -6,7 +6,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-contract PreApprovalTokenCollector is TokenCollector {
+contract PreApprovalPaymentCollector is TokenCollector {
     event PaymentApproved(bytes32 indexed paymentDetailsHash);
 
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);

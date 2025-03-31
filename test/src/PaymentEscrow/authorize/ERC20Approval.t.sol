@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PreApprovalTokenCollector} from "../../../../src/collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalPaymentCollector} from "../../../../src/collectors/PreApprovalPaymentCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
@@ -23,7 +23,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize without pre-approval
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalTokenCollector.PaymentNotApproved.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotApproved.selector, paymentDetailsHash)
         );
         paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], "");
     }
@@ -35,7 +35,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
             _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token));
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -76,7 +76,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
             _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token));
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);

@@ -8,7 +8,7 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-contract ERC3009TokenCollector is TokenCollector {
+contract ERC3009PaymentCollector is TokenCollector {
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
     IMulticall3 public immutable multicall3;

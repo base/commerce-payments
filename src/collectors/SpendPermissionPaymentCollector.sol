@@ -8,7 +8,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-contract SpendPermissionTokenCollector is TokenCollector {
+contract SpendPermissionPaymentCollector is TokenCollector {
     SpendPermissionManager public immutable spendPermissionManager;
 
     error InvalidSignature();

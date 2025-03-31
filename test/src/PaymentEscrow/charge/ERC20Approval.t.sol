@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PreApprovalTokenCollector} from "../../../../src/collectors/PreApprovalTokenCollector.sol";
+import {PreApprovalPaymentCollector} from "../../../../src/collectors/PreApprovalPaymentCollector.sol";
 
 contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
@@ -21,7 +21,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Try to charge without pre-approval in Escrow contract
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalTokenCollector.PaymentNotApproved.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotApproved.selector, paymentDetailsHash)
         );
         paymentEscrow.charge(
             paymentDetails,
@@ -41,7 +41,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -67,7 +67,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalTokenCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);

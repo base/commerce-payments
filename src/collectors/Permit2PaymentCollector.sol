@@ -6,7 +6,7 @@ import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-contract Permit2TokenCollector is TokenCollector {
+contract Permit2PaymentCollector is TokenCollector {
     ISignatureTransfer public immutable permit2;
 
     constructor(address paymentEscrow_, address permit2_) TokenCollector(paymentEscrow_) {
