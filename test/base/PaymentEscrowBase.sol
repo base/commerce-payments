@@ -20,6 +20,7 @@ import {ERC3009TokenCollector} from "../../src/collectors/ERC3009TokenCollector.
 import {PreApprovalTokenCollector} from "../../src/collectors/PreApprovalTokenCollector.sol";
 import {Permit2TokenCollector} from "../../src/collectors/Permit2TokenCollector.sol";
 import {SpendPermissionTokenCollector} from "../../src/collectors/SpendPermissionTokenCollector.sol";
+import {OperatorRefundCollector} from "../../src/collectors/OperatorRefundCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
 contract PaymentEscrowBase is Test, DeployPermit2 {
@@ -31,6 +32,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         ERC20,
         Permit2,
         SpendPermission,
+        OperatorRefund,
         ERC20UnsafeTransfer
     }
 
@@ -48,6 +50,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     PreApprovalTokenCollector public erc20Hook;
     Permit2TokenCollector public permit2Hook;
     SpendPermissionTokenCollector public spendPermissionHook;
+    OperatorRefundCollector public operatorRefundCollector;
     ERC20UnsafeTransferTokenCollector public erc20UnsafeTransferHook;
 
     // Mapping to store token collector addresses
@@ -94,6 +97,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         erc20Hook = new PreApprovalTokenCollector(address(paymentEscrow));
         permit2Hook = new Permit2TokenCollector(address(paymentEscrow), permit2);
         spendPermissionHook = new SpendPermissionTokenCollector(address(paymentEscrow), address(spendPermissionManager));
+        operatorRefundCollector = new OperatorRefundCollector(address(paymentEscrow));
         erc20UnsafeTransferHook = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
 
         // Store token collector addresses in mapping
@@ -101,6 +105,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         hooks[TokenCollector.ERC20] = address(erc20Hook);
         hooks[TokenCollector.Permit2] = address(permit2Hook);
         hooks[TokenCollector.SpendPermission] = address(spendPermissionHook);
+        hooks[TokenCollector.OperatorRefund] = address(operatorRefundCollector);
         hooks[TokenCollector.ERC20UnsafeTransfer] = address(erc20UnsafeTransferHook);
 
         // Setup roles
