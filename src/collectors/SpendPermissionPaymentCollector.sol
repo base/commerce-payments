@@ -9,17 +9,15 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract SpendPermissionPaymentCollector is TokenCollector {
+    /// @inheritdoc TokenCollector
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
+
     SpendPermissionManager public immutable spendPermissionManager;
 
     error InvalidSignature();
 
     constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
         spendPermissionManager = SpendPermissionManager(payable(spendPermissionManager_));
-    }
-
-    /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Payment;
     }
 
     /// @inheritdoc TokenCollector

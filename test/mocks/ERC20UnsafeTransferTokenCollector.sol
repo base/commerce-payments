@@ -19,7 +19,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
     constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
 
     /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
+    function collectorType() external pure override returns (TokenCollector.CollectorType) {
         return TokenCollector.CollectorType.Payment;
     }
 

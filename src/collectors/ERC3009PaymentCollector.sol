@@ -9,17 +9,15 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract ERC3009PaymentCollector is TokenCollector {
+    /// @inheritdoc TokenCollector
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
+
     bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
     IMulticall3 public immutable multicall3;
 
     constructor(address paymentEscrow_, address multicall3_) TokenCollector(paymentEscrow_) {
         multicall3 = IMulticall3(multicall3_);
-    }
-
-    /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Payment;
     }
 
     /// @inheritdoc TokenCollector

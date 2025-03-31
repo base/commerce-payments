@@ -7,15 +7,13 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract Permit2PaymentCollector is TokenCollector {
+    /// @inheritdoc TokenCollector
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
+
     ISignatureTransfer public immutable permit2;
 
     constructor(address paymentEscrow_, address permit2_) TokenCollector(paymentEscrow_) {
         permit2 = ISignatureTransfer(permit2_);
-    }
-
-    /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Payment;
     }
 
     function collectTokens(

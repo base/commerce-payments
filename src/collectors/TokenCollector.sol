@@ -34,5 +34,5 @@ abstract contract TokenCollector {
 
     /// @notice Get the type of token collector
     /// @return collectorType Type of token collector
-    function getCollectorType() external view virtual returns (CollectorType);
+    function collectorType() external view virtual returns (CollectorType);
 }

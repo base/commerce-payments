@@ -7,12 +7,10 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract OperatorRefundCollector is TokenCollector {
-    constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
-
     /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Refund;
-    }
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Refund;
+
+    constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
     /// @dev Requires previous ERC-20 allowance set by operator on this token collector

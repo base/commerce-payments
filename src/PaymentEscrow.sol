@@ -399,7 +399,7 @@ contract PaymentEscrow {
         TokenCollector.CollectorType collectorType
     ) internal {
         // check token collector matches required type
-        if (TokenCollector(tokenCollector).getCollectorType() != collectorType) revert InvalidCollectorForOperation();
+        if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
         // measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentDetails.token).balanceOf(address(this));

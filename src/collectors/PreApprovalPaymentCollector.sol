@@ -7,6 +7,9 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 contract PreApprovalPaymentCollector is TokenCollector {
+    /// @inheritdoc TokenCollector
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
+
     event PaymentApproved(bytes32 indexed paymentDetailsHash);
 
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
@@ -16,11 +19,6 @@ contract PreApprovalPaymentCollector is TokenCollector {
     mapping(bytes32 => bool) public isPreApproved;
 
     constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
-
-    /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Payment;
-    }
 
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment details
