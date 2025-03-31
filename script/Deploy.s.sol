@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {PaymentEscrow} from "../src/PaymentEscrow.sol";
-import {ERC3009TokenCollector} from "../src/collectors/ERC3009TokenCollector.sol";
+import {ERC3009PaymentCollector} from "../src/collectors/ERC3009PaymentCollector.sol";
 
 /**
  * @notice Deploy the PaymentEscrow contract.
@@ -22,19 +22,18 @@ contract Deploy is Script {
     address constant MAGIC_SPEND = 0x011A61C07DbF256A68256B1cB51A5e246730aB92;
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         // Deploy PaymentEscrow with known dependencies
         PaymentEscrow paymentEscrow = new PaymentEscrow();
-        ERC3009TokenCollector erc3009Collector = new ERC3009TokenCollector(address(paymentEscrow), MULTICALL3);
+        ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(paymentEscrow), MULTICALL3);
 
         vm.stopBroadcast();
 
         // Log deployed addresses
         console2.log("Deployed addresses:");
         console2.log("PaymentEscrow:", address(paymentEscrow));
-        console2.log("ERC3009TokenCollector:", address(erc3009Collector));
+        console2.log("ERC3009PaymentCollector:", address(erc3009Collector));
 
         // Log known addresses used
         console2.log("\nKnown addresses used:");
