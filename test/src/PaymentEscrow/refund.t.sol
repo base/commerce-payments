@@ -109,16 +109,16 @@ contract RefundTest is PaymentEscrowBase {
         // Fund the operator for refund
         mockERC3009Token.mint(operator, refundAmount);
 
-        // Approve escrow to pull refund amount
+        // Approve operator refund collector to pull refund amount
         vm.prank(operator);
-        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
+        mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 operatorBalanceBefore = mockERC3009Token.balanceOf(operator);
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(paymentDetails, refundAmount, address(0), hex"");
+        paymentEscrow.refund(paymentDetails, refundAmount, address(operatorRefundCollector), hex"");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
@@ -146,14 +146,14 @@ contract RefundTest is PaymentEscrowBase {
         // Fund operator for refund
         mockERC3009Token.mint(operator, refundAmount);
         vm.prank(operator);
-        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
+        mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
         // Record expected event
         vm.expectEmit(true, true, false, true);
-        emit PaymentEscrow.PaymentRefunded(paymentDetailsHash, refundAmount, address(0));
+        emit PaymentEscrow.PaymentRefunded(paymentDetailsHash, refundAmount, address(operatorRefundCollector));
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(paymentDetails, refundAmount, address(0), hex"");
+        paymentEscrow.refund(paymentDetails, refundAmount, address(operatorRefundCollector), hex"");
     }
 }

@@ -351,14 +351,14 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         // Fund operator for refund
         mockERC3009Token.mint(operator, refundAmount);
         vm.prank(operator);
-        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
+        mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 operatorBalanceBefore = mockERC3009Token.balanceOf(operator);
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(paymentDetails, refundAmount, address(0), "");
+        paymentEscrow.refund(paymentDetails, refundAmount, address(operatorRefundCollector), "");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
@@ -370,7 +370,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, chargeAmount, remainingCaptured)
         );
         vm.prank(operator);
-        paymentEscrow.refund(paymentDetails, chargeAmount, address(0), "");
+        paymentEscrow.refund(paymentDetails, chargeAmount, address(operatorRefundCollector), "");
     }
 
     function test_reverts_whenFeeBpsBelowMin(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps, uint16 captureFeeBps)
