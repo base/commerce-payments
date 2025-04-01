@@ -8,6 +8,9 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
+/// @title ERC3009PaymentCollector
+/// @notice Collect payments using ERC-3009 ReceiveWithAuthorization signatures
+/// @author Coinbase
 contract ERC3009PaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
@@ -27,9 +30,10 @@ contract ERC3009PaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
+        // apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        // First receive the tokens to this contract
+        // pull tokens into this contract
         IERC3009(paymentDetails.token).receiveWithAuthorization({
             from: paymentDetails.payer,
             to: address(this),
@@ -40,17 +44,19 @@ contract ERC3009PaymentCollector is TokenCollector {
             signature: signature
         });
 
-        // Return excess funds to buyer
-        uint256 excessFunds = paymentDetails.maxAmount - amount;
-        if (excessFunds > 0) {
-            SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, excessFunds);
+        // return excess tokens to buyer
+        uint256 excess = paymentDetails.maxAmount - amount;
+        if (excess > 0) {
+            SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, excess);
         }
 
-        // Then transfer them to the escrow
+        // transfer tokens to escrow
         SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), amount);
     }
 
     /// @notice Parse and process ERC-6492 signatures
+    /// @param signature User-provided signature
+    /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
         // early return if signature less than 32 bytes
         if (signature.length < 32) return signature;
@@ -63,17 +69,18 @@ contract ERC3009PaymentCollector is TokenCollector {
         if (suffix != ERC6492_MAGIC_VALUE) return signature;
 
         // parse inner signature from ERC-6492 format
-        address target;
-        bytes memory prepareData;
         bytes memory erc6492Data = new bytes(signature.length - 32);
         for (uint256 i = 0; i < signature.length - 32; i++) {
             erc6492Data[i] = signature[i];
         }
-        (target, prepareData, signature) = abi.decode(erc6492Data, (address, bytes, bytes));
+        address prepareTarget;
+        bytes memory prepareData;
+        (prepareTarget, prepareData, signature) = abi.decode(erc6492Data, (address, bytes, bytes));
 
-        // construct call to target with prepareData
+        // construct call to prepareTarget with prepareData
+        // calls made through a neutral public contract to prevent abuse of using this contract as sender
         IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
-        calls[0] = IMulticall3.Call(target, prepareData);
+        calls[0] = IMulticall3.Call(prepareTarget, prepareData);
         multicall3.tryAggregate({requireSuccess: false, calls: calls});
 
         return signature;

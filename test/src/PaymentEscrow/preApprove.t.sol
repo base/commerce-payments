@@ -85,7 +85,7 @@ contract PreApproveTest is PaymentEscrowBase {
         bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
 
         vm.expectEmit(true, false, false, false);
-        emit PreApprovalPaymentCollector.PaymentApproved(paymentDetailsHash);
+        emit PreApprovalPaymentCollector.PaymentPreApproved(paymentDetailsHash);
 
         vm.prank(payerEOA);
         PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);

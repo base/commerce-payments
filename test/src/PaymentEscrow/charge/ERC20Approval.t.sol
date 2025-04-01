@@ -21,7 +21,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Try to charge without pre-approval in Escrow contract
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotApproved.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentDetailsHash)
         );
         paymentEscrow.charge(
             paymentDetails,

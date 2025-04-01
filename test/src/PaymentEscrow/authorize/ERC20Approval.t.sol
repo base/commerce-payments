@@ -23,7 +23,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize without pre-approval
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotApproved.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentDetailsHash)
         );
         paymentEscrow.authorize(paymentDetails, amount, hooks[TokenCollector.ERC20], "");
     }

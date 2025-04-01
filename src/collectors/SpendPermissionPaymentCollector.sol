@@ -8,12 +8,16 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
+/// @title SpendPermissionPaymentCollector
+/// @notice Collect payments using Spend Permissions
+/// @author Coinbase
 contract SpendPermissionPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
     SpendPermissionManager public immutable spendPermissionManager;
 
+    /// @notice Payer signature over Spend Permission invalid
     error InvalidSignature();
 
     constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
@@ -21,6 +25,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
+    /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function collectTokens(
         bytes32 paymentDetailsHash,
         PaymentEscrow.PaymentDetails calldata paymentDetails,
@@ -41,11 +46,13 @@ contract SpendPermissionPaymentCollector is TokenCollector {
 
         (bytes memory signature, bytes memory encodedWithdrawRequest) = abi.decode(collectorData, (bytes, bytes));
 
+        // approve spend permission with signature if provided
         if (signature.length > 0) {
             bool approved = spendPermissionManager.approveWithSignature(permission, signature);
             if (!approved) revert InvalidSignature();
         }
 
+        // transfer tokens into collector, potentially using account withdraw request if provided
         if (encodedWithdrawRequest.length == 0) {
             spendPermissionManager.spend(permission, uint160(amount));
         } else {
@@ -54,6 +61,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
             spendPermissionManager.spendWithWithdraw(permission, uint160(amount), withdrawRequest);
         }
 
+        // transfer tokens from collector to escrow
         SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), amount);
     }
 }

@@ -6,6 +6,9 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
+/// @title OperatorRefundCollector
+/// @notice Collect refunds using ERC-20 allowances from operators
+/// @author Coinbase
 contract OperatorRefundCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Refund;

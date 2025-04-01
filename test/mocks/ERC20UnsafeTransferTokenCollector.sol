@@ -7,10 +7,10 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mock token collector that does not transfer sufficient tokens
 contract ERC20UnsafeTransferTokenCollector is TokenCollector {
-    event PaymentApproved(bytes32 indexed paymentDetailsHash);
+    event PaymentPreApproved(bytes32 indexed paymentDetailsHash);
 
     error PaymentAlreadyPreApproved(bytes32 paymentDetailsHash);
-    error PaymentNotApproved(bytes32 paymentDetailsHash);
+    error PaymentNotPreApproved(bytes32 paymentDetailsHash);
     error PaymentAlreadyCollected(bytes32 paymentDetailsHash);
     error InvalidSender(address sender, address expected);
 
@@ -35,7 +35,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         if (paymentEscrow.hasCollected(paymentDetailsHash)) revert PaymentAlreadyCollected(paymentDetailsHash);
         if (isPreApproved[paymentDetailsHash]) revert PaymentAlreadyPreApproved(paymentDetailsHash);
         isPreApproved[paymentDetailsHash] = true;
-        emit PaymentApproved(paymentDetailsHash);
+        emit PaymentPreApproved(paymentDetailsHash);
     }
 
     function collectTokens(
@@ -45,7 +45,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         bytes calldata
     ) external override onlyPaymentEscrow {
         if (!isPreApproved[paymentDetailsHash]) {
-            revert PaymentNotApproved(paymentDetailsHash);
+            revert PaymentNotPreApproved(paymentDetailsHash);
         }
         // transfer too few token to escrow
         IERC20(paymentDetails.token).transferFrom(
