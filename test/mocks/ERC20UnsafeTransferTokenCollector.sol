@@ -32,7 +32,10 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
 
         // check status is not authorized or already pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        if (paymentEscrow.hasCollected(paymentInfoHash)) revert PaymentAlreadyCollected(paymentInfoHash);
+        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
+        if (hasCollectedPayment) {
+            revert PaymentAlreadyCollected(paymentInfoHash);
+        }
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
         isPreApproved[paymentInfoHash] = true;
         emit PaymentPreApproved(paymentInfoHash);

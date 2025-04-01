@@ -45,15 +45,15 @@ contract PaymentEscrow {
     /// @notice State for tracking payments through lifecycle
     struct PaymentState {
         /// @dev True if payment has been authorized or charged
-        bool hasCollected;
+        bool hasCollectedPayment;
         /// @dev Amount of tokens currently on hold in escrow that can be captured
-        uint120 capturable;
+        uint120 capturableAmount;
         /// @dev Amount of tokens previously captured that can be refunded
-        uint120 refundable;
+        uint120 refundableAmount;
     }
 
     /// @notice State per unique payment
-    mapping(bytes32 paymentInfoHash => PaymentState state) _paymentState;
+    mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -192,10 +192,11 @@ contract PaymentEscrow {
 
         // Check payment not already collected
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        if (_paymentState[paymentInfoHash].hasCollected) revert PaymentAlreadyCollected(paymentInfoHash);
+        if (paymentState[paymentInfoHash].hasCollectedPayment) revert PaymentAlreadyCollected(paymentInfoHash);
 
         // Set payment state with refundable amount
-        _paymentState[paymentInfoHash] = PaymentState({hasCollected: true, capturable: 0, refundable: uint120(amount)});
+        paymentState[paymentInfoHash] =
+            PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
         emit PaymentCharged(
             paymentInfoHash,
             paymentInfo.operator,
@@ -231,10 +232,11 @@ contract PaymentEscrow {
 
         // Check payment not already collected
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        if (_paymentState[paymentInfoHash].hasCollected) revert PaymentAlreadyCollected(paymentInfoHash);
+        if (paymentState[paymentInfoHash].hasCollectedPayment) revert PaymentAlreadyCollected(paymentInfoHash);
 
         // Set payment state with capturable amount
-        _paymentState[paymentInfoHash] = PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
+        paymentState[paymentInfoHash] =
+            PaymentState({hasCollectedPayment: true, capturableAmount: uint120(amount), refundableAmount: 0});
         emit PaymentAuthorized(
             paymentInfoHash,
             paymentInfo.operator,
@@ -273,13 +275,15 @@ contract PaymentEscrow {
 
         // Check sufficient escrow to capture
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        PaymentState memory state = _paymentState[paymentInfoHash];
-        if (state.capturable < amount) revert InsufficientAuthorization(paymentInfoHash, state.capturable, amount);
+        PaymentState memory state = paymentState[paymentInfoHash];
+        if (state.capturableAmount < amount) {
+            revert InsufficientAuthorization(paymentInfoHash, state.capturableAmount, amount);
+        }
 
-        // Update payment state, converting amount from capturable to refundable
-        state.capturable -= uint120(amount);
-        state.refundable += uint120(amount);
-        _paymentState[paymentInfoHash] = state;
+        // Update payment state, converting capturable amount to refundable amount
+        state.capturableAmount -= uint120(amount);
+        state.refundableAmount += uint120(amount);
+        paymentState[paymentInfoHash] = state;
         emit PaymentCaptured(paymentInfoHash, amount);
 
         // Transfer tokens to receiver and fee receiver
@@ -293,11 +297,11 @@ contract PaymentEscrow {
     function void(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.operator) {
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        uint256 authorizedAmount = _paymentState[paymentInfoHash].capturable;
+        uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentInfoHash);
 
-        // Clear capturable state
-        _paymentState[paymentInfoHash].capturable = 0;
+        // Clear capturable amount state
+        paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer
@@ -315,11 +319,11 @@ contract PaymentEscrow {
 
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        uint256 authorizedAmount = _paymentState[paymentInfoHash].capturable;
+        uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentInfoHash);
 
-        // Clear capturable state
-        _paymentState[paymentInfoHash].capturable = 0;
+        // Clear capturable amount state
+        paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer
@@ -346,11 +350,11 @@ contract PaymentEscrow {
 
         // Limit refund amount to previously captured
         bytes32 paymentInfoHash = getHash(paymentInfo);
-        uint120 captured = _paymentState[paymentInfoHash].refundable;
+        uint120 captured = paymentState[paymentInfoHash].refundableAmount;
         if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
         // Update capturable amount
-        _paymentState[paymentInfoHash].refundable = captured - uint120(amount);
+        paymentState[paymentInfoHash].refundableAmount = captured - uint120(amount);
         emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
 
         // Transfer tokens into escrow and forward to payer
@@ -358,27 +362,6 @@ contract PaymentEscrow {
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
         );
         SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, amount);
-    }
-
-    /// @notice Check if a payment has been authorized
-    /// @param paymentInfoHash Hash of the payment details
-    /// @return True if the payment has been authorized
-    function hasCollected(bytes32 paymentInfoHash) external view returns (bool) {
-        return _paymentState[paymentInfoHash].hasCollected;
-    }
-
-    /// @notice Get the amount of tokens currently authorized (held in escrow)
-    /// @param paymentInfoHash Hash of the payment details
-    /// @return Amount of tokens capturable
-    function getCapturableAmount(bytes32 paymentInfoHash) external view returns (uint120) {
-        return _paymentState[paymentInfoHash].capturable;
-    }
-
-    /// @notice Get the amount of tokens currently refundable
-    /// @param paymentInfoHash Hash of the payment details
-    /// @return Amount of tokens refundable
-    function getRefundableAmount(bytes32 paymentInfoHash) external view returns (uint120) {
-        return _paymentState[paymentInfoHash].refundable;
     }
 
     /// @notice Get hash of PaymentInfo struct
@@ -452,7 +435,7 @@ contract PaymentEscrow {
         // Check fee bps do not exceed maximum value
         if (paymentInfo.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentInfo.maxFeeBps);
 
-        // Check min fee bps does not exceed max
+        // Check min fee bps does not exceed max fee
         if (paymentInfo.minFeeBps > paymentInfo.maxFeeBps) {
             revert InvalidFeeBpsRange(paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
         }

@@ -54,7 +54,10 @@ contract PreApprovalPaymentCollector is TokenCollector {
 
         // Check status is not authorized or already pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        if (paymentEscrow.hasCollected(paymentInfoHash)) revert PaymentAlreadyCollected(paymentInfoHash);
+        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
+        if (hasCollectedPayment) {
+            revert PaymentAlreadyCollected(paymentInfoHash);
+        }
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
 
         // Set payment as pre-approved
