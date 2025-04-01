@@ -46,7 +46,7 @@ contract PreApprovalPaymentCollector is TokenCollector {
     }
 
     /// @notice Registers buyer's token approval for a specific payment
-    /// @dev Must be called by the buyer specified in the payment details
+    /// @dev Must be called by the buyer specified in the payment info
     /// @param paymentInfo PaymentInfo struct
     function preApprove(PaymentEscrow.PaymentInfo calldata paymentInfo) external {
         // Check sender is buyer

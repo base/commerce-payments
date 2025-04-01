@@ -200,7 +200,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
-        // Try to charge now with same payment details
+        // Try to charge now with same payment info
         mockERC3009Token.mint(payerEOA, amount);
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyCollected.selector, paymentInfoHash));

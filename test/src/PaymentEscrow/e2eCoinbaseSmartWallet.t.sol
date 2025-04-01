@@ -13,7 +13,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // Assume reasonable values
         vm.assume(amount > 0 && amount <= walletBalance);
 
-        // Create payment details
+        // Create payment info
         PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization(address(smartWalletDeployed), amount);
 
