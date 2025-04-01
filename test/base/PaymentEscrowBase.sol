@@ -16,10 +16,10 @@ import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
-import {ERC3009TokenCollector} from "../../src/collectors/ERC3009TokenCollector.sol";
-import {PreApprovalTokenCollector} from "../../src/collectors/PreApprovalTokenCollector.sol";
-import {Permit2TokenCollector} from "../../src/collectors/Permit2TokenCollector.sol";
-import {SpendPermissionTokenCollector} from "../../src/collectors/SpendPermissionTokenCollector.sol";
+import {ERC3009PaymentCollector} from "../../src/collectors/ERC3009PaymentCollector.sol";
+import {PreApprovalPaymentCollector} from "../../src/collectors/PreApprovalPaymentCollector.sol";
+import {Permit2PaymentCollector} from "../../src/collectors/Permit2PaymentCollector.sol";
+import {SpendPermissionPaymentCollector} from "../../src/collectors/SpendPermissionPaymentCollector.sol";
 import {OperatorRefundCollector} from "../../src/collectors/OperatorRefundCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
@@ -46,10 +46,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     MagicSpend public magicSpend;
 
     // TokenCollector contracts
-    ERC3009TokenCollector public erc3009Hook;
-    PreApprovalTokenCollector public erc20Hook;
-    Permit2TokenCollector public permit2Hook;
-    SpendPermissionTokenCollector public spendPermissionHook;
+    ERC3009PaymentCollector public erc3009Hook;
+    PreApprovalPaymentCollector public erc20Hook;
+    Permit2PaymentCollector public permit2Hook;
+    SpendPermissionPaymentCollector public spendPermissionHook;
     OperatorRefundCollector public operatorRefundCollector;
     ERC20UnsafeTransferTokenCollector public erc20UnsafeTransferHook;
 
@@ -93,10 +93,11 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         paymentEscrow = new PaymentEscrow();
 
         // Deploy token collector contracts
-        erc3009Hook = new ERC3009TokenCollector(address(paymentEscrow), multicall3);
-        erc20Hook = new PreApprovalTokenCollector(address(paymentEscrow));
-        permit2Hook = new Permit2TokenCollector(address(paymentEscrow), permit2);
-        spendPermissionHook = new SpendPermissionTokenCollector(address(paymentEscrow), address(spendPermissionManager));
+        erc3009Hook = new ERC3009PaymentCollector(address(paymentEscrow), multicall3);
+        erc20Hook = new PreApprovalPaymentCollector(address(paymentEscrow));
+        permit2Hook = new Permit2PaymentCollector(address(paymentEscrow), permit2);
+        spendPermissionHook =
+            new SpendPermissionPaymentCollector(address(paymentEscrow), address(spendPermissionManager));
         operatorRefundCollector = new OperatorRefundCollector(address(paymentEscrow));
         erc20UnsafeTransferHook = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
 
@@ -124,7 +125,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount)
         internal
         view
-        returns (PaymentEscrow.PaymentDetails memory)
+        returns (PaymentEscrow.PaymentInfo memory)
     {
         return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
     }
@@ -132,9 +133,9 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token)
         internal
         view
-        returns (PaymentEscrow.PaymentDetails memory)
+        returns (PaymentEscrow.PaymentInfo memory)
     {
-        return PaymentEscrow.PaymentDetails({
+        return PaymentEscrow.PaymentInfo({
             operator: operator,
             payer: payer,
             receiver: receiver,
@@ -150,18 +151,18 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         });
     }
 
-    function _signPaymentDetails(PaymentEscrow.PaymentDetails memory paymentDetails, uint256 signerPk)
+    function _signPaymentInfo(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
         view
         returns (bytes memory)
     {
         return _signERC3009({
-            from: paymentDetails.payer,
+            from: paymentInfo.payer,
             to: hooks[TokenCollector.ERC3009],
-            value: paymentDetails.maxAmount,
+            value: paymentInfo.maxAmount,
             validAfter: 0,
-            validBefore: paymentDetails.preApprovalExpiry,
-            nonce: paymentEscrow.getHash(paymentDetails),
+            validBefore: paymentInfo.preApprovalExpiry,
+            nonce: paymentEscrow.getHash(paymentInfo),
             signerPk: signerPk
         });
     }

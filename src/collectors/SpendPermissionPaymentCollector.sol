@@ -8,9 +8,16 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
-contract SpendPermissionTokenCollector is TokenCollector {
+/// @title SpendPermissionPaymentCollector
+/// @notice Collect payments using Spend Permissions
+/// @author Coinbase
+contract SpendPermissionPaymentCollector is TokenCollector {
+    /// @inheritdoc TokenCollector
+    TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
+
     SpendPermissionManager public immutable spendPermissionManager;
 
+    /// @notice Payer signature over Spend Permission invalid
     error InvalidSignature();
 
     constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
@@ -18,35 +25,34 @@ contract SpendPermissionTokenCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
-    function getCollectorType() external pure override returns (TokenCollector.CollectorType) {
-        return TokenCollector.CollectorType.Payment;
-    }
-
-    /// @inheritdoc TokenCollector
+    /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function collectTokens(
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
+        bytes32 paymentInfoHash,
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-            account: paymentDetails.payer,
+            account: paymentInfo.payer,
             spender: address(this),
-            token: paymentDetails.token,
-            allowance: uint160(paymentDetails.maxAmount),
+            token: paymentInfo.token,
+            allowance: uint160(paymentInfo.maxAmount),
             period: type(uint48).max,
             start: 0,
-            end: paymentDetails.preApprovalExpiry,
-            salt: uint256(paymentEscrow.getHash(paymentDetails)),
+            end: paymentInfo.preApprovalExpiry,
+            salt: uint256(paymentInfoHash),
             extraData: hex""
         });
 
         (bytes memory signature, bytes memory encodedWithdrawRequest) = abi.decode(collectorData, (bytes, bytes));
 
+        // Approve spend permission with signature if provided
         if (signature.length > 0) {
             bool approved = spendPermissionManager.approveWithSignature(permission, signature);
             if (!approved) revert InvalidSignature();
         }
 
+        // Transfer tokens into collector, potentially using account withdraw request if provided
         if (encodedWithdrawRequest.length == 0) {
             spendPermissionManager.spend(permission, uint160(amount));
         } else {
@@ -55,6 +61,7 @@ contract SpendPermissionTokenCollector is TokenCollector {
             spendPermissionManager.spendWithWithdraw(permission, uint160(amount), withdrawRequest);
         }
 
-        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), amount);
+        // Transfer tokens from collector to escrow
+        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 }

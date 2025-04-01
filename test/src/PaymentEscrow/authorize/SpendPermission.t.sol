@@ -14,14 +14,14 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         vm.assume(walletBalance >= maxAmount && maxAmount >= amount && amount > 0);
 
         // Create payment details with SpendPermission auth type
-        PaymentEscrow.PaymentDetails memory paymentDetails = _createPaymentEscrowAuthorization({
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization({
             payer: address(smartWalletDeployed),
             maxAmount: maxAmount,
             token: address(mockERC3009Token)
         });
 
         // Create and sign the spend permission
-        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentDetails);
+        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentInfo);
 
         bytes memory signature = _signSpendPermission(
             permission,
@@ -35,9 +35,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(
-            paymentDetails, amount, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")
-        ); // Empty collectorData for regular spend
+        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")); // Empty collectorData for regular spend
 
         // Verify balances
         assertEq(

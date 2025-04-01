@@ -69,7 +69,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     ) internal view returns (bytes memory) {
         // First compute the ERC3009 digest that needs to be signed
         bytes32 nonce = paymentEscrow.getHash(
-            PaymentEscrow.PaymentDetails({
+            PaymentEscrow.PaymentInfo({
                 operator: operator,
                 payer: payer,
                 receiver: receiver,
@@ -152,22 +152,22 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     }
 
     /// @notice Helper to create a SpendPermission struct with test defaults
-    function _createSpendPermission(PaymentEscrow.PaymentDetails memory paymentDetails)
+    function _createSpendPermission(PaymentEscrow.PaymentInfo memory paymentInfo)
         internal
         view
         returns (SpendPermissionManager.SpendPermission memory)
     {
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
         return SpendPermissionManager.SpendPermission({
-            account: paymentDetails.payer,
+            account: paymentInfo.payer,
             spender: hooks[TokenCollector.SpendPermission],
-            token: address(paymentDetails.token),
-            allowance: uint160(paymentDetails.maxAmount),
+            token: address(paymentInfo.token),
+            allowance: uint160(paymentInfo.maxAmount),
             period: type(uint48).max,
             start: 0,
-            end: uint48(paymentDetails.preApprovalExpiry),
-            salt: uint256(paymentDetailsHash),
+            end: uint48(paymentInfo.preApprovalExpiry),
+            salt: uint256(paymentInfoHash),
             extraData: hex""
         });
     }

@@ -8,15 +8,14 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_reverts_whenNotOperator() public {
         uint256 authorizedAmount = 100e6;
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
         address randomAddress = makeAddr("randomAddress");
         vm.prank(randomAddress);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress, paymentDetails.operator)
+            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress, paymentInfo.operator)
         );
-        paymentEscrow.void(paymentDetails);
+        paymentEscrow.void(paymentInfo);
     }
 
     function test_void_revert_noAuthorization(uint120 authorizedAmount) public {
@@ -24,14 +23,13 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentDetailsHash));
-        paymentEscrow.void(paymentDetails);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentInfoHash));
+        paymentEscrow.void(paymentInfo);
     }
 
     function test_void_succeeds_withEscrowedFunds(uint120 authorizedAmount) public {
@@ -39,16 +37,15 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);
-        paymentEscrow.authorize(paymentDetails, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
@@ -56,8 +53,8 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         // Then void the authorization
         vm.prank(operator);
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentDetailsHash, authorizedAmount);
-        paymentEscrow.void(paymentDetails);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
+        paymentEscrow.void(paymentInfo);
 
         // Verify funds were returned to payer
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + escrowBalanceBefore);
@@ -67,23 +64,22 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_emitsCorrectEvents() public {
         uint256 authorizedAmount = 100e6;
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
-            _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);
-        paymentEscrow.authorize(paymentDetails, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
 
         // Record all expected events in order
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentDetailsHash, authorizedAmount);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
 
         // Then void the authorization and verify events
         vm.prank(operator);
-        paymentEscrow.void(paymentDetails);
+        paymentEscrow.void(paymentInfo);
     }
 }

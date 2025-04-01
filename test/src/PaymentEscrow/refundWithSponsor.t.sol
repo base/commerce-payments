@@ -17,20 +17,20 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(initialAmount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: initialAmount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, initialAmount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(initialAmount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(initialAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(initialAmount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(initialAmount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         value: 0,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -40,19 +40,19 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     vm.prank(operator);
     //     vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-    //     paymentEscrow.refundWithSponsor(0, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
+    //     paymentEscrow.refundWithSponsor(0, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature);
     // }
 
     // function test_refundWithSponsor_reverts_whenAmountOverflows(uint256 overflowValue) public {
     //     vm.assume(overflowValue > type(uint120).max);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
 
     //     uint48 refundDeadline = uint48(block.timestamp + 1 days);
     //     uint256 refundSalt = 123;
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: 1,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -63,7 +63,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.prank(operator);
     //     vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
     //     paymentEscrow.refundWithSponsor(
-    //         overflowValue, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature
+    //         overflowValue, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature
     //     );
     // }
 
@@ -80,18 +80,18 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     mockERC3009Token.mint(payerEOA, amount);
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -101,7 +101,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     vm.prank(invalidSender);
     //     vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender));
-    //     paymentEscrow.refundWithSponsor(amount, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
+    //     paymentEscrow.refundWithSponsor(amount, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature);
     // }
 
     // function test_reverts_ifValueIsGreaterThanCaptured(
@@ -115,20 +115,20 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(captureAmount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, value: captureAmount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, captureAmount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(captureAmount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(captureAmount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(captureAmount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(captureAmount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         value: refundAmount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -141,7 +141,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //         abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, refundAmount, captureAmount)
     //     );
     //     paymentEscrow.refundWithSponsor(
-    //         refundAmount, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature
+    //         refundAmount, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature
     //     );
     // }
 
@@ -154,21 +154,21 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(amount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     vm.prank(operator);
     //     vm.expectRevert(); // Expect revert from invalid signature
-    //     paymentEscrow.refundWithSponsor(amount, paymentDetails, _sponsor, refundDeadline, refundSalt, invalidSignature);
+    //     paymentEscrow.refundWithSponsor(amount, paymentInfo, _sponsor, refundDeadline, refundSalt, invalidSignature);
     // }
 
     // function test_reverts_ifSaltIsIncorrect(
@@ -181,20 +181,20 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(incorrectSalt != refundSalt);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -205,7 +205,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.prank(operator);
     //     vm.expectRevert(); // Expect revert from mismatched salt
     //     paymentEscrow.refundWithSponsor(
-    //         amount, paymentDetails, _sponsor, refundDeadline, incorrectSalt, sponsorSignature
+    //         amount, paymentInfo, _sponsor, refundDeadline, incorrectSalt, sponsorSignature
     //     );
     // }
 
@@ -221,18 +221,18 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     mockERC3009Token.mint(payerEOA, amount);
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -243,7 +243,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.prank(operator);
     //     vm.expectRevert(); // Expect revert from mismatched sponsor
     //     paymentEscrow.refundWithSponsor(
-    //         amount, paymentDetails, incorrectSponsor, refundDeadline, refundSalt, sponsorSignature
+    //         amount, paymentInfo, incorrectSponsor, refundDeadline, refundSalt, sponsorSignature
     //     );
     // }
 
@@ -258,20 +258,20 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(incorrectDeadline > block.timestamp); // Must be future timestamp
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -282,7 +282,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.prank(operator);
     //     vm.expectRevert(); // Expect revert from mismatched deadline
     //     paymentEscrow.refundWithSponsor(
-    //         amount, paymentDetails, _sponsor, incorrectDeadline, refundSalt, sponsorSignature
+    //         amount, paymentInfo, _sponsor, incorrectDeadline, refundSalt, sponsorSignature
     //     );
     // }
 
@@ -290,23 +290,23 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(amount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     // Fund sponsor
     //     mockERC3009Token.mint(_sponsor, amount);
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         value: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -320,7 +320,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.prank(operator);
     //     paymentEscrow.refundWithSponsor(
     //         amount,
-    //         paymentDetails,
+    //         paymentInfo,
     //         PaymentEscrow.SponsoredRefundDetails({
     //             sponsor: _sponsor,
     //             refundDeadline: refundDeadline,
@@ -339,24 +339,24 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(amount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     // Mint tokens for payer
     //     mockERC3009Token.mint(payerEOA, amount);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     // Fund sponsor with enough tokens
     //     mockERC3009Token.mint(_sponsor, amount);
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -368,7 +368,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     uint256 sponsorBalanceBefore = mockERC3009Token.balanceOf(_sponsor);
 
     //     vm.prank(receiver);
-    //     paymentEscrow.refundWithSponsor(amount, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
+    //     paymentEscrow.refundWithSponsor(amount, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature);
 
     //     assertEq(mockERC3009Token.balanceOf(_sponsor), sponsorBalanceBefore - amount);
     //     assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + amount);
@@ -378,26 +378,26 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(amount > 0);
     //     vm.assume(refundDeadline > block.timestamp);
 
-    //     PaymentEscrow.PaymentDetails memory paymentDetails =
+    //     PaymentEscrow.PaymentInfo memory paymentInfo =
     //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentDetails(paymentDetails, payer_EOA_PK);
+    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
 
     //     // Mint tokens for payer
     //     mockERC3009Token.mint(payerEOA, amount);
 
-    //     bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+    //     bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
-    //     paymentEscrow.authorize(amount, paymentDetails, signature, "");
-    //     paymentEscrow.capture(amount, paymentDetails, paymentDetails.minFeeBps, paymentDetails.feeReceiver);
+    //     paymentEscrow.authorize(amount, paymentInfo, signature, "");
+    //     paymentEscrow.capture(amount, paymentInfo, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
     //     vm.stopPrank();
 
     //     // Fund sponsor with enough tokens
     //     mockERC3009Token.mint(_sponsor, amount);
 
     //     bytes memory sponsorSignature = _signRefundAuthorization({
-    //         paymentDetails: paymentDetails,
+    //         paymentInfo: paymentInfo,
     //         maxAmount: amount,
     //         sponsorAddress: _sponsor,
     //         deadline: refundDeadline,
@@ -406,23 +406,23 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     });
 
     //     vm.expectEmit(true, true, false, true);
-    //     emit PaymentEscrow.PaymentRefunded(paymentDetailsHash, amount, operator);
+    //     emit PaymentEscrow.PaymentRefunded(paymentInfoHash, amount, operator);
 
     //     vm.prank(operator);
-    //     paymentEscrow.refundWithSponsor(amount, paymentDetails, _sponsor, refundDeadline, refundSalt, sponsorSignature);
+    //     paymentEscrow.refundWithSponsor(amount, paymentInfo, _sponsor, refundDeadline, refundSalt, sponsorSignature);
     // }
 
     // Helper function to sign refund authorization
     function _signRefundAuthorization(
-        PaymentEscrow.PaymentDetails memory paymentDetails,
+        PaymentEscrow.PaymentInfo memory paymentInfo,
         uint120 value,
         address sponsorAddress,
         uint48 deadline,
         uint256 salt,
         uint256 privateKey
     ) internal view returns (bytes memory) {
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
-        bytes32 nonce = keccak256(abi.encode(paymentDetailsHash, salt));
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        bytes32 nonce = keccak256(abi.encode(paymentInfoHash, salt));
 
         // Use the same ERC3009 signing pattern as in PaymentEscrowBase
         bytes32 structHash = keccak256(
