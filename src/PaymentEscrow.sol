@@ -150,7 +150,7 @@ contract PaymentEscrow {
     error RefundExceedsCapture(uint256 refund, uint256 captured);
 
     /// @notice Typehash used for hashing PaymentInfo structs
-    bytes32 public constant PAYMENT_DETAILS_TYPEHASH = keccak256(
+    bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
         "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
@@ -365,10 +365,11 @@ contract PaymentEscrow {
     }
 
     /// @notice Get hash of PaymentInfo struct
+    /// @dev Includes chainId and verifyingContract in hash for cross-chain and cross-contract uniqueness
     /// @param paymentInfo PaymentInfo struct
     /// @return Hash of payment details for the current chain and contract address
     function getHash(PaymentInfo calldata paymentInfo) public view returns (bytes32) {
-        bytes32 detailsHash = keccak256(abi.encode(PAYMENT_DETAILS_TYPEHASH, paymentInfo));
+        bytes32 detailsHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
         return keccak256(abi.encode(block.chainid, address(this), detailsHash));
     }
 
