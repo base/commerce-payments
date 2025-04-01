@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-
+import {console2} from "forge-std/console2.sol";
 import {IERC3009} from "../interfaces/IERC3009.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
@@ -26,6 +26,7 @@ contract EvilCollector is TokenCollector {
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         if (reenter) {
+            console2.log("reentering charge");
             reenter = false;
 
             PaymentEscrow.PaymentInfo memory nextPaymentInfo = PaymentEscrow.PaymentInfo({
@@ -45,6 +46,7 @@ contract EvilCollector is TokenCollector {
 
             paymentEscrow.charge(nextPaymentInfo, amount, address(this), collectorData, 0, address(0));
         } else {
+            console2.log("transferring tokens from evil to escrow");
             reenter = true;
             SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
         }

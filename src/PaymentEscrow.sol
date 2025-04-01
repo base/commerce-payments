@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-
+import {console2} from "forge-std/console2.sol";
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
@@ -406,6 +406,7 @@ contract PaymentEscrow {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
+        console2.log("distributing tokens to receiver", receiver);
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
         if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeReceiver, feeAmount);
         if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);

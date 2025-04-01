@@ -8,18 +8,23 @@ import {EvilCollector} from "../../../src/collectors/EvilCollector.sol";
 
 contract ReentrancyRepro is PaymentEscrowBase {
     EvilCollector evilCollector;
+    address attacker;
+    uint256 attackerPrivateKey;
 
     function setUp() public override {
         super.setUp();
         evilCollector = new EvilCollector(address(paymentEscrow));
+        attackerPrivateKey = 0x123;
+        attacker = vm.addr(attackerPrivateKey);
+        // label the attacker and evil collector as evil
+        vm.label(attacker, "ATTACKER");
+        vm.label(address(evilCollector), "EVIL COLLECTOR");
     }
 
     function test_reentrancy() public {
         uint120 amount = 1000000000000000000;
         mockERC3009Token.mint(address(paymentEscrow), amount);
         mockERC3009Token.mint(address(evilCollector), amount);
-        uint256 attackerPrivateKey = 0x123;
-        address attacker = vm.addr(attackerPrivateKey);
 
         PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
             operator: attacker,
