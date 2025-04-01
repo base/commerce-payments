@@ -14,7 +14,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow {
-    /// @notice Payment details, contains all information required to authorize and capture a unique payment
+    /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
         address operator;
@@ -38,7 +38,7 @@ contract PaymentEscrow {
         uint16 maxFeeBps;
         /// @dev Address that receives the fee portion of payments, if 0 then operator can set at capture
         address feeReceiver;
-        /// @dev A source of entropy to ensure unique hashes across different payment details
+        /// @dev A source of entropy to ensure unique hashes across different payments
         uint256 salt;
     }
 
@@ -184,7 +184,7 @@ contract PaymentEscrow {
         uint16 feeBps,
         address feeReceiver
     ) external onlySender(paymentInfo.operator) validAmount(amount) {
-        // Check payment details valid
+        // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
         // Check fee parameters valid
@@ -227,7 +227,7 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external onlySender(paymentInfo.operator) validAmount(amount) {
-        // Check payment details valid
+        // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
         // Check payment not already collected
@@ -367,10 +367,10 @@ contract PaymentEscrow {
     /// @notice Get hash of PaymentInfo struct
     /// @dev Includes chainId and verifyingContract in hash for cross-chain and cross-contract uniqueness
     /// @param paymentInfo PaymentInfo struct
-    /// @return Hash of payment details for the current chain and contract address
+    /// @return Hash of payment info for the current chain and contract address
     function getHash(PaymentInfo calldata paymentInfo) public view returns (bytes32) {
-        bytes32 detailsHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
-        return keccak256(abi.encode(block.chainid, address(this), detailsHash));
+        bytes32 paymentInfoHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
+        return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
     /// @notice Transfer tokens into this contract
@@ -442,7 +442,7 @@ contract PaymentEscrow {
         }
     }
 
-    /// @notice Validates attempted fee adheres to constraints set by payment details
+    /// @notice Validates attempted fee adheres to constraints set by payment info
     /// @param paymentInfo PaymentInfo struct
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees
@@ -455,7 +455,7 @@ contract PaymentEscrow {
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
-        // Check fee recipient matches payment details if non-zero
+        // Check fee recipient matches payment info if non-zero
         if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
         }
