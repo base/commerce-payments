@@ -125,7 +125,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount)
         internal
         view
-        returns (PaymentEscrow.PaymentDetails memory)
+        returns (PaymentEscrow.PaymentInfo memory)
     {
         return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
     }
@@ -133,9 +133,9 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token)
         internal
         view
-        returns (PaymentEscrow.PaymentDetails memory)
+        returns (PaymentEscrow.PaymentInfo memory)
     {
-        return PaymentEscrow.PaymentDetails({
+        return PaymentEscrow.PaymentInfo({
             operator: operator,
             payer: payer,
             receiver: receiver,
@@ -151,18 +151,18 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         });
     }
 
-    function _signPaymentDetails(PaymentEscrow.PaymentDetails memory paymentDetails, uint256 signerPk)
+    function _signPaymentInfo(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
         view
         returns (bytes memory)
     {
         return _signERC3009({
-            from: paymentDetails.payer,
+            from: paymentInfo.payer,
             to: hooks[TokenCollector.ERC3009],
-            value: paymentDetails.maxAmount,
+            value: paymentInfo.maxAmount,
             validAfter: 0,
-            validBefore: paymentDetails.preApprovalExpiry,
-            nonce: paymentEscrow.getHash(paymentDetails),
+            validBefore: paymentInfo.preApprovalExpiry,
+            nonce: paymentEscrow.getHash(paymentInfo),
             signerPk: signerPk
         });
     }

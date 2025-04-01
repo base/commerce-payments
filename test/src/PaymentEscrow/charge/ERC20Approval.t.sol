@@ -10,9 +10,9 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
+        PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
-        bytes32 paymentDetailsHash = paymentEscrow.getHash(paymentDetails);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(payerEOA);
@@ -21,27 +21,22 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Try to charge without pre-approval in Escrow contract
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentDetailsHash)
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentInfoHash)
         );
         paymentEscrow.charge(
-            paymentDetails,
-            amount,
-            hooks[TokenCollector.ERC20],
-            "",
-            paymentDetails.minFeeBps,
-            paymentDetails.feeReceiver
+            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
         );
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
+        PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -50,24 +45,19 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         paymentEscrow.charge(
-            paymentDetails,
-            amount,
-            hooks[TokenCollector.ERC20],
-            "",
-            paymentDetails.minFeeBps,
-            paymentDetails.feeReceiver
+            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
         );
     }
 
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentDetails memory paymentDetails =
+        PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentDetails);
+        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -81,16 +71,11 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Charge with empty signature
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentDetails,
-            amount,
-            hooks[TokenCollector.ERC20],
-            "",
-            paymentDetails.minFeeBps,
-            paymentDetails.feeReceiver
+            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
         );
 
         // Verify balances including fee distribution
-        uint256 feeAmount = uint256(amount) * paymentDetails.minFeeBps / 10_000;
+        uint256 feeAmount = uint256(amount) * paymentInfo.minFeeBps / 10_000;
         assertEq(mockERC3009Token.balanceOf(receiver), receiverBalanceBefore + (amount - feeAmount));
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeReceiverBalanceBefore + feeAmount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);

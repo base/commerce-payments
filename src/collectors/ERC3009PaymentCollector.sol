@@ -25,8 +25,8 @@ contract ERC3009PaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     function collectTokens(
-        bytes32 paymentDetailsHash,
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
+        bytes32 paymentInfoHash,
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
@@ -34,24 +34,24 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes memory signature = _handleERC6492Signature(collectorData);
 
         // pull tokens into this contract
-        IERC3009(paymentDetails.token).receiveWithAuthorization({
-            from: paymentDetails.payer,
+        IERC3009(paymentInfo.token).receiveWithAuthorization({
+            from: paymentInfo.payer,
             to: address(this),
-            value: paymentDetails.maxAmount,
+            value: paymentInfo.maxAmount,
             validAfter: 0,
-            validBefore: paymentDetails.preApprovalExpiry,
-            nonce: paymentDetailsHash,
+            validBefore: paymentInfo.preApprovalExpiry,
+            nonce: paymentInfoHash,
             signature: signature
         });
 
         // return excess tokens to buyer
-        uint256 excess = paymentDetails.maxAmount - amount;
+        uint256 excess = paymentInfo.maxAmount - amount;
         if (excess > 0) {
-            SafeTransferLib.safeTransfer(paymentDetails.token, paymentDetails.payer, excess);
+            SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
 
         // transfer tokens to escrow
-        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), amount);
+        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 
     /// @notice Parse and process ERC-6492 signatures

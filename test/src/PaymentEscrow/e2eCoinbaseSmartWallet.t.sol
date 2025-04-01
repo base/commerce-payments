@@ -14,19 +14,19 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         vm.assume(amount > 0 && amount <= walletBalance);
 
         // Create payment details
-        PaymentEscrow.PaymentDetails memory paymentDetails =
+        PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization(address(smartWalletDeployed), amount);
 
-        // bytes32 nonce = paymentEscrow.getHash(paymentDetails); // Use paymentDetailsHash as nonce
+        // bytes32 nonce = paymentEscrow.getHash(paymentInfo); // Use paymentInfoHash as nonce
 
         // Create signature
         bytes memory signature = _signSmartWalletERC3009(
             address(smartWalletDeployed),
             receiver,
             amount,
-            paymentDetails.preApprovalExpiry,
-            paymentDetails.authorizationExpiry,
-            paymentDetails.refundExpiry,
+            paymentInfo.preApprovalExpiry,
+            paymentInfo.authorizationExpiry,
+            paymentInfo.refundExpiry,
             DEPLOYED_WALLET_OWNER_PK,
             0
         );
@@ -34,12 +34,12 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // Submit charge
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentDetails,
+            paymentInfo,
             amount,
             hooks[TokenCollector.ERC3009],
             signature,
-            paymentDetails.minFeeBps,
-            paymentDetails.feeReceiver
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver
         );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
@@ -59,7 +59,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         assertEq(wallet.code.length, 0, "Smart wallet should not be deployed yet");
 
         // Create payment details
-        PaymentEscrow.PaymentDetails memory paymentDetails =
+        PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization(address(smartWalletCounterfactual), amount);
 
         // Create signature
@@ -67,9 +67,9 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             address(smartWalletCounterfactual),
             receiver,
             amount,
-            paymentDetails.preApprovalExpiry,
-            paymentDetails.authorizationExpiry,
-            paymentDetails.refundExpiry,
+            paymentInfo.preApprovalExpiry,
+            paymentInfo.authorizationExpiry,
+            paymentInfo.refundExpiry,
             COUNTERFACTUAL_WALLET_OWNER_PK,
             0
         );
@@ -77,12 +77,12 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // Submit charge
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentDetails,
+            paymentInfo,
             amount,
             hooks[TokenCollector.ERC3009],
             signature,
-            paymentDetails.minFeeBps,
-            paymentDetails.feeReceiver
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver
         );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;

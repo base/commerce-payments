@@ -27,20 +27,20 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function collectTokens(
-        bytes32 paymentDetailsHash,
-        PaymentEscrow.PaymentDetails calldata paymentDetails,
+        bytes32 paymentInfoHash,
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
-            account: paymentDetails.payer,
+            account: paymentInfo.payer,
             spender: address(this),
-            token: paymentDetails.token,
-            allowance: uint160(paymentDetails.maxAmount),
+            token: paymentInfo.token,
+            allowance: uint160(paymentInfo.maxAmount),
             period: type(uint48).max,
             start: 0,
-            end: paymentDetails.preApprovalExpiry,
-            salt: uint256(paymentDetailsHash),
+            end: paymentInfo.preApprovalExpiry,
+            salt: uint256(paymentInfoHash),
             extraData: hex""
         });
 
@@ -62,6 +62,6 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         }
 
         // transfer tokens from collector to escrow
-        SafeTransferLib.safeTransfer(paymentDetails.token, address(paymentEscrow), amount);
+        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 }
