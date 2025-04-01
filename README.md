@@ -42,7 +42,7 @@ This model allows commerce platforms to maintain their business logic and paymen
 
 The protocol consists of two main components:
 
-1. **PaymentEscrow Contract**: Core contract managing the escrow of funds and payment lifecycle
+1. **`PaymentEscrow` Contract**: Core contract managing the escrow of funds and payment lifecycle
 2. **Token Collectors**: Modular contracts handling different methods of token collection
 
 ### Token Collectors
@@ -58,7 +58,7 @@ The protocol supports multiple and extensible token collection strategies throug
 - `ERC3009PaymentCollector`: Supports ERC-3009 `receiveWithAuthorization`
 - `Permit2PaymentCollector`: Uses Permit2 signatures for gasless approvals
 - `PreApprovalPaymentCollector`: Traditional allowance-based collection
-- `SpendPermissionPaymentCollector`: Pre-approval with spend permissions
+- `SpendPermissionPaymentCollector`: Pre-approval with [spend permissions](https://github.com/coinbase/spend-permissions)
 
 #### Refund Collectors
 - `OperatorRefundCollector`: Enables operators to provide refund liquidity through standard ERC-20 allowances
