@@ -46,13 +46,13 @@ contract SpendPermissionPaymentCollector is TokenCollector {
 
         (bytes memory signature, bytes memory encodedWithdrawRequest) = abi.decode(collectorData, (bytes, bytes));
 
-        // approve spend permission with signature if provided
+        // Approve spend permission with signature if provided
         if (signature.length > 0) {
             bool approved = spendPermissionManager.approveWithSignature(permission, signature);
             if (!approved) revert InvalidSignature();
         }
 
-        // transfer tokens into collector, potentially using account withdraw request if provided
+        // Transfer tokens into collector, potentially using account withdraw request if provided
         if (encodedWithdrawRequest.length == 0) {
             spendPermissionManager.spend(permission, uint160(amount));
         } else {
@@ -61,7 +61,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
             spendPermissionManager.spendWithWithdraw(permission, uint160(amount), withdrawRequest);
         }
 
-        // transfer tokens from collector to escrow
+        // Transfer tokens from collector to escrow
         SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 }

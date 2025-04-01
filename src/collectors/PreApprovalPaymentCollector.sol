@@ -38,10 +38,10 @@ contract PreApprovalPaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata
     ) external override onlyPaymentEscrow {
-        // check payment pre-approved
+        // Check payment pre-approved
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 
-        // transfer tokens from payer to escrow
+        // Transfer tokens from payer to escrow
         SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, address(paymentEscrow), amount);
     }
 
@@ -49,15 +49,15 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @dev Must be called by the buyer specified in the payment details
     /// @param paymentInfo PaymentInfo struct
     function preApprove(PaymentEscrow.PaymentInfo calldata paymentInfo) external {
-        // check sender is buyer
+        // Check sender is buyer
         if (msg.sender != paymentInfo.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
-        // check status is not authorized or already pre-approved
+        // Check status is not authorized or already pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         if (paymentEscrow.hasCollected(paymentInfoHash)) revert PaymentAlreadyCollected(paymentInfoHash);
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
 
-        // set payment as pre-approved
+        // Set payment as pre-approved
         isPreApproved[paymentInfoHash] = true;
         emit PaymentPreApproved(paymentInfoHash);
     }

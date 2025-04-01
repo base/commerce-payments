@@ -30,10 +30,10 @@ contract ERC3009PaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
-        // apply ERC-6492 preparation call if present
+        // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        // pull tokens into this contract
+        // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({
             from: paymentInfo.payer,
             to: address(this),
@@ -44,13 +44,13 @@ contract ERC3009PaymentCollector is TokenCollector {
             signature: signature
         });
 
-        // return excess tokens to buyer
+        // Return excess tokens to buyer
         uint256 excess = paymentInfo.maxAmount - amount;
         if (excess > 0) {
             SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
 
-        // transfer tokens to escrow
+        // Transfer tokens to escrow
         SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 
@@ -58,17 +58,17 @@ contract ERC3009PaymentCollector is TokenCollector {
     /// @param signature User-provided signature
     /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
-        // early return if signature less than 32 bytes
+        // Early return if signature less than 32 bytes
         if (signature.length < 32) return signature;
 
-        // early return if signature suffix not ERC-6492 magic value
+        // Early return if signature suffix not ERC-6492 magic value
         bytes32 suffix;
         assembly {
             suffix := mload(add(add(signature, 32), sub(mload(signature), 32)))
         }
         if (suffix != ERC6492_MAGIC_VALUE) return signature;
 
-        // parse inner signature from ERC-6492 format
+        // Parse inner signature from ERC-6492 format
         bytes memory erc6492Data = new bytes(signature.length - 32);
         for (uint256 i = 0; i < signature.length - 32; i++) {
             erc6492Data[i] = signature[i];
@@ -77,8 +77,8 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes memory prepareData;
         (prepareTarget, prepareData, signature) = abi.decode(erc6492Data, (address, bytes, bytes));
 
-        // construct call to prepareTarget with prepareData
-        // calls made through a neutral public contract to prevent abuse of using this contract as sender
+        // Construct call to prepareTarget with prepareData
+        // Calls made through a neutral public contract to prevent abuse of using this contract as sender
         IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
         calls[0] = IMulticall3.Call(prepareTarget, prepareData);
         multicall3.tryAggregate({requireSuccess: false, calls: calls});

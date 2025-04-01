@@ -184,17 +184,17 @@ contract PaymentEscrow {
         uint16 feeBps,
         address feeReceiver
     ) external onlySender(paymentInfo.operator) validAmount(amount) {
-        // check payment details valid
+        // Check payment details valid
         _validatePayment(paymentInfo, amount);
 
-        // check fee parameters valid
+        // Check fee parameters valid
         _validateFee(paymentInfo, feeBps, feeReceiver);
 
-        // check payment not already collected
+        // Check payment not already collected
         bytes32 paymentInfoHash = getHash(paymentInfo);
         if (_paymentState[paymentInfoHash].hasCollected) revert PaymentAlreadyCollected(paymentInfoHash);
 
-        // set payment state with refundable amount
+        // Set payment state with refundable amount
         _paymentState[paymentInfoHash] = PaymentState({hasCollected: true, capturable: 0, refundable: uint120(amount)});
         emit PaymentCharged(
             paymentInfoHash,
@@ -206,12 +206,12 @@ contract PaymentEscrow {
             tokenCollector
         );
 
-        // transfer tokens into escrow
+        // Transfer tokens into escrow
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment
         );
 
-        // transfer tokens to receiver and fee receiver
+        // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
     }
 
@@ -226,14 +226,14 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external onlySender(paymentInfo.operator) validAmount(amount) {
-        // check payment details valid
+        // Check payment details valid
         _validatePayment(paymentInfo, amount);
 
-        // check payment not already collected
+        // Check payment not already collected
         bytes32 paymentInfoHash = getHash(paymentInfo);
         if (_paymentState[paymentInfoHash].hasCollected) revert PaymentAlreadyCollected(paymentInfoHash);
 
-        // set payment state with capturable amount
+        // Set payment state with capturable amount
         _paymentState[paymentInfoHash] = PaymentState({hasCollected: true, capturable: uint120(amount), refundable: 0});
         emit PaymentAuthorized(
             paymentInfoHash,
@@ -245,7 +245,7 @@ contract PaymentEscrow {
             tokenCollector
         );
 
-        // transfer tokens into escrow
+        // Transfer tokens into escrow
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment
         );
@@ -263,26 +263,26 @@ contract PaymentEscrow {
         onlySender(paymentInfo.operator)
         validAmount(amount)
     {
-        // check fee parameters valid
+        // Check fee parameters valid
         _validateFee(paymentInfo, feeBps, feeReceiver);
 
-        // check before authorization expiry
+        // Check before authorization expiry
         if (block.timestamp >= paymentInfo.authorizationExpiry) {
             revert AfterAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
         }
 
-        // check sufficient escrow to capture
+        // Check sufficient escrow to capture
         bytes32 paymentInfoHash = getHash(paymentInfo);
         PaymentState memory state = _paymentState[paymentInfoHash];
         if (state.capturable < amount) revert InsufficientAuthorization(paymentInfoHash, state.capturable, amount);
 
-        // update payment state, converting amount from capturable to refundable
+        // Update payment state, converting amount from capturable to refundable
         state.capturable -= uint120(amount);
         state.refundable += uint120(amount);
         _paymentState[paymentInfoHash] = state;
         emit PaymentCaptured(paymentInfoHash, amount);
 
-        // transfer tokens to receiver and fee receiver
+        // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
     }
 
@@ -291,16 +291,16 @@ contract PaymentEscrow {
     /// @dev Can only be called by the operator or receiver
     /// @param paymentInfo PaymentInfo struct
     function void(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.operator) {
-        // check authorization non-zero
+        // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = _paymentState[paymentInfoHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentInfoHash);
 
-        // clear capturable state
+        // Clear capturable state
         _paymentState[paymentInfoHash].capturable = 0;
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
-        // transfer tokens to payer
+        // Transfer tokens to payer
         SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
     }
 
@@ -308,21 +308,21 @@ contract PaymentEscrow {
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentInfo PaymentInfo struct
     function reclaim(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.payer) {
-        // check not before authorization expiry
+        // Check not before authorization expiry
         if (block.timestamp < paymentInfo.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
         }
 
-        // check authorization non-zero
+        // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = _paymentState[paymentInfoHash].capturable;
         if (authorizedAmount == 0) revert ZeroAuthorization(paymentInfoHash);
 
-        // clear capturable state
+        // Clear capturable state
         _paymentState[paymentInfoHash].capturable = 0;
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
-        // transfer tokens to payer
+        // Transfer tokens to payer
         SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
     }
 
@@ -339,21 +339,21 @@ contract PaymentEscrow {
         address tokenCollector,
         bytes calldata collectorData
     ) external onlySender(paymentInfo.operator) validAmount(amount) {
-        // check refund has not expired
+        // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentInfo.refundExpiry);
         }
 
-        // limit refund amount to previously captured
+        // Limit refund amount to previously captured
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint120 captured = _paymentState[paymentInfoHash].refundable;
         if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
-        // update capturable amount
+        // Update capturable amount
         _paymentState[paymentInfoHash].refundable = captured - uint120(amount);
         emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
 
-        // transfer tokens into escrow and forward to payer
+        // Transfer tokens into escrow and forward to payer
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
         );
@@ -403,10 +403,10 @@ contract PaymentEscrow {
         bytes calldata collectorData,
         TokenCollector.CollectorType collectorType
     ) internal {
-        // check token collector matches required type
+        // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        // measure balance change for collecting tokens to enforce as equal to expected amount
+        // Measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
@@ -431,15 +431,15 @@ contract PaymentEscrow {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
-        // check amount does not exceed maximum
+        // Check amount does not exceed maximum
         if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
 
-        // check timestamp before pre-approval expiry
+        // Check timestamp before pre-approval expiry
         if (block.timestamp >= paymentInfo.preApprovalExpiry) {
             revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentInfo.preApprovalExpiry));
         }
 
-        // check expiry timestamps properly ordered
+        // Check expiry timestamps properly ordered
         if (
             paymentInfo.preApprovalExpiry > paymentInfo.authorizationExpiry
                 || paymentInfo.authorizationExpiry > paymentInfo.refundExpiry
@@ -449,10 +449,10 @@ contract PaymentEscrow {
             );
         }
 
-        // check fee bps do not exceed maximum value
+        // Check fee bps do not exceed maximum value
         if (paymentInfo.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentInfo.maxFeeBps);
 
-        // check min fee bps does not exceed max
+        // Check min fee bps does not exceed max
         if (paymentInfo.minFeeBps > paymentInfo.maxFeeBps) {
             revert InvalidFeeBpsRange(paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
         }
@@ -463,15 +463,15 @@ contract PaymentEscrow {
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees
     function _validateFee(PaymentInfo calldata paymentInfo, uint16 feeBps, address feeReceiver) internal pure {
-        // check fee bps within [min, max]
+        // Check fee bps within [min, max]
         if (feeBps < paymentInfo.minFeeBps || feeBps > paymentInfo.maxFeeBps) {
             revert FeeBpsOutOfRange(feeBps, paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
         }
 
-        // check fee recipient only zero address if zero fee bps
+        // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
-        // check fee recipient matches payment details if non-zero
+        // Check fee recipient matches payment details if non-zero
         if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
         }
