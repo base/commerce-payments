@@ -31,7 +31,7 @@ contract EvilCollector is TokenCollector {
             PaymentEscrow.PaymentInfo memory nextPaymentInfo = PaymentEscrow.PaymentInfo({
                 operator: address(this),
                 payer: address(this),
-                receiver: address(this),
+                receiver: paymentInfo.receiver,
                 token: paymentInfo.token,
                 maxAmount: paymentInfo.maxAmount,
                 preApprovalExpiry: paymentInfo.preApprovalExpiry,
