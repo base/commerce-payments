@@ -30,8 +30,8 @@ abstract contract TokenCollector {
     }
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
-    /// @param paymentInfoHash Hash of payment details
-    /// @param paymentInfo Payment details struct
+    /// @param paymentInfoHash Hash of payment info
+    /// @param paymentInfo Payment info struct
     /// @param amount Amount of tokens to pull
     /// @param collectorData Data to pass to the token collector
     function collectTokens(

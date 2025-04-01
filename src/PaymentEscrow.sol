@@ -14,7 +14,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow {
-    /// @notice Payment details, contains all information required to authorize and capture a unique payment
+    /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
         address operator;
@@ -369,8 +369,8 @@ contract PaymentEscrow {
     /// @param paymentInfo PaymentInfo struct
     /// @return Hash of payment info for the current chain and contract address
     function getHash(PaymentInfo calldata paymentInfo) public view returns (bytes32) {
-        bytes32 detailsHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
-        return keccak256(abi.encode(block.chainid, address(this), detailsHash));
+        bytes32 paymentInfoHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
+        return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
     /// @notice Transfer tokens into this contract
