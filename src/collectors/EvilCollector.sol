@@ -43,12 +43,12 @@ contract EvilCollector is TokenCollector {
                 feeReceiver: paymentInfo.feeReceiver,
                 salt: paymentInfo.salt + 1
             });
+            SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
 
             paymentEscrow.charge(nextPaymentInfo, amount, address(this), collectorData, 0, address(0));
         } else {
             console2.log("transferring tokens from evil to escrow");
             reenter = true;
-            SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
         }
     }
 }

@@ -395,6 +395,9 @@ contract PaymentEscrow {
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
         console2.log("RETURNING FROM EXTERNAL CALL TO COLLECT TOKENS");
         uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
+        console2.log("escrowBalanceAfter", escrowBalanceAfter);
+        console2.log("escrowBalanceBefore", escrowBalanceBefore);
+        console2.log("amount", amount);
         if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
