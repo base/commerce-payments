@@ -25,7 +25,8 @@ contract Operator is Ownable2Step, EIP712 {
     mapping(uint256 nonceKey => uint256 nonceSequence) public nonces;
 
     event NonceUsed(uint160 nonceKey, uint96 nonceSequence);
-    event OperationFailed(bytes32 id, address executor, bytes error);
+    event OperationSucceeded(bytes32 id);
+    event OperationFailed(bytes32 id, bytes error);
     event ExecutorUpdated(address executor, bool allowed);
 
     error InvalidExecutor(address executor);
@@ -101,7 +102,11 @@ contract Operator is Ownable2Step, EIP712 {
 
     function _execute(Operation calldata operation) internal {
         (bool success, bytes memory res) = operation.target.call(operation.data);
-        if (!success) emit OperationFailed(operation.id, msg.sender, res);
+        if (success) {
+            emit OperationSucceeded(operation.id);
+        } else {
+            emit OperationFailed(operation.id, res);
+        }
     }
 
     function _domainNameAndVersion() internal pure override returns (string memory name, string memory version) {
