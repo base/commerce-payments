@@ -8,8 +8,8 @@ import {Operator} from "./Operator.sol";
 contract OperatorFactory {
     address immutable implementation;
 
-    constructor(address impl) {
-        implementation = impl;
+    constructor() {
+        implementation = address(new Operator());
     }
 
     function create(address owner, address[] calldata executors, bytes32 salt) external {
