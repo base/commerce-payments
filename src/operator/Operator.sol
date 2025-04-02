@@ -6,8 +6,10 @@ import {Ownable2Step} from "openzeppelin-contracts/contracts/access/Ownable2Step
 import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 import {EIP712} from "solady/utils/EIP712.sol";
 
-/// @notice Minimal contract for PaymentEscrow operations
+/// @title Operator
+/// @notice Minimal contract for operating onchain systems at scale
 /// @dev Enables batch execution from multiple executors for optimal throughput and efficiency
+/// @dev Enables relaying for convenience from any party
 contract Operator is Ownable2Step, EIP712 {
     struct Operation {
         bytes32 id;
