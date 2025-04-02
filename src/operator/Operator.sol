@@ -29,7 +29,10 @@ contract Operator is Ownable2Step, EIP712 {
     error InvalidNonce(uint160 nonceKey, uint96 nonceSequence, uint96 expectedSequence);
     error InvalidSignature();
 
-    constructor() Ownable(address(0)) {}
+    constructor(address initialOwner) Ownable(initialOwner) {
+        // immediately revoke ownership of singleton implementation
+        _transferOwnership(address(0));
+    }
 
     modifier onlyExecutor() {
         if (isExecutor[msg.sender]) revert InvalidExecutor(msg.sender);

@@ -9,7 +9,7 @@ contract OperatorFactory {
     address immutable implementation;
 
     constructor() {
-        implementation = address(new Operator());
+        implementation = address(new Operator(msg.sender));
     }
 
     function create(address owner, address[] calldata executors, bytes32 salt) external {
