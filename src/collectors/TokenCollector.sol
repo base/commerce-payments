@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 /// @title TokenCollector
@@ -44,4 +46,12 @@ abstract contract TokenCollector {
     /// @notice Get the type of token collector
     /// @return CollectorType Type of token collector
     function collectorType() external view virtual returns (CollectorType);
+
+    /// @notice Set up infinite allowance to escrow for token if not set
+    function _configureAllowance(address token) internal {
+        uint256 allowance = IERC20(token).allowance(address(this), address(paymentEscrow));
+        if (allowance != type(uint256).max) {
+            IERC20(token).approve(address(paymentEscrow), type(uint256).max);
+        }
+    }
 }
