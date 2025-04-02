@@ -32,6 +32,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
+        _configureAllowance(paymentInfo.token);
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,
             spender: address(this),
@@ -60,8 +61,5 @@ contract SpendPermissionPaymentCollector is TokenCollector {
                 abi.decode(encodedWithdrawRequest, (MagicSpend.WithdrawRequest));
             spendPermissionManager.spendWithWithdraw(permission, uint160(amount), withdrawRequest);
         }
-
-        // Transfer tokens from collector to escrow
-        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 }

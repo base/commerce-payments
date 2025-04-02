@@ -38,11 +38,12 @@ contract PreApprovalPaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata
     ) external override onlyPaymentEscrow {
+        _configureAllowance(paymentInfo.token);
         // Check payment pre-approved
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 
-        // Transfer tokens from payer to escrow
-        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, address(paymentEscrow), amount);
+        // Transfer tokens from payer to this collector
+        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, address(this), amount);
     }
 
     /// @notice Registers buyer's token approval for a specific payment
