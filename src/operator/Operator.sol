@@ -61,9 +61,9 @@ contract Operator is Ownable2Step, EIP712 {
     {
         if (!isExecutor[executor]) revert InvalidExecutor(msg.sender);
 
-        uint160 nonceKey = uint160(nonce >> 96);
+        uint160 nonceKey = uint160(nonce);
         uint96 nonceSequence = uint96(nonces[nonceKey]);
-        if (uint96(nonce) != nonceSequence) revert InvalidNonce(nonceKey, uint96(nonce), nonceSequence);
+        if (uint96(nonce >> 160) != nonceSequence) revert InvalidNonce(nonceKey, uint96(nonce >> 160), nonceSequence);
         nonces[nonceKey] += 1;
         emit NonceUsed(nonceKey, nonceSequence);
 
@@ -85,7 +85,9 @@ contract Operator is Ownable2Step, EIP712 {
         uint256 len = operations.length;
         bytes32[] memory operationHashes = new bytes32[](len);
         for (uint256 i; i < len; i++) {
-            operationHashes[i] = keccak256(abi.encode(OPERATION_TYPEHASH, operations[i]));
+            operationHashes[i] = keccak256(
+                abi.encode(OPERATION_TYPEHASH, operations[i].id, operations[i].target, keccak256(operations[i].data))
+            );
         }
         bytes32 structHash =
             keccak256(abi.encode(OPERATION_BATCH_TYPEHASH, keccak256(abi.encode(operationHashes)), nonce));
