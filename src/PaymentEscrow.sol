@@ -391,11 +391,11 @@ contract PaymentEscrow {
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
         // Measure balance change for collecting tokens to enforce as equal to expected amount
-        uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
-        TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
+        // uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
+        // TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
-        if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
-        // SafeTransferLib.safeTransferFrom(paymentInfo.token, tokenCollector, address(this), amount);
+        // if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
+        SafeTransferLib.safeTransferFrom(paymentInfo.token, tokenCollector, address(this), amount);
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
