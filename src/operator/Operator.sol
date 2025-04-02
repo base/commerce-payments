@@ -22,21 +22,17 @@ contract Operator is Ownable2Step, EIP712 {
     mapping(address executor => bool allowed) public isExecutor;
     mapping(uint256 nonceKey => uint256 nonceSequence) public nonces;
 
-    event ExecutorUpdated(address executor, bool allowed);
+    event NonceUsed(uint160 nonceKey, uint96 nonceSequence);
     event OperationFailed(bytes32 id, address executor, bytes error);
+    event ExecutorUpdated(address executor, bool allowed);
 
     error InvalidExecutor(address executor);
     error InvalidNonce(uint160 nonceKey, uint96 nonceSequence, uint96 expectedSequence);
     error InvalidSignature();
 
+    /// @dev Needed to provide initialOwner for compiler, immediately revokes in constructor for singleton implementation
     constructor(address initialOwner) Ownable(initialOwner) {
-        // immediately revoke ownership of singleton implementation
         _transferOwnership(address(0));
-    }
-
-    modifier onlyExecutor() {
-        if (isExecutor[msg.sender]) revert InvalidExecutor(msg.sender);
-        _;
     }
 
     function initialize(address owner_, address[] calldata executors) external {
@@ -49,7 +45,9 @@ contract Operator is Ownable2Step, EIP712 {
         }
     }
 
-    function execute(Operation[] calldata operations) external onlyExecutor {
+    function execute(Operation[] calldata operations) external {
+        if (!isExecutor[msg.sender]) revert InvalidExecutor(msg.sender);
+
         uint256 len = operations.length;
         for (uint256 i; i < len; i++) {
             _execute(operations[i]);
@@ -59,24 +57,18 @@ contract Operator is Ownable2Step, EIP712 {
     function relay(Operation[] calldata operations, uint256 nonce, address executor, bytes calldata signature)
         external
     {
-        if (isExecutor[executor]) revert InvalidExecutor(msg.sender);
+        if (!isExecutor[executor]) revert InvalidExecutor(msg.sender);
 
         uint160 nonceKey = uint160(nonce >> 96);
         uint96 nonceSequence = uint96(nonces[nonceKey]);
         if (uint96(nonce) != nonceSequence) revert InvalidNonce(nonceKey, uint96(nonce), nonceSequence);
         nonces[nonceKey] += 1;
+        emit NonceUsed(nonceKey, nonceSequence);
 
-        uint256 len = operations.length;
-        bytes32[] memory operationHashes = new bytes32[](len);
-        for (uint256 i; i < len; i++) {
-            operationHashes[i] = keccak256(abi.encode(OPERATION_TYPEHASH, operations[i]));
-        }
-        bytes32 structHash =
-            keccak256(abi.encode(OPERATION_BATCH_TYPEHASH, keccak256(abi.encode(operationHashes)), nonce));
-        bytes32 relayHash = _hashTypedData(structHash);
-
+        bytes32 relayHash = getRelayHash(operations, nonce);
         if (!SignatureCheckerLib.isValidSignatureNow(executor, relayHash, signature)) revert InvalidSignature();
 
+        uint256 len = operations.length;
         for (uint256 i; i < len; i++) {
             _execute(operations[i]);
         }
@@ -85,6 +77,18 @@ contract Operator is Ownable2Step, EIP712 {
     function updateExecutor(address executor, bool allowed) external onlyOwner {
         isExecutor[executor] = allowed;
         emit ExecutorUpdated(executor, allowed);
+    }
+
+    function getRelayHash(Operation[] calldata operations, uint256 nonce) public view returns (bytes32) {
+        uint256 len = operations.length;
+        bytes32[] memory operationHashes = new bytes32[](len);
+        for (uint256 i; i < len; i++) {
+            operationHashes[i] = keccak256(abi.encode(OPERATION_TYPEHASH, operations[i]));
+        }
+        bytes32 structHash =
+            keccak256(abi.encode(OPERATION_BATCH_TYPEHASH, keccak256(abi.encode(operationHashes)), nonce));
+
+        return _hashTypedData(structHash);
     }
 
     function renounceOwnership() public pure override {

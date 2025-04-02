@@ -12,8 +12,9 @@ contract OperatorFactory {
         implementation = address(new Operator(msg.sender));
     }
 
-    function create(address owner, address[] calldata executors, bytes32 salt) external {
-        address operator = LibClone.cloneDeterministic(implementation, salt);
-        Operator(operator).initialize(owner, executors);
+    function create(address owner, address[] calldata executors, bytes32 salt) external returns (Operator) {
+        Operator operator = Operator(LibClone.cloneDeterministic(implementation, salt));
+        operator.initialize(owner, executors);
+        return operator;
     }
 }
