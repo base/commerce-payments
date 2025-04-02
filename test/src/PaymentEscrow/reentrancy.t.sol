@@ -46,11 +46,22 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
         console.log("Initial Attacker Balance:     ", mockERC3009Token.balanceOf(attacker));
         vm.startPrank(attacker);
-        // This isn't capturing the revert because it's deep in the callstack, but we can see in the logs it's reverting due to reentrancy
-        // vm.expectRevert(); // expect revert here when fixing with reentrancy guard
-        paymentEscrow.authorize(paymentInfo, 10 ether, address(reentrantTokenCollector), "");
-        console.log("After authorize");
 
+        // Use low-level call to detect revert
+        bytes memory callData = abi.encodeWithSelector(
+            PaymentEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), ""
+        );
+
+        (bool success, bytes memory returnData) = address(paymentEscrow).call(callData);
+        assertFalse(success, "Reentrancy attack should fail");
+
+        if (!success) {
+            console.log("Revert reason:");
+            console.logBytes(returnData);
+        }
+
+        console.log("After authorize attempt");
+        vm.expectRevert(); // expect revert because authorize never happened
         paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         paymentInfo.salt += 1; // set up the second unique paymentInfo
         vm.expectRevert(); // expect revert because we've fixed the reentrancy
