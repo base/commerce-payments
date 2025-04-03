@@ -5,6 +5,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
+import {OperatorTreasury} from "./OperatorTreasury.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -153,6 +154,12 @@ contract PaymentEscrow {
     bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
         "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
+
+    /// @notice Mapping from operator to their treasury
+    mapping(address operator => address treasury) public operatorTreasury;
+
+    /// @notice Event emitted when new treasury is created
+    event TreasuryCreated(address indexed operator, address treasury);
 
     /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
@@ -390,12 +397,17 @@ contract PaymentEscrow {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
+        // Get operator's treasury
+        address treasury = _getOrCreateTreasury(paymentInfo.operator);
+
         // Measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
         if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
-        // SafeTransferLib.safeTransferFrom(paymentInfo.token, tokenCollector, address(this), amount);
+
+        // Forward tokens to operator's treasury
+        SafeTransferLib.safeTransfer(paymentInfo.token, treasury, amount);
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
@@ -407,9 +419,20 @@ contract PaymentEscrow {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
+        // Get operator's treasury
+        address treasury = operatorTreasury[msg.sender];
+
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
-        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeReceiver, feeAmount);
-        if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);
+
+        // Send fee portion if non-zero
+        if (feeAmount > 0) {
+            OperatorTreasury(treasury).sendTokens(token, feeAmount, feeReceiver);
+        }
+
+        // Send remaining amount to receiver
+        if (amount - feeAmount > 0) {
+            OperatorTreasury(treasury).sendTokens(token, amount - feeAmount, receiver);
+        }
     }
 
     /// @notice Validates required properties of a payment
@@ -459,6 +482,20 @@ contract PaymentEscrow {
         // Check fee recipient matches payment info if non-zero
         if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
+        }
+    }
+
+    /// @notice Get or create treasury for an operator
+    /// @param operator The operator to get/create treasury for
+    /// @return treasury The operator's treasury address
+    function _getOrCreateTreasury(address operator) internal returns (address treasury) {
+        treasury = operatorTreasury[operator];
+        if (treasury == address(0)) {
+            // Deploy new treasury
+            OperatorTreasury newTreasury = new OperatorTreasury(operator);
+            treasury = address(newTreasury);
+            operatorTreasury[operator] = treasury;
+            emit TreasuryCreated(operator, treasury);
         }
     }
 }
