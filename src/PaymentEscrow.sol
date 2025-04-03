@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 import {OperatorTreasury} from "./OperatorTreasury.sol";
@@ -154,9 +155,6 @@ contract PaymentEscrow {
     bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
         "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
-
-    /// @notice Mapping from operator to their treasury
-    mapping(address operator => address treasury) public operatorTreasury;
 
     /// @notice Event emitted when new treasury is created
     event TreasuryCreated(address indexed operator, address treasury);
@@ -423,8 +421,7 @@ contract PaymentEscrow {
         internal
     {
         // Get operator's treasury
-        address treasury = operatorTreasury[msg.sender];
-        if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
+        address treasury = _getOrCreateTreasury(msg.sender);
 
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
 
@@ -493,12 +490,13 @@ contract PaymentEscrow {
     /// @param operator The operator to get/create treasury for
     /// @return treasury The operator's treasury address
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
-        treasury = operatorTreasury[operator];
-        if (treasury == address(0)) {
-            // Deploy new treasury
-            OperatorTreasury newTreasury = new OperatorTreasury(operator);
-            treasury = address(newTreasury);
-            operatorTreasury[operator] = treasury;
+        treasury = operatorTreasury(operator);
+        if (treasury.code.length == 0) {
+            bytes memory creationCode = type(OperatorTreasury).creationCode;
+            bytes memory constructorArgs = abi.encode(operator);
+            bytes memory bytecode = abi.encodePacked(creationCode, constructorArgs);
+            bytes32 salt = keccak256(abi.encode(operator));
+            treasury = Create2.deploy(0, salt, bytecode);
             emit TreasuryCreated(operator, treasury);
         }
     }
@@ -509,8 +507,18 @@ contract PaymentEscrow {
     /// @param amount Amount of tokens to send
     /// @param recipient Address to receive the tokens
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
-        address treasury = operatorTreasury[operator];
-        if (treasury == address(0)) revert TreasuryNotFound(operator);
+        address treasury = operatorTreasury(operator);
+        if (treasury.code.length == 0) revert TreasuryNotFound(operator);
         OperatorTreasury(treasury).sendTokens(token, amount, recipient);
+    }
+
+    /// @notice Get the treasury address for an operator
+    /// @param operator The operator to get the treasury for
+    /// @return The operator's treasury address
+    function operatorTreasury(address operator) public view returns (address) {
+        bytes32 salt = keccak256(abi.encode(operator));
+        return Create2.computeAddress(
+            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(operator)))
+        );
     }
 }
