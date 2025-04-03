@@ -29,7 +29,6 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
 
         // Record balances before
         uint256 magicSpendBalanceBefore = mockERC3009Token.balanceOf(address(magicSpend));
-        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         // Submit authorization
         vm.prank(operator);
@@ -40,16 +39,15 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             abi.encode(signature, abi.encode(withdrawRequest))
         );
 
+        // Get treasury address after creation
+        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+
         // Verify balances - funds should move from MagicSpend to escrow
         assertEq(
             mockERC3009Token.balanceOf(address(magicSpend)),
             magicSpendBalanceBefore - amount,
             "MagicSpend balance should decrease by amount"
         );
-        assertEq(
-            mockERC3009Token.balanceOf(address(paymentEscrow)),
-            escrowBalanceBefore + amount,
-            "Escrow balance should increase by amount"
-        );
+        assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount, "Treasury balance should increase by amount");
     }
 }

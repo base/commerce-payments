@@ -31,11 +31,13 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
 
         // Record balances before
         uint256 walletBalanceBefore = mockERC3009Token.balanceOf(address(smartWalletDeployed));
-        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         // Submit authorization
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")); // Empty collectorData for regular spend
+
+        // Get treasury address after creation
+        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
 
         // Verify balances
         assertEq(
@@ -43,10 +45,6 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
             walletBalanceBefore - amount,
             "Wallet balance should decrease by amount"
         );
-        assertEq(
-            mockERC3009Token.balanceOf(address(paymentEscrow)),
-            escrowBalanceBefore + amount,
-            "Escrow balance should increase by amount"
-        );
+        assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount, "Treasury balance should increase by amount");
     }
 }
