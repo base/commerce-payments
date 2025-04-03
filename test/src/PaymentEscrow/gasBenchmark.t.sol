@@ -107,6 +107,7 @@ contract RefundGasBenchmark is GasBenchmarkBase {
 
         // Give operator tokens for refund and approve collector
         mockERC3009Token.mint(operator, BENCHMARK_AMOUNT);
+        mockERC3009Token.mint(address(operatorRefundCollector), BENCHMARK_AMOUNT);
         vm.prank(operator);
         mockERC3009Token.approve(address(operatorRefundCollector), BENCHMARK_AMOUNT);
     }
