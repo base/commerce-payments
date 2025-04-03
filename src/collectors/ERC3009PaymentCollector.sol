@@ -46,14 +46,14 @@ contract ERC3009PaymentCollector is TokenCollector {
             signature: signature
         });
 
-        // send tokens to escrow
-        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
-
         // Return excess tokens to buyer
         uint256 excess = paymentInfo.maxAmount - amount;
         if (excess > 0) {
             SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
+
+        // send tokens to escrow
+        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 
     /// @notice Parse and process ERC-6492 signatures

@@ -315,9 +315,7 @@ contract PaymentEscrow {
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from treasury
-        address treasury = operatorTreasury[paymentInfo.operator];
-        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
-        OperatorTreasury(treasury).sendTokens(paymentInfo.token, authorizedAmount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Returns any escrowed funds to payer
@@ -339,9 +337,7 @@ contract PaymentEscrow {
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from treasury
-        address treasury = operatorTreasury[paymentInfo.operator];
-        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
-        OperatorTreasury(treasury).sendTokens(paymentInfo.token, authorizedAmount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Return previously-captured tokens to payer
@@ -375,9 +371,7 @@ contract PaymentEscrow {
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
         );
-        address treasury = operatorTreasury[paymentInfo.operator];
-        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
-        OperatorTreasury(treasury).sendTokens(paymentInfo.token, amount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, amount, paymentInfo.payer);
     }
 
     /// @notice Get hash of PaymentInfo struct
@@ -430,6 +424,7 @@ contract PaymentEscrow {
     {
         // Get operator's treasury
         address treasury = operatorTreasury[msg.sender];
+        if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
 
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
 
@@ -506,5 +501,16 @@ contract PaymentEscrow {
             operatorTreasury[operator] = treasury;
             emit TreasuryCreated(operator, treasury);
         }
+    }
+
+    /// @notice Helper to send tokens from an operator's treasury
+    /// @param operator The operator whose treasury to use
+    /// @param token The token to send
+    /// @param amount Amount of tokens to send
+    /// @param recipient Address to receive the tokens
+    function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
+        address treasury = operatorTreasury[operator];
+        if (treasury == address(0)) revert TreasuryNotFound(operator);
+        OperatorTreasury(treasury).sendTokens(token, amount, recipient);
     }
 }
