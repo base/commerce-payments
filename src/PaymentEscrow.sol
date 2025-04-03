@@ -161,6 +161,9 @@ contract PaymentEscrow {
     /// @notice Event emitted when new treasury is created
     event TreasuryCreated(address indexed operator, address treasury);
 
+    /// @notice Treasury not found for an operator
+    error TreasuryNotFound(address operator);
+
     /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
         if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
@@ -311,8 +314,10 @@ contract PaymentEscrow {
         paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
-        // Transfer tokens to payer
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        // Transfer tokens to payer from treasury
+        address treasury = operatorTreasury[paymentInfo.operator];
+        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
+        OperatorTreasury(treasury).sendTokens(paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Returns any escrowed funds to payer
@@ -333,8 +338,10 @@ contract PaymentEscrow {
         paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
-        // Transfer tokens to payer
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        // Transfer tokens to payer from treasury
+        address treasury = operatorTreasury[paymentInfo.operator];
+        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
+        OperatorTreasury(treasury).sendTokens(paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Return previously-captured tokens to payer
@@ -368,7 +375,9 @@ contract PaymentEscrow {
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
         );
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, amount);
+        address treasury = operatorTreasury[paymentInfo.operator];
+        if (treasury == address(0)) revert TreasuryNotFound(paymentInfo.operator);
+        OperatorTreasury(treasury).sendTokens(paymentInfo.token, amount, paymentInfo.payer);
     }
 
     /// @notice Get hash of PaymentInfo struct
