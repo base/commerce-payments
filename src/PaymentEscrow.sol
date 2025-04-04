@@ -184,7 +184,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes calldata collectorData,
         uint16 feeBps,
         address feeReceiver
-    ) external nonReentrantTransient onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -227,7 +227,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrantTransient onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -263,7 +263,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
         external
-        nonReentrantTransient
+        nonReentrant
         onlySender(paymentInfo.operator)
         validAmount(amount)
     {
@@ -296,7 +296,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @dev Returns any escrowed funds to payer
     /// @dev Can only be called by the operator
     /// @param paymentInfo PaymentInfo struct
-    function void(PaymentInfo calldata paymentInfo) external nonReentrantTransient onlySender(paymentInfo.operator) {
+    function void(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.operator) {
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
@@ -313,7 +313,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Returns any escrowed funds to payer
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentInfo PaymentInfo struct
-    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrantTransient onlySender(paymentInfo.payer) {
+    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.payer) {
         // Check not before authorization expiry
         if (block.timestamp < paymentInfo.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
@@ -344,7 +344,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrantTransient onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentInfo.refundExpiry);

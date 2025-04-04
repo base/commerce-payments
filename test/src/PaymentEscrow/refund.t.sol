@@ -103,24 +103,21 @@ contract RefundTest is PaymentEscrowBase {
         vm.stopPrank();
 
         // Fund the operator for refund
-        mockERC3009Token.mint(hooks[TokenCollector.OperatorRefund], refundAmount);
+        mockERC3009Token.mint(operator, refundAmount);
 
         // Approve operator refund collector to pull refund amount
         vm.prank(operator);
         mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-        uint256 operatorRefundCollectorBalanceBefore = mockERC3009Token.balanceOf(hooks[TokenCollector.OperatorRefund]);
+        uint256 operatorBalanceBefore = mockERC3009Token.balanceOf(operator);
 
         // Execute refund
         vm.prank(operator);
         paymentEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), hex"");
 
         // Verify balances
-        assertEq(
-            mockERC3009Token.balanceOf(hooks[TokenCollector.OperatorRefund]),
-            operatorRefundCollectorBalanceBefore - refundAmount
-        );
+        assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + refundAmount);
     }
 
@@ -142,7 +139,7 @@ contract RefundTest is PaymentEscrowBase {
         vm.stopPrank();
 
         // Fund operator for refund
-        mockERC3009Token.mint(hooks[TokenCollector.OperatorRefund], refundAmount);
+        mockERC3009Token.mint(operator, refundAmount);
         vm.prank(operator);
         mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
