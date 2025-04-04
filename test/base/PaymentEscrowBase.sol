@@ -122,7 +122,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         mockERC3009Token.mint(payerEOA, 1000e9);
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount)
+    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)
@@ -130,7 +130,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token)
+    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount, address token)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)
@@ -156,36 +156,33 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         view
         returns (bytes memory)
     {
-        return _signERC3009({
-            from: paymentInfo.payer,
-            to: hooks[TokenCollector.ERC3009],
-            value: paymentInfo.maxAmount,
-            validAfter: 0,
-            validBefore: paymentInfo.preApprovalExpiry,
-            nonce: paymentEscrow.getHash(paymentInfo),
-            signerPk: signerPk
-        });
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 nonce = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
+
+        bytes32 digest = _getERC3009Digest(
+            payer, hooks[TokenCollector.ERC3009], paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
     }
 
-    function _signERC3009(
+    function _getERC3009Digest(
         address from,
         address to,
         uint256 value,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
-        uint256 signerPk
-    ) internal view returns (bytes memory) {
+        bytes32 nonce
+    ) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(), from, to, value, validAfter, validBefore, nonce
             )
         );
-
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
-        return abi.encodePacked(r, s, v);
+        return keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
     }
 
     function _signPermit2Transfer(address token, uint256 amount, uint256 deadline, uint256 nonce, uint256 privateKey)

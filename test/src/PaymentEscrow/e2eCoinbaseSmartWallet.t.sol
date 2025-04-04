@@ -6,7 +6,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
-    function test_charge_succeeds_withDeployedSmartWallet(uint256 amount) public {
+    function test_charge_succeeds_withDeployedSmartWallet(uint120 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
 
@@ -20,16 +20,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // bytes32 nonce = paymentEscrow.getHash(paymentInfo); // Use paymentInfoHash as nonce
 
         // Create signature
-        bytes memory signature = _signSmartWalletERC3009(
-            address(smartWalletDeployed),
-            receiver,
-            amount,
-            paymentInfo.preApprovalExpiry,
-            paymentInfo.authorizationExpiry,
-            paymentInfo.refundExpiry,
-            DEPLOYED_WALLET_OWNER_PK,
-            0
-        );
+        bytes memory signature = _signSmartWalletERC3009(paymentInfo, DEPLOYED_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);
@@ -47,7 +38,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
     }
 
-    function test_charge_succeeds_withCounterfactualSmartWallet(uint256 amount) public {
+    function test_charge_succeeds_withCounterfactualSmartWallet(uint120 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletCounterfactual));
 
@@ -63,16 +54,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             _createPaymentEscrowAuthorization(address(smartWalletCounterfactual), amount);
 
         // Create signature
-        bytes memory signature = _signSmartWalletERC3009WithERC6492(
-            address(smartWalletCounterfactual),
-            receiver,
-            amount,
-            paymentInfo.preApprovalExpiry,
-            paymentInfo.authorizationExpiry,
-            paymentInfo.refundExpiry,
-            COUNTERFACTUAL_WALLET_OWNER_PK,
-            0
-        );
+        bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);

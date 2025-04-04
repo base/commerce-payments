@@ -57,36 +57,20 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         return abi.encodePacked(r, s, v);
     }
 
-    function _signSmartWalletERC3009(
-        address payer,
-        address receiver,
-        uint256 maxAmount,
-        uint48 preApprovalExpiry,
-        uint48 authorizationExpiry,
-        uint48 refundExpiry,
-        uint256 ownerPk,
-        uint256 ownerIndex
-    ) internal view returns (bytes memory) {
-        // First compute the ERC3009 digest that needs to be signed
-        bytes32 nonce = paymentEscrow.getHash(
-            PaymentEscrow.PaymentInfo({
-                operator: operator,
-                payer: payer,
-                receiver: receiver,
-                token: address(mockERC3009Token),
-                maxAmount: maxAmount,
-                preApprovalExpiry: preApprovalExpiry,
-                authorizationExpiry: authorizationExpiry,
-                refundExpiry: refundExpiry,
-                minFeeBps: FEE_BPS,
-                maxFeeBps: FEE_BPS,
-                feeReceiver: feeReceiver,
-                salt: uint256(0)
-            })
-        );
+    function _signSmartWalletERC3009(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 ownerPk, uint256 ownerIndex)
+        internal
+        view
+        returns (bytes memory)
+    {
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 nonce = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
 
         // This is what needs to be signed by the smart wallet
-        bytes32 erc3009Digest = _getERC3009Digest(payer, maxAmount, 0, preApprovalExpiry, nonce);
+        bytes32 erc3009Digest = _getERC3009Digest(
+            payer, hooks[TokenCollector.ERC3009], paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
+        );
 
         // Now wrap the ERC3009 digest in the smart wallet's domain
         bytes32 domainSeparator = keccak256(
@@ -106,39 +90,13 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         return abi.encode(CoinbaseSmartWallet.SignatureWrapper(ownerIndex, signature));
     }
 
-    function _getERC3009Digest(address payer, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce)
-        internal
-        view
-        returns (bytes32)
-    {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
-                payer,
-                hooks[TokenCollector.ERC3009],
-                value,
-                validAfter,
-                validBefore,
-                nonce
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
-    }
-
     function _signSmartWalletERC3009WithERC6492(
-        address payer,
-        address receiver,
-        uint256 value,
-        uint48 preApprovalExpiry,
-        uint48 authorizationExpiry,
-        uint48 refundExpiry,
+        PaymentEscrow.PaymentInfo memory paymentInfo,
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
         // First get the normal smart wallet signature
-        bytes memory signature = _signSmartWalletERC3009(
-            payer, receiver, value, preApprovalExpiry, authorizationExpiry, refundExpiry, ownerPk, ownerIndex
-        );
+        bytes memory signature = _signSmartWalletERC3009(paymentInfo, ownerPk, ownerIndex);
 
         // Prepare the factory call data
         bytes[] memory allInitialOwners = new bytes[](1);

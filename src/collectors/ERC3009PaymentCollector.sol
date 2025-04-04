@@ -25,15 +25,16 @@ contract ERC3009PaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     function collectTokens(
-        bytes32 paymentInfoHash,
+        bytes32,
         PaymentEscrow.PaymentInfo calldata paymentInfo,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
-        // _configureAllowance(paymentInfo.token);
-
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
+
+        // Construct nonce as payer-less payment info hash for offchain preparation convenience
+        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({
@@ -42,7 +43,7 @@ contract ERC3009PaymentCollector is TokenCollector {
             value: paymentInfo.maxAmount,
             validAfter: 0,
             validBefore: paymentInfo.preApprovalExpiry,
-            nonce: paymentInfoHash,
+            nonce: nonce,
             signature: signature
         });
 
@@ -52,7 +53,7 @@ contract ERC3009PaymentCollector is TokenCollector {
             SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
 
-        // send tokens to escrow
+        // Transfer tokens to escrow
         SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 

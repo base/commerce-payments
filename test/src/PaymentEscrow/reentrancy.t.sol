@@ -27,7 +27,6 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
         uint120 amount = 10 ether;
         mockERC3009Token.mint(address(paymentEscrow), amount); // give escrow liquidity
         mockERC3009Token.mint(address(reentrantTokenCollector), amount); // give evil collector enough liquidity for attack
-
         PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
             operator: attacker,
             payer: attacker,
@@ -43,18 +42,31 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
             salt: 0
         });
 
-        /// CAN'T RUN FORGE SNAPSHOT WITH A FAILING TEST
-        // console.log("Initial Attacker Balance:     ", mockERC3009Token.balanceOf(attacker));
-        // vm.prank(attacker);
-        // paymentEscrow.authorize(paymentInfo, 10 ether, address(reentrantTokenCollector), "");
+        console.log("Initial Attacker Balance:     ", mockERC3009Token.balanceOf(attacker));
+        vm.startPrank(attacker);
 
-        // vm.startPrank(attacker);
-        // paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
-        // paymentInfo.salt += 1;
-        // paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
-        // vm.stopPrank();
+        // Use low-level call to detect revert
+        bytes memory callData = abi.encodeWithSelector(
+            PaymentEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), ""
+        );
 
-        // console.log("After attack Attacker Balance:", mockERC3009Token.balanceOf(attacker));
-        // console.log("Final Escrow Balance:       ", mockERC3009Token.balanceOf(address(paymentEscrow)));
+        (bool success, bytes memory returnData) = address(paymentEscrow).call(callData);
+        assertFalse(success, "Reentrancy attack should fail");
+
+        if (!success) {
+            console.log("Revert reason:");
+            console.logBytes(returnData);
+        }
+
+        console.log("After authorize attempt");
+        vm.expectRevert(); // expect revert because authorize never happened
+        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        paymentInfo.salt += 1; // set up the second unique paymentInfo
+        vm.expectRevert(); // expect revert because we've fixed the reentrancy
+        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        vm.stopPrank();
+
+        console.log("After attack Attacker Balance:", mockERC3009Token.balanceOf(attacker));
+        console.log("Final Escrow Balance:       ", mockERC3009Token.balanceOf(address(paymentEscrow)));
     }
 }
