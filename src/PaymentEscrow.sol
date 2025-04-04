@@ -18,10 +18,20 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice The operator address that can interact with this escrow
     address public immutable operator;
 
-    /// @notice Creates a new PaymentEscrow instance
+    /// @notice Whether the contract has been initialized
+    bool private _initialized;
+
+    constructor() {
+        _initialized = true;
+        operator = address(this); // Prevents direct usage of implementation
+    }
+
+    /// @notice Initializes a clone of the implementation
     /// @param operator_ The address that will be the operator for this escrow
-    constructor(address operator_) {
+    function initialize(address operator_) external {
+        if (_initialized) revert AlreadyInitialized();
         if (operator_ == address(0)) revert ZeroOperator();
+        _initialized = true;
         operator = operator_;
     }
 
@@ -100,6 +110,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Operator is zero address
     error ZeroOperator();
+
+    /// @notice Already initialized
+    error AlreadyInitialized();
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
