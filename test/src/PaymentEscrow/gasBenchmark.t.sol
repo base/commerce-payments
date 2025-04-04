@@ -5,7 +5,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 
 contract GasBenchmarkBase is PaymentEscrowBase {
-    uint256 internal constant BENCHMARK_AMOUNT = 100e6;
+    uint120 internal constant BENCHMARK_AMOUNT = 100e6;
     uint16 internal constant BENCHMARK_FEE_BPS = 100; // 1%
 
     PaymentEscrow.PaymentInfo internal paymentInfo;
