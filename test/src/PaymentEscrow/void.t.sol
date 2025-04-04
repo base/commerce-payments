@@ -6,7 +6,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_reverts_whenNotOperator() public {
-        uint256 authorizedAmount = 100e6;
+        uint120 authorizedAmount = 100e9;
 
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
@@ -62,7 +62,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     }
 
     function test_void_emitsCorrectEvents() public {
-        uint256 authorizedAmount = 100e6;
+        uint120 authorizedAmount = 100e9;
 
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
