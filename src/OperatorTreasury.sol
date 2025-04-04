@@ -34,22 +34,8 @@ contract OperatorTreasury {
     /// @param amount Amount of tokens to receive
     /// @param recipient Address to receive the tokens
     function sendTokens(address token, uint256 amount, address recipient) external onlyEscrow {
-        // Configure allowance for this token if not already set
-        _configureAllowance(token);
-
         // Send tokens to recipient
         bool success = IERC20(token).transfer(recipient, amount);
         if (!success) revert TransferFailed();
-    }
-
-    /// @notice Set up infinite allowance to escrow for token if not set
-    /// @param token The token to configure allowance for
-    function _configureAllowance(address token) internal {
-        uint256 allowance = IERC20(token).allowance(address(this), escrow);
-        if (allowance != type(uint256).max) {
-            // Set infinite approval for escrow
-            bool success = IERC20(token).approve(escrow, type(uint256).max);
-            if (!success) revert ConfigureAllowanceFailed();
-        }
     }
 }
