@@ -34,7 +34,7 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes memory signature = _handleERC6492Signature(collectorData);
 
         // Construct nonce as payer-less payment info hash for offchain preparation convenience
-        bytes32 nonce = getHashPayerAgnostic(paymentInfo);
+        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({
