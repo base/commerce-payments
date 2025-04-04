@@ -44,4 +44,16 @@ abstract contract TokenCollector {
     /// @notice Get the type of token collector
     /// @return CollectorType Type of token collector
     function collectorType() external view virtual returns (CollectorType);
+
+    /// @notice Get hash for PaymentInfo with null payer address
+    /// @dev Proactively setting payer back to original value covers accidental bugs of memory location being used elsewhere
+    /// @param paymentInfo PaymentInfo struct with non-null payer address
+    /// @return hash Hash of PaymentInfo with payer replaced with zero address
+    function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
+        return hashPayerAgnostic;
+    }
 }

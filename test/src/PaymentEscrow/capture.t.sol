@@ -44,8 +44,8 @@ contract CaptureTest is PaymentEscrowBase {
     }
 
     function test_reverts_whenAfterAuthorizationExpiry(
-        uint256 authorizedAmount,
-        uint256 captureAmount,
+        uint120 authorizedAmount,
+        uint120 captureAmount,
         uint48 authorizationExpiry
     ) public {
         vm.assume(authorizationExpiry > 1 && authorizationExpiry < type(uint40).max);
@@ -214,8 +214,8 @@ contract CaptureTest is PaymentEscrowBase {
     }
 
     function test_emitsCorrectEvents() public {
-        uint256 authorizedAmount = 100e6;
-        uint256 captureAmount = 60e6;
+        uint120 authorizedAmount = 100e9;
+        uint120 captureAmount = 60e9;
 
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
 
