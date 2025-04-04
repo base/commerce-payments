@@ -122,7 +122,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         mockERC3009Token.mint(payerEOA, 1000e9);
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount)
+    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)
@@ -130,7 +130,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint256 maxAmount, address token)
+    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount, address token)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)

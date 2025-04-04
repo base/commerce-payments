@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 
@@ -13,7 +14,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
-contract PaymentEscrow {
+contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
@@ -25,7 +26,7 @@ contract PaymentEscrow {
         /// @dev The token contract address
         address token;
         /// @dev The amount of tokens that can be authorized
-        uint256 maxAmount;
+        uint120 maxAmount;
         /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
         uint48 preApprovalExpiry;
         /// @dev Timestamp when an authorization can no longer be captured and the payer can reclaim from escrow
@@ -183,7 +184,7 @@ contract PaymentEscrow {
         bytes calldata collectorData,
         uint16 feeBps,
         address feeReceiver
-    ) external onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -226,7 +227,7 @@ contract PaymentEscrow {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -262,6 +263,7 @@ contract PaymentEscrow {
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
     function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
         external
+        nonReentrant
         onlySender(paymentInfo.operator)
         validAmount(amount)
     {
@@ -292,9 +294,9 @@ contract PaymentEscrow {
 
     /// @notice Permanently voids a payment authorization
     /// @dev Returns any escrowed funds to payer
-    /// @dev Can only be called by the operator or receiver
+    /// @dev Can only be called by the operator
     /// @param paymentInfo PaymentInfo struct
-    function void(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.operator) {
+    function void(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.operator) {
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
@@ -311,7 +313,7 @@ contract PaymentEscrow {
     /// @notice Returns any escrowed funds to payer
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentInfo PaymentInfo struct
-    function reclaim(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.payer) {
+    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.payer) {
         // Check not before authorization expiry
         if (block.timestamp < paymentInfo.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
@@ -331,7 +333,7 @@ contract PaymentEscrow {
     }
 
     /// @notice Return previously-captured tokens to payer
-    /// @dev Can be called by operator or receiver
+    /// @dev Can be called by operator
     /// @dev Funds are transferred from the caller or from the escrow if token collector retrieves external liquidity
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to refund
@@ -342,7 +344,7 @@ contract PaymentEscrow {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentInfo.refundExpiry);
@@ -353,7 +355,7 @@ contract PaymentEscrow {
         uint120 captured = paymentState[paymentInfoHash].refundableAmount;
         if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
-        // Update capturable amount
+        // Update refundable amount
         paymentState[paymentInfoHash].refundableAmount = captured - uint120(amount);
         emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
 
@@ -392,6 +394,7 @@ contract PaymentEscrow {
 
         // Measure balance change for collecting tokens to enforce as equal to expected amount
         uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
+
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
         uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
         if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();

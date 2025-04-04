@@ -6,7 +6,7 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
-    function test_charge_succeeds_withDeployedSmartWallet(uint256 amount) public {
+    function test_charge_succeeds_withDeployedSmartWallet(uint120 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
 
@@ -38,7 +38,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
     }
 
-    function test_charge_succeeds_withCounterfactualSmartWallet(uint256 amount) public {
+    function test_charge_succeeds_withCounterfactualSmartWallet(uint120 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletCounterfactual));
 
