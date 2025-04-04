@@ -15,10 +15,18 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow is ReentrancyGuardTransient {
+    /// @notice The operator address that can interact with this escrow
+    address public immutable operator;
+
+    /// @notice Creates a new PaymentEscrow instance
+    /// @param operator_ The address that will be the operator for this escrow
+    constructor(address operator_) {
+        if (operator_ == address(0)) revert ZeroOperator();
+        operator = operator_;
+    }
+
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
-        /// @dev Entity responsible for driving payment flow
-        address operator;
         /// @dev The payer's address authorizing the payment
         address payer;
         /// @dev Address that receives the payment (minus fees)
@@ -90,6 +98,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Emitted when a captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector);
 
+    /// @notice Operator is zero address
+    error ZeroOperator();
+
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
 
@@ -155,9 +166,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
-    /// @notice Check call sender is specified address
-    modifier onlySender(address sender) {
-        if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
+    /// @notice Check that caller is the operator
+    modifier onlyOperator() {
+        if (msg.sender != operator) revert InvalidSender(msg.sender, operator);
         _;
     }
 
@@ -184,7 +195,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes calldata collectorData,
         uint16 feeBps,
         address feeReceiver
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlyOperator validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -200,7 +211,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
         emit PaymentCharged(
             paymentInfoHash,
-            paymentInfo.operator,
+            operator,
             paymentInfo.payer,
             paymentInfo.receiver,
             paymentInfo.token,
@@ -227,7 +238,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlyOperator validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -240,7 +251,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             PaymentState({hasCollectedPayment: true, capturableAmount: uint120(amount), refundableAmount: 0});
         emit PaymentAuthorized(
             paymentInfoHash,
-            paymentInfo.operator,
+            operator,
             paymentInfo.payer,
             paymentInfo.receiver,
             paymentInfo.token,
@@ -264,7 +275,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
         external
         nonReentrant
-        onlySender(paymentInfo.operator)
+        onlyOperator
         validAmount(amount)
     {
         // Check fee parameters valid
@@ -296,7 +307,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @dev Returns any escrowed funds to payer
     /// @dev Can only be called by the operator
     /// @param paymentInfo PaymentInfo struct
-    function void(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.operator) {
+    function void(PaymentInfo calldata paymentInfo) external nonReentrant onlyOperator {
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
@@ -313,7 +324,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Returns any escrowed funds to payer
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentInfo PaymentInfo struct
-    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.payer) {
+    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlyOperator {
         // Check not before authorization expiry
         if (block.timestamp < paymentInfo.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
@@ -344,7 +355,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external nonReentrant onlyOperator validAmount(amount) {
         // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentInfo.refundExpiry);
