@@ -7,9 +7,9 @@ import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.s
 import {MagicSpend} from "magic-spend/MagicSpend.sol";
 
 contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWalletBase {
-    function test_succeeds_withMagicSpendWithdraw(uint256 amount) public {
+    function test_succeeds_withMagicSpendWithdraw(uint120 amount) public {
         // Assume reasonable values and fund MagicSpend
-        vm.assume(amount > 0 && amount <= type(uint120).max);
+        vm.assume(amount > 0);
         mockERC3009Token.mint(address(magicSpend), amount);
 
         // Create payment info with SpendPermissionWithMagicSpend auth type

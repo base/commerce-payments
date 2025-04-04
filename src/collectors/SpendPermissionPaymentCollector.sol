@@ -17,8 +17,8 @@ contract SpendPermissionPaymentCollector is TokenCollector {
 
     SpendPermissionManager public immutable spendPermissionManager;
 
-    /// @notice Payer signature over Spend Permission invalid
-    error InvalidSignature();
+    /// @notice Spend permission approval failed
+    error SpendPermissionApprovalFailed();
 
     constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
         spendPermissionManager = SpendPermissionManager(payable(spendPermissionManager_));
@@ -49,7 +49,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         // Approve spend permission with signature if provided
         if (signature.length > 0) {
             bool approved = spendPermissionManager.approveWithSignature(permission, signature);
-            if (!approved) revert InvalidSignature();
+            if (!approved) revert SpendPermissionApprovalFailed();
         }
 
         // Transfer tokens into collector, potentially using account withdraw request if provided

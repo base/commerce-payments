@@ -6,7 +6,7 @@ import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 
 contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
-    function test_succeeds_withDeployedSmartWallet(uint256 maxAmount, uint256 amount) public {
+    function test_succeeds_withDeployedSmartWallet(uint120 maxAmount, uint120 amount) public {
         // Get wallet's current balance
         uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
 
