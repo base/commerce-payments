@@ -30,8 +30,6 @@ contract ERC3009PaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
-        // _configureAllowance(paymentInfo.token);
-
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
@@ -55,7 +53,7 @@ contract ERC3009PaymentCollector is TokenCollector {
             SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
 
-        // send tokens to escrow
+        // Transfer tokens to escrow
         SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
     }
 
