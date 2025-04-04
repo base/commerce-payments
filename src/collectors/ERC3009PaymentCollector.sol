@@ -26,21 +26,19 @@ contract ERC3009PaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     function collectTokens(
         bytes32,
-        PaymentEscrow.PaymentInfo memory paymentInfo,
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        // construct nonce as payer-less payment info hash for offchain preparation convenience
-        address payer = paymentInfo.payer;
-        paymentInfo.payer = address(0);
-        bytes32 nonce = paymentEscrow.getHash(paymentInfo);
+        // Construct nonce as payer-less payment info hash for offchain preparation convenience
+        bytes32 nonce = getHashPayerAgnostic(paymentInfo);
 
         // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({
-            from: payer,
+            from: paymentInfo.payer,
             to: address(this),
             value: paymentInfo.maxAmount,
             validAfter: 0,

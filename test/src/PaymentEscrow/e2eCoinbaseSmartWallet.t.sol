@@ -20,16 +20,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         // bytes32 nonce = paymentEscrow.getHash(paymentInfo); // Use paymentInfoHash as nonce
 
         // Create signature
-        bytes memory signature = _signSmartWalletERC3009(
-            address(smartWalletDeployed),
-            receiver,
-            amount,
-            paymentInfo.preApprovalExpiry,
-            paymentInfo.authorizationExpiry,
-            paymentInfo.refundExpiry,
-            DEPLOYED_WALLET_OWNER_PK,
-            0
-        );
+        bytes memory signature = _signSmartWalletERC3009(paymentInfo, DEPLOYED_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);
@@ -63,16 +54,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             _createPaymentEscrowAuthorization(address(smartWalletCounterfactual), amount);
 
         // Create signature
-        bytes memory signature = _signSmartWalletERC3009WithERC6492(
-            address(smartWalletCounterfactual),
-            receiver,
-            amount,
-            paymentInfo.preApprovalExpiry,
-            paymentInfo.authorizationExpiry,
-            paymentInfo.refundExpiry,
-            COUNTERFACTUAL_WALLET_OWNER_PK,
-            0
-        );
+        bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);

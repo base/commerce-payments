@@ -29,6 +29,14 @@ abstract contract TokenCollector {
         _;
     }
 
+    function getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) public view returns (bytes32) {
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
+        return hashPayerAgnostic;
+    }
+
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfoHash Hash of payment info
     /// @param paymentInfo Payment info struct
