@@ -54,6 +54,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint120 refundableAmount;
     }
 
+    /// @notice Typehash used for hashing PaymentInfo structs
+    bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
+        "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
+    );
+
+    /// @notice Mapping from operator to their treasury
+    mapping(address operator => address treasury) public operatorTreasury;
+
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
@@ -90,6 +98,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Emitted when a captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector);
+
+    /// @notice Event emitted when new treasury is created
+    event TreasuryCreated(address indexed operator, address treasury);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
@@ -150,17 +161,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Refund attempted with amount exceeding previous non-refunded captures
     error RefundExceedsCapture(uint256 refund, uint256 captured);
-
-    /// @notice Typehash used for hashing PaymentInfo structs
-    bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
-        "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
-    );
-
-    /// @notice Mapping from operator to their treasury
-    mapping(address operator => address treasury) public operatorTreasury;
-
-    /// @notice Event emitted when new treasury is created
-    event TreasuryCreated(address indexed operator, address treasury);
 
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
@@ -402,7 +402,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        // Get operator's treasury
         address treasury = _getOrCreateTreasury(paymentInfo.operator);
 
         // Measure balance change for collecting tokens to enforce as equal to expected amount
@@ -425,7 +424,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        // Get operator's treasury
         address treasury = operatorTreasury[msg.sender];
         if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
 
