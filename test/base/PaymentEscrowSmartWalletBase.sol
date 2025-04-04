@@ -60,7 +60,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     function _signSmartWalletERC3009(
         address payer,
         address receiver,
-        uint256 maxAmount,
+        uint120 maxAmount,
         uint48 preApprovalExpiry,
         uint48 authorizationExpiry,
         uint48 refundExpiry,
@@ -128,7 +128,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     function _signSmartWalletERC3009WithERC6492(
         address payer,
         address receiver,
-        uint256 value,
+        uint120 value,
         uint48 preApprovalExpiry,
         uint48 authorizationExpiry,
         uint48 refundExpiry,

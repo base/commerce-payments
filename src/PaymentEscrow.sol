@@ -26,7 +26,7 @@ contract PaymentEscrow is ReentrancyGuard {
         /// @dev The token contract address
         address token;
         /// @dev The amount of tokens that can be authorized
-        uint256 maxAmount;
+        uint120 maxAmount;
         /// @dev Timestamp when the payer's pre-approval can no longer authorize payment
         uint48 preApprovalExpiry;
         /// @dev Timestamp when an authorization can no longer be captured and the payer can reclaim from escrow
@@ -293,7 +293,7 @@ contract PaymentEscrow is ReentrancyGuard {
 
     /// @notice Permanently voids a payment authorization
     /// @dev Returns any escrowed funds to payer
-    /// @dev Can only be called by the operator or receiver
+    /// @dev Can only be called by the operator
     /// @param paymentInfo PaymentInfo struct
     function void(PaymentInfo calldata paymentInfo) external onlySender(paymentInfo.operator) {
         // Check authorization non-zero
@@ -332,7 +332,7 @@ contract PaymentEscrow is ReentrancyGuard {
     }
 
     /// @notice Return previously-captured tokens to payer
-    /// @dev Can be called by operator or receiver
+    /// @dev Can be called by operator
     /// @dev Funds are transferred from the caller or from the escrow if token collector retrieves external liquidity
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to refund
@@ -354,7 +354,7 @@ contract PaymentEscrow is ReentrancyGuard {
         uint120 captured = paymentState[paymentInfoHash].refundableAmount;
         if (captured < amount) revert RefundExceedsCapture(amount, captured);
 
-        // Update capturable amount
+        // Update refundable amount
         paymentState[paymentInfoHash].refundableAmount = captured - uint120(amount);
         emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
 
