@@ -244,10 +244,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, confirmAmount, hooks[TokenCollector.ERC3009], signature);
 
         assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), confirmAmount);
-        assertEq(
-            mockERC3009Token.balanceOf(payerEOA),
-            payerBalanceBefore - authorizedAmount + (authorizedAmount - confirmAmount)
-        );
+        assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - confirmAmount);
     }
 
     function test_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint120 amount) public {
