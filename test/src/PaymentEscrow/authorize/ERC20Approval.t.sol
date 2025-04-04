@@ -65,7 +65,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenCollectionFailed.selector));
+        vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20UnsafeTransfer], "");
     }
 

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
@@ -14,7 +13,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev An Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
-contract PaymentEscrow is ReentrancyGuard {
+contract PaymentEscrow {
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
@@ -184,7 +183,7 @@ contract PaymentEscrow is ReentrancyGuard {
         bytes calldata collectorData,
         uint16 feeBps,
         address feeReceiver
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -227,7 +226,7 @@ contract PaymentEscrow is ReentrancyGuard {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
@@ -343,7 +342,7 @@ contract PaymentEscrow is ReentrancyGuard {
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData
-    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
+    ) external onlySender(paymentInfo.operator) validAmount(amount) {
         // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
             revert AfterRefundExpiry(uint48(block.timestamp), paymentInfo.refundExpiry);

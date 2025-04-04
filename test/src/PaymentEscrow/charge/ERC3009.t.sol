@@ -334,20 +334,23 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             paymentInfo.feeReceiver
         );
 
-        // Fund operator for refund
-        mockERC3009Token.mint(operator, refundAmount);
+        // Fund operator refund collector for refund
+        mockERC3009Token.mint(hooks[TokenCollector.OperatorRefund], refundAmount);
         vm.prank(operator);
         mockERC3009Token.approve(address(operatorRefundCollector), refundAmount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-        uint256 operatorBalanceBefore = mockERC3009Token.balanceOf(operator);
+        uint256 operatorRefundCollectorBalanceBefore = mockERC3009Token.balanceOf(hooks[TokenCollector.OperatorRefund]);
 
         // Execute refund
         vm.prank(operator);
         paymentEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), "");
 
         // Verify balances
-        assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
+        assertEq(
+            mockERC3009Token.balanceOf(hooks[TokenCollector.OperatorRefund]),
+            operatorRefundCollectorBalanceBefore - refundAmount
+        );
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + refundAmount);
 
         // Try to refund more than remaining captured amount
