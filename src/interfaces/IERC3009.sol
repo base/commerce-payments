@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.28;
 
 /// @dev ERC-3009 does not actually support this method, but it should.
 /// @dev We should use this opportunity to change the standard to use generic signatures this time.
