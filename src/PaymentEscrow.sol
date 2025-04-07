@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 import {OperatorTreasury} from "./OperatorTreasury.sol";
@@ -164,6 +165,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
+
+    /// @notice Implementation contract for operator treasuries
+    OperatorTreasury public immutable treasuryImplementation;
+
+    constructor() {
+        // Deploy implementation that will be cloned
+        treasuryImplementation = new OperatorTreasury(PaymentEscrow(address(this)));
+    }
 
     /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
@@ -496,9 +505,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
         treasury = operatorTreasury[operator];
         if (treasury == address(0)) {
-            // Deploy new treasury
-            OperatorTreasury newTreasury = new OperatorTreasury(operator);
-            treasury = address(newTreasury);
+            // Deploy minimal clone of implementation
+            treasury = LibClone.clone(address(treasuryImplementation));
             operatorTreasury[operator] = treasury;
             emit TreasuryCreated(operator, treasury);
         }
