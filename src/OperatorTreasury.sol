@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.13;
 
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PaymentEscrow} from "./PaymentEscrow.sol";
 
@@ -31,8 +30,6 @@ contract OperatorTreasury {
     /// @param amount Amount of tokens to receive
     /// @param recipient Address to receive the tokens
     function sendTokens(address token, uint256 amount, address recipient) external onlyEscrow {
-        // Send tokens to recipient
-        bool success = IERC20(token).safeTransfer(recipient, amount);
-        if (!success) revert TransferFailed();
+        SafeTransferLib.safeTransfer(token, recipient, amount);
     }
 }
