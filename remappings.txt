@@ -1,13 +1,13 @@
 @openzeppelin/contracts/=lib/spend-permissions/lib/openzeppelin-contracts/contracts/
-@openzeppelin/contracts/security/=lib/spend-permissions/lib/magic-spend/lib/openzeppelin-contracts/contracts/utils/
+@openzeppelin/contracts/security/=lib/spend-permissions/lib/magicspend/lib/openzeppelin-contracts/contracts/utils/
 FreshCryptoLib/=lib/spend-permissions/lib/webauthn-sol/lib/FreshCryptoLib/solidity/src/
 account-abstraction/=lib/spend-permissions/lib/account-abstraction/contracts/
 ds-test/=lib/spend-permissions/lib/webauthn-sol/lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/spend-permissions/lib/openzeppelin-contracts/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
-fuzzlib/=lib/spend-permissions/lib/magic-spend/lib/fuzzlib/src/
+fuzzlib/=lib/spend-permissions/lib/magicspend/lib/fuzzlib/src/
 halmos-cheatcodes/=lib/spend-permissions/lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
-magic-spend/=lib/spend-permissions/lib/magic-spend/src/
+magicspend/=lib/spend-permissions/lib/magicspend/src/
 openzeppelin-contracts/=lib/spend-permissions/lib/openzeppelin-contracts
 p256-verifier/=lib/spend-permissions/lib/smart-wallet/lib/p256-verifier/
 safe-singleton-deployer-sol/=lib/spend-permissions/lib/smart-wallet/lib/safe-singleton-deployer-sol/

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.28;
 
 import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
