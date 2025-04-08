@@ -394,13 +394,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
-    /// @notice Get operator treasury address
-    /// @param operator The operator to get treasury for
-    /// @return treasury The operator's treasury address
-    function getOperatorTreasury(address operator) public view returns (address) {
-        return operatorTreasury[operator];
-    }
-
     /// @notice Transfer tokens into this contract
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount of tokens to collect
