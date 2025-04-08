@@ -11,7 +11,7 @@ import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 import {PermitHash} from "permit2/libraries/PermitHash.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {PublicERC6492Validator} from "spend-permissions/PublicERC6492Validator.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
+import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
