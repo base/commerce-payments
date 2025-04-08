@@ -66,6 +66,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
+    /// @notice Implementation contract for operator treasuries
+    OperatorTreasury public immutable treasuryImplementation;
+
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentInfoHash,
@@ -165,9 +168,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
-
-    /// @notice Implementation contract for operator treasuries
-    OperatorTreasury public immutable treasuryImplementation;
 
     constructor() {
         // Deploy implementation that will be cloned
