@@ -32,6 +32,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
+        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,
             spender: address(this),
@@ -62,6 +63,6 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         }
 
         // Transfer tokens from collector to escrow
-        SafeTransferLib.safeTransfer(paymentInfo.token, address(paymentEscrow), amount);
+        SafeTransferLib.safeTransfer(paymentInfo.token, treasury, amount);
     }
 }

@@ -394,6 +394,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
+    /// @notice Get operator treasury address
+    /// @param operator The operator to get treasury for
+    /// @return treasury The operator's treasury address
+    function getOperatorTreasury(address operator) public view returns (address) {
+        return operatorTreasury[operator];
+    }
+
     /// @notice Transfer tokens into this contract
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount of tokens to collect
@@ -414,14 +421,11 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address treasury = _getOrCreateTreasury(paymentInfo.operator);
 
         // Measure balance change for collecting tokens to enforce as equal to expected amount
-        uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
+        uint256 treasuryBalanceBefore = IERC20(paymentInfo.token).balanceOf(treasury);
 
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
-        uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
-        if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
-
-        // Forward tokens to operator's treasury
-        SafeTransferLib.safeTransfer(paymentInfo.token, treasury, amount);
+        uint256 treasuryBalanceAfter = IERC20(paymentInfo.token).balanceOf(treasury);
+        if (treasuryBalanceAfter != treasuryBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
