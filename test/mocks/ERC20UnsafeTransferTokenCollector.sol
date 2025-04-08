@@ -50,7 +50,11 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         if (!isPreApproved[paymentInfoHash]) {
             revert PaymentNotPreApproved(paymentInfoHash);
         }
-        // transfer too few token to escrow
-        IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, address(paymentEscrow), paymentInfo.maxAmount - 1);
+
+        // Get treasury address
+        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+
+        // transfer too few token to treasury
+        IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, treasury, paymentInfo.maxAmount - 1);
     }
 }

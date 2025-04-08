@@ -163,6 +163,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
 
+    /// @notice Token transfer failed
+    error TokenTransferFailed();
+
     /// @notice Implementation contract for operator treasuries
     OperatorTreasury public immutable treasuryImplementation;
 
@@ -408,17 +411,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        address treasury = _getOrCreateTreasury(paymentInfo.operator);
+        address treasury = operatorTreasury(paymentInfo.operator);
 
-        // Measure balance change for collecting tokens to enforce as equal to expected amount
-        uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
+        // Measure balance change of treasury to enforce as equal to expected amount
+        uint256 treasuryBalanceBefore = IERC20(paymentInfo.token).balanceOf(treasury);
 
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
-        uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
-        if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
-
-        // Forward tokens to operator's treasury
-        SafeTransferLib.safeTransfer(paymentInfo.token, treasury, amount);
+        uint256 treasuryBalanceAfter = IERC20(paymentInfo.token).balanceOf(treasury);
+        if (treasuryBalanceAfter != treasuryBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
@@ -430,19 +430,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        address treasury = operatorTreasury(msg.sender);
-        if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
-
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
 
         // Send fee portion if non-zero
         if (feeAmount > 0) {
-            OperatorTreasury(treasury).sendTokens(token, feeAmount, feeReceiver);
+            _sendTokens(msg.sender, token, feeAmount, feeReceiver);
         }
 
         // Send remaining amount to receiver
         if (amount - feeAmount > 0) {
-            OperatorTreasury(treasury).sendTokens(token, amount - feeAmount, receiver);
+            _sendTokens(msg.sender, token, amount - feeAmount, receiver);
         }
     }
 
@@ -500,15 +497,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param operator The operator to get/create treasury for
     /// @return treasury The operator's treasury address
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
-        treasury = operatorTreasury(operator);
-        if (treasury.code.length == 0) {
-            bytes memory creationCode = type(OperatorTreasury).creationCode;
-            bytes memory constructorArgs = abi.encode(operator);
-            bytes memory bytecode = abi.encodePacked(creationCode, constructorArgs);
-            bytes32 salt = keccak256(abi.encode(operator));
-            treasury = Create2.deploy(0, salt, bytecode);
-            emit TreasuryCreated(operator, treasury);
-        }
+        bytes memory creationCode = type(OperatorTreasury).creationCode;
+        bytes memory constructorArgs = abi.encode(address(this));
+        bytes memory bytecode = abi.encodePacked(creationCode, constructorArgs);
+        bytes32 salt = keccak256(abi.encode(operator));
+        treasury = Create2.deploy(0, salt, bytecode);
+        emit TreasuryCreated(operator, treasury);
     }
 
     /// @notice Helper to send tokens from an operator's treasury
@@ -518,7 +512,17 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param recipient Address to receive the tokens
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
         address treasury = operatorTreasury(operator);
-        if (treasury.code.length == 0) revert TreasuryNotFound(operator);
+        // Try low-level call first
+        bytes memory callData = abi.encodeWithSelector(OperatorTreasury.sendTokens.selector, token, amount, recipient);
+        (bool success, bytes memory returnData) = treasury.call(callData);
+        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
+            return;
+        }
+
+        // If call failed, deploy treasury and try again
+        treasury = _getOrCreateTreasury(operator);
+
+        // Now that we know the contract exists, use normal call
         OperatorTreasury(treasury).sendTokens(token, amount, recipient);
     }
 
@@ -527,8 +531,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @return The operator's treasury address
     function operatorTreasury(address operator) public view returns (address) {
         bytes32 salt = keccak256(abi.encode(operator));
-        return Create2.computeAddress(
-            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(operator)))
+        address computed = Create2.computeAddress(
+            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(address(this))))
         );
+        return computed;
     }
 }

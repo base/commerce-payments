@@ -17,6 +17,8 @@ contract ReentrantTokenCollector is Test, TokenCollector {
         override
         onlyPaymentEscrow
     {
+        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+
         if (!called) {
             called = true;
             PaymentEscrow.PaymentInfo memory paymentInfo2 = paymentInfo; // calldata is read-only
@@ -26,7 +28,7 @@ contract ReentrantTokenCollector is Test, TokenCollector {
             vm.stopPrank();
         } else {
             called = false;
-            IERC20(paymentInfo.token).transfer(address(paymentEscrow), paymentInfo.maxAmount);
+            IERC20(paymentInfo.token).transfer(treasury, paymentInfo.maxAmount);
         }
     }
 

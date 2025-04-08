@@ -29,7 +29,8 @@ contract OperatorTreasury {
     /// @param token The token being received
     /// @param amount Amount of tokens to receive
     /// @param recipient Address to receive the tokens
-    function sendTokens(address token, uint256 amount, address recipient) external onlyEscrow {
+    function sendTokens(address token, uint256 amount, address recipient) external onlyEscrow returns (bool) {
         SafeTransferLib.safeTransfer(token, recipient, amount);
+        return true;
     }
 }
