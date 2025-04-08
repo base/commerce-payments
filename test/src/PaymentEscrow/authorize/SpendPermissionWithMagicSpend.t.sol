@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
+import {MagicSpend} from "magicspend/MagicSpend.sol";
 
 contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_withMagicSpendWithdraw(uint120 amount) public {
