@@ -40,7 +40,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         );
 
         // Get treasury address after creation
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
 
         // Verify balances - funds should move from MagicSpend to escrow
         assertEq(

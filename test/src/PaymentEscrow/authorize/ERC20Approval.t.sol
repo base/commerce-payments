@@ -88,7 +88,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "");
 
         // Verify balances
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount);
     }
 }

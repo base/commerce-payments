@@ -37,7 +37,7 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         // Get treasury address
-        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
 
         // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({

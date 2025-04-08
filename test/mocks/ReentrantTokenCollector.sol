@@ -17,7 +17,7 @@ contract ReentrantTokenCollector is Test, TokenCollector {
         override
         onlyPaymentEscrow
     {
-        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
 
         if (!called) {
             called = true;

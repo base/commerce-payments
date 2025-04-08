@@ -116,7 +116,7 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 operatorTreasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTreasury);
 

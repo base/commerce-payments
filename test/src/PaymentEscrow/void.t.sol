@@ -47,7 +47,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
 
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 treasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTreasury);
 

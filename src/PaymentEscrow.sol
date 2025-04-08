@@ -394,6 +394,17 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
+    /// @notice Get the treasury address for an operator
+    /// @param operator The operator to get the treasury for
+    /// @return The operator's treasury address
+    function getOperatorTreasury(address operator) public view returns (address) {
+        bytes32 salt = keccak256(abi.encode(operator));
+        address computedAddress = Create2.computeAddress(
+            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(address(this))))
+        );
+        return computedAddress;
+    }
+
     /// @notice Transfer tokens into this contract
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount of tokens to collect
@@ -411,7 +422,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        address treasury = operatorTreasury(paymentInfo.operator);
+        address treasury = getOperatorTreasury(paymentInfo.operator);
 
         // Measure balance change of treasury to enforce as equal to expected amount
         uint256 treasuryBalanceBefore = IERC20(paymentInfo.token).balanceOf(treasury);
@@ -511,7 +522,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param amount Amount of tokens to send
     /// @param recipient Address to receive the tokens
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
-        address treasury = operatorTreasury(operator);
+        address treasury = getOperatorTreasury(operator);
         // Try low-level call first
         bytes memory callData = abi.encodeWithSelector(OperatorTreasury.sendTokens.selector, token, amount, recipient);
         (bool success, bytes memory returnData) = treasury.call(callData);
@@ -524,16 +535,5 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Now that we know the contract exists, use normal call
         OperatorTreasury(treasury).sendTokens(token, amount, recipient);
-    }
-
-    /// @notice Get the treasury address for an operator
-    /// @param operator The operator to get the treasury for
-    /// @return The operator's treasury address
-    function operatorTreasury(address operator) public view returns (address) {
-        bytes32 salt = keccak256(abi.encode(operator));
-        address computed = Create2.computeAddress(
-            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(address(this))))
-        );
-        return computed;
     }
 }

@@ -52,7 +52,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         }
 
         // Get treasury address
-        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
 
         // transfer too few token to treasury
         IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, treasury, paymentInfo.maxAmount - 1);
