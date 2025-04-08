@@ -8,7 +8,7 @@ import {CoinbaseSmartWallet} from "smart-wallet/CoinbaseSmartWallet.sol";
 import {CoinbaseSmartWalletFactory} from "smart-wallet/CoinbaseSmartWalletFactory.sol";
 import {PaymentEscrow} from "src/PaymentEscrow.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
+import {MagicSpend} from "magicspend/MagicSpend.sol";
 
 contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     // Constants for EIP-6492 support

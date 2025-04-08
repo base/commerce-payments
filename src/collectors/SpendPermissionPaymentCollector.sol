@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {MagicSpend} from "magic-spend/MagicSpend.sol";
+import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
