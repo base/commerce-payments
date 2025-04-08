@@ -163,6 +163,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
 
+    /// @notice Implementation contract for operator treasuries
+    OperatorTreasury public immutable treasuryImplementation;
+
+    constructor() {
+        // Deploy implementation that will be cloned
+        treasuryImplementation = new OperatorTreasury(PaymentEscrow(address(this)));
+    }
+
     /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
         if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
