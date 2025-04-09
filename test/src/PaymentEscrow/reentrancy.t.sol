@@ -49,7 +49,7 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
         // Use low-level call to detect revert
         bytes memory callData = abi.encodeWithSelector(
-            PaymentEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), ""
+            PaymentEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), "", hex""
         );
 
         (bool success, bytes memory returnData) = address(paymentEscrow).call(callData);
@@ -62,10 +62,10 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
         console.log("After authorize attempt");
         vm.expectRevert(); // expect revert because authorize never happened
-        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver, hex"");
         paymentInfo.salt += 1; // set up the second unique paymentInfo
         vm.expectRevert(); // expect revert because we've fixed the reentrancy
-        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver, hex"");
         vm.stopPrank();
 
         console.log("After attack Attacker Balance:", mockERC3009Token.balanceOf(attacker));

@@ -22,7 +22,7 @@ contract ReentrantTokenCollector is Test, TokenCollector {
             PaymentEscrow.PaymentInfo memory paymentInfo2 = paymentInfo; // calldata is read-only
             paymentInfo2.salt += 1; // avoid hash repeat
             vm.startPrank(address(paymentInfo.operator));
-            paymentEscrow.authorize(paymentInfo2, 10 ether, address(this), "");
+            paymentEscrow.authorize(paymentInfo2, 10 ether, address(this), "", hex"");
             vm.stopPrank();
         } else {
             called = false;

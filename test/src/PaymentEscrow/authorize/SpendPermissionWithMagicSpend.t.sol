@@ -37,7 +37,8 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             paymentInfo,
             amount,
             hooks[TokenCollector.SpendPermission],
-            abi.encode(signature, abi.encode(withdrawRequest))
+            abi.encode(signature, abi.encode(withdrawRequest)),
+            hex""
         );
 
         // Verify balances - funds should move from MagicSpend to escrow

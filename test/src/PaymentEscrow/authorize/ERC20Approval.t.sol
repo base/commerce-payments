@@ -25,7 +25,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.expectRevert(
             abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentInfoHash)
         );
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "", hex"");
     }
 
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
@@ -43,7 +43,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "", hex"");
     }
 
     function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
@@ -66,7 +66,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenCollectionFailed.selector));
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20UnsafeTransfer], "");
+        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20UnsafeTransfer], "", hex"");
     }
 
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
@@ -88,7 +88,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
 
         // Authorize with ERC20Approval method
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "");
+        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], "", hex"");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);

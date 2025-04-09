@@ -30,7 +30,8 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentInfo.minFeeBps,
-            paymentInfo.feeReceiver
+            paymentInfo.feeReceiver,
+            hex""
         );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;
@@ -64,7 +65,8 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
             hooks[TokenCollector.ERC3009],
             signature,
             paymentInfo.minFeeBps,
-            paymentInfo.feeReceiver
+            paymentInfo.feeReceiver,
+            hex""
         );
 
         uint256 feeAmount = amount * FEE_BPS / 10_000;

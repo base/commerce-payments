@@ -64,7 +64,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address receiver,
         address token,
         uint256 amount,
-        address tokenCollector
+        address tokenCollector,
+        bytes metadata
     );
 
     /// @notice Emitted when authorized (escrowed) amount is increased
@@ -75,20 +76,21 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address receiver,
         address token,
         uint256 amount,
-        address tokenCollector
+        address tokenCollector,
+        bytes metadata
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount);
+    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount, bytes metadata);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
-    event PaymentVoided(bytes32 indexed paymentInfoHash, uint256 amount);
+    event PaymentVoided(bytes32 indexed paymentInfoHash, uint256 amount, bytes metadata);
 
     /// @notice Emitted when an authorized payment is reclaimed, returning any escrowed funds to the payer
-    event PaymentReclaimed(bytes32 indexed paymentInfoHash, uint256 amount);
+    event PaymentReclaimed(bytes32 indexed paymentInfoHash, uint256 amount, bytes metadata);
 
     /// @notice Emitted when a captured payment is refunded
-    event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector);
+    event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector, bytes metadata);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
@@ -177,13 +179,15 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    /// @param metadata Arbitrary data to be emitted in the PaymentCharged event (does not affect protocol logic)
     function charge(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData,
         uint16 feeBps,
-        address feeReceiver
+        address feeReceiver,
+        bytes calldata metadata
     ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
@@ -205,7 +209,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             paymentInfo.receiver,
             paymentInfo.token,
             amount,
-            tokenCollector
+            tokenCollector,
+            metadata
         );
 
         // Transfer tokens into escrow
@@ -222,11 +227,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param amount Amount to authorize
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
+    /// @param metadata Arbitrary data to be emitted in the PaymentAuthorized event (does not affect protocol logic)
     function authorize(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
         address tokenCollector,
-        bytes calldata collectorData
+        bytes calldata collectorData,
+        bytes calldata metadata
     ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
@@ -245,7 +252,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             paymentInfo.receiver,
             paymentInfo.token,
             amount,
-            tokenCollector
+            tokenCollector,
+            metadata
         );
 
         // Transfer tokens into escrow
@@ -261,12 +269,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param amount Amount to capture
     /// @param feeBps Fee percentage to apply (must be within min/max range)
     /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
-    function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
-        external
-        nonReentrant
-        onlySender(paymentInfo.operator)
-        validAmount(amount)
-    {
+    /// @param metadata Arbitrary data to be emitted in the PaymentCaptured event (does not affect protocol logic)
+    function capture(
+        PaymentInfo calldata paymentInfo,
+        uint256 amount,
+        uint16 feeBps,
+        address feeReceiver,
+        bytes calldata metadata
+    ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check fee parameters valid
         _validateFee(paymentInfo, feeBps, feeReceiver);
 
@@ -286,7 +296,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         state.capturableAmount -= uint120(amount);
         state.refundableAmount += uint120(amount);
         paymentState[paymentInfoHash] = state;
-        emit PaymentCaptured(paymentInfoHash, amount);
+        emit PaymentCaptured(paymentInfoHash, amount, metadata);
 
         // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
@@ -296,7 +306,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @dev Returns any escrowed funds to payer
     /// @dev Can only be called by the operator
     /// @param paymentInfo PaymentInfo struct
-    function void(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.operator) {
+    /// @param metadata Arbitrary data to be emitted in the PaymentVoided event (does not affect protocol logic)
+    function void(PaymentInfo calldata paymentInfo, bytes calldata metadata)
+        external
+        nonReentrant
+        onlySender(paymentInfo.operator)
+    {
         // Check authorization non-zero
         bytes32 paymentInfoHash = getHash(paymentInfo);
         uint256 authorizedAmount = paymentState[paymentInfoHash].capturableAmount;
@@ -304,7 +319,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Clear capturable amount state
         paymentState[paymentInfoHash].capturableAmount = 0;
-        emit PaymentVoided(paymentInfoHash, authorizedAmount);
+        emit PaymentVoided(paymentInfoHash, authorizedAmount, metadata);
 
         // Transfer tokens to payer
         SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
@@ -313,7 +328,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Returns any escrowed funds to payer
     /// @dev Can only be called by the payer and only after the authorization expiry
     /// @param paymentInfo PaymentInfo struct
-    function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.payer) {
+    /// @param metadata Arbitrary data to be emitted in the PaymentReclaimed event (does not affect protocol logic)
+    function reclaim(PaymentInfo calldata paymentInfo, bytes calldata metadata)
+        external
+        nonReentrant
+        onlySender(paymentInfo.payer)
+    {
         // Check not before authorization expiry
         if (block.timestamp < paymentInfo.authorizationExpiry) {
             revert BeforeAuthorizationExpiry(uint48(block.timestamp), paymentInfo.authorizationExpiry);
@@ -326,7 +346,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Clear capturable amount state
         paymentState[paymentInfoHash].capturableAmount = 0;
-        emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
+        emit PaymentReclaimed(paymentInfoHash, authorizedAmount, metadata);
 
         // Transfer tokens to payer
         SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
@@ -339,11 +359,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param amount Amount to refund
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
+    /// @param metadata Arbitrary data to be emitted in the PaymentRefunded event (does not affect protocol logic)
     function refund(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
         address tokenCollector,
-        bytes calldata collectorData
+        bytes calldata collectorData,
+        bytes calldata metadata
     ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check refund has not expired
         if (block.timestamp >= paymentInfo.refundExpiry) {
@@ -357,7 +379,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Update refundable amount
         paymentState[paymentInfoHash].refundableAmount = captured - uint120(amount);
-        emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
+        emit PaymentRefunded(paymentInfoHash, amount, tokenCollector, metadata);
 
         // Transfer tokens into escrow and forward to payer
         _collectTokens(

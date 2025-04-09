@@ -15,7 +15,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress, paymentInfo.operator)
         );
-        paymentEscrow.void(paymentInfo);
+        paymentEscrow.void(paymentInfo, hex"");
     }
 
     function test_void_revert_noAuthorization(uint120 authorizedAmount) public {
@@ -29,7 +29,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroAuthorization.selector, paymentInfoHash));
-        paymentEscrow.void(paymentInfo);
+        paymentEscrow.void(paymentInfo, hex"");
     }
 
     function test_void_succeeds_withEscrowedFunds(uint120 authorizedAmount) public {
@@ -45,7 +45,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature, hex"");
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
@@ -53,8 +53,8 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         // Then void the authorization
         vm.prank(operator);
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
-        paymentEscrow.void(paymentInfo);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount, hex"");
+        paymentEscrow.void(paymentInfo, hex"");
 
         // Verify funds were returned to payer
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + escrowBalanceBefore);
@@ -72,14 +72,14 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature, hex"");
 
         // Record all expected events in order
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount, hex"");
 
         // Then void the authorization and verify events
         vm.prank(operator);
-        paymentEscrow.void(paymentInfo);
+        paymentEscrow.void(paymentInfo, hex"");
     }
 }

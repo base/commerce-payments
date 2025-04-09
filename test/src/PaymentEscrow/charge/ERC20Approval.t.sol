@@ -24,7 +24,13 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentInfoHash)
         );
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            hooks[TokenCollector.ERC20],
+            hex"",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver,
+            hex""
         );
     }
 
@@ -45,7 +51,13 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            hooks[TokenCollector.ERC20],
+            hex"",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver,
+            hex""
         );
     }
 
@@ -71,7 +83,13 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Charge with empty signature
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            hooks[TokenCollector.ERC20],
+            hex"",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver,
+            hex""
         );
 
         // Verify balances including fee distribution
