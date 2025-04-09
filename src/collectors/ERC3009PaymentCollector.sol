@@ -30,6 +30,11 @@ contract ERC3009PaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) external override onlyPaymentEscrow {
+        // Cache values used multiple times
+        address token = paymentInfo.token;
+        address payer = paymentInfo.payer;
+        uint256 maxAmount = paymentInfo.maxAmount;
+
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
@@ -40,20 +45,23 @@ contract ERC3009PaymentCollector is TokenCollector {
         address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
 
         // Pull tokens into this contract
-        IERC3009(paymentInfo.token).receiveWithAuthorization({
-            from: paymentInfo.payer,
+        IERC3009(token).receiveWithAuthorization({
+            from: payer,
             to: address(this),
-            value: paymentInfo.maxAmount,
+            value: maxAmount,
             validAfter: 0,
             validBefore: paymentInfo.preApprovalExpiry,
             nonce: nonce,
             signature: signature
         });
 
-        // Return excess tokens to buyer
-        uint256 excess = paymentInfo.maxAmount - amount;
-        if (excess > 0) {
-            SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
+        // Return excess tokens to payer if any
+        unchecked {
+            // Cannot underflow since amount is validated to be <= maxAmount by PaymentEscrow
+            uint256 excess = maxAmount - amount;
+            if (excess > 0) {
+                SafeTransferLib.safeTransfer(token, payer, excess);
+            }
         }
 
         // Transfer tokens directly to token store
