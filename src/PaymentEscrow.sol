@@ -57,7 +57,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Typehash used for hashing PaymentInfo structs
     bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
-        "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
+        "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
     /// @notice Mapping from operator to their treasury
