@@ -15,7 +15,7 @@ contract ERC3009PaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
-    bytes32 public constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
+    bytes32 internal constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
     IMulticall3 public immutable multicall3;
 
@@ -84,7 +84,7 @@ contract ERC3009PaymentCollector is TokenCollector {
 
         // Parse inner signature from ERC-6492 format
         bytes memory erc6492Data = new bytes(signature.length - 32);
-        for (uint256 i = 0; i < signature.length - 32; i++) {
+        for (uint256 i; i < signature.length - 32; i++) {
             erc6492Data[i] = signature[i];
         }
         address prepareTarget;
