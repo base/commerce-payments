@@ -416,6 +416,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes calldata collectorData,
         TokenCollector.CollectorType collectorType
     ) internal {
+        address token = paymentInfo.token;
+
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
@@ -455,30 +457,33 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
+        // Cache timestamps since they're used multiple times
+        uint48 preApprovalExp = paymentInfo.preApprovalExpiry;
+        uint48 authorizationExp = paymentInfo.authorizationExpiry;
+        uint48 refundExp = paymentInfo.refundExpiry;
+        uint48 currentTime = uint48(block.timestamp);
+        uint16 minFeeBps = paymentInfo.minFeeBps;
+        uint16 maxFeeBps = paymentInfo.maxFeeBps;
+
         // Check amount does not exceed maximum
         if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
 
         // Check timestamp before pre-approval expiry
-        if (block.timestamp >= paymentInfo.preApprovalExpiry) {
-            revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentInfo.preApprovalExpiry));
+        if (currentTime >= preApprovalExp) {
+            revert AfterPreApprovalExpiry(currentTime, preApprovalExp);
         }
 
         // Check expiry timestamps properly ordered
-        if (
-            paymentInfo.preApprovalExpiry > paymentInfo.authorizationExpiry
-                || paymentInfo.authorizationExpiry > paymentInfo.refundExpiry
-        ) {
-            revert InvalidExpiries(
-                paymentInfo.preApprovalExpiry, paymentInfo.authorizationExpiry, paymentInfo.refundExpiry
-            );
+        if (preApprovalExp > authorizationExp || authorizationExp > refundExp) {
+            revert InvalidExpiries(preApprovalExp, authorizationExp, refundExp);
         }
 
         // Check fee bps do not exceed maximum value
-        if (paymentInfo.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentInfo.maxFeeBps);
+        if (maxFeeBps > 10_000) revert FeeBpsOverflow(maxFeeBps);
 
         // Check min fee bps does not exceed max fee
-        if (paymentInfo.minFeeBps > paymentInfo.maxFeeBps) {
-            revert InvalidFeeBpsRange(paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
+        if (minFeeBps > maxFeeBps) {
+            revert InvalidFeeBpsRange(minFeeBps, maxFeeBps);
         }
     }
 
@@ -487,17 +492,22 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees
     function _validateFee(PaymentInfo calldata paymentInfo, uint16 feeBps, address feeReceiver) internal pure {
+        // Cache fee parameters since they're used multiple times
+        uint16 minFeeBps = paymentInfo.minFeeBps;
+        uint16 maxFeeBps = paymentInfo.maxFeeBps;
+        address configuredFeeReceiver = paymentInfo.feeReceiver;
+
         // Check fee bps within [min, max]
-        if (feeBps < paymentInfo.minFeeBps || feeBps > paymentInfo.maxFeeBps) {
-            revert FeeBpsOutOfRange(feeBps, paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
+        if (feeBps < minFeeBps || feeBps > maxFeeBps) {
+            revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
         }
 
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
         // Check fee recipient matches payment info if non-zero
-        if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
-            revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
+        if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
+            revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
     }
 
