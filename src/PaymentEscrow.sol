@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
@@ -60,9 +59,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
         "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
-
-    /// @notice Mapping from operator to their treasury
-    mapping(address operator => address treasury) public operatorTreasury;
 
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
@@ -403,10 +399,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @return The operator's treasury address
     function getOperatorTreasury(address operator) public view returns (address) {
         bytes32 salt = keccak256(abi.encode(operator));
-        address computedAddress = Create2.computeAddress(
-            salt, keccak256(abi.encodePacked(type(OperatorTreasury).creationCode, abi.encode(address(this))))
-        );
-        return computedAddress;
+        return LibClone.predictDeterministicAddress(address(treasuryImplementation), salt, address(this));
     }
 
     /// @notice Transfer tokens into this contract
@@ -508,16 +501,19 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Get or create treasury for an operator
+    /// @dev Get or create treasury for an operator
     /// @param operator The operator to get/create treasury for
     /// @return treasury The operator's treasury address
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
-        bytes memory creationCode = type(OperatorTreasury).creationCode;
-        bytes memory constructorArgs = abi.encode(address(this));
-        bytes memory bytecode = abi.encodePacked(creationCode, constructorArgs);
         bytes32 salt = keccak256(abi.encode(operator));
-        treasury = Create2.deploy(0, salt, bytecode);
-        emit TreasuryCreated(operator, treasury);
+        // Try to predict the address first
+        treasury = LibClone.predictDeterministicAddress(address(treasuryImplementation), salt, address(this));
+
+        // Deploy if not exists
+        if (treasury.code.length == 0) {
+            treasury = LibClone.cloneDeterministic(address(treasuryImplementation), salt);
+            emit TreasuryCreated(operator, treasury);
+        }
     }
 
     /// @notice Helper to send tokens from an operator's treasury
