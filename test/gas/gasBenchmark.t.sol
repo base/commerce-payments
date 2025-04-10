@@ -19,8 +19,10 @@ contract GasBenchmarkBase is PaymentEscrowBase {
         warmupInfo.salt = 1; // different salt to avoid paymentInfo hash collision
         bytes memory warmupSignature = _signPaymentInfo(warmupInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, 1e6);
-        vm.prank(operator);
+        vm.startPrank(operator);
         paymentEscrow.authorize(warmupInfo, 1e6, hooks[TokenCollector.ERC3009], warmupSignature);
+        paymentEscrow.capture(warmupInfo, 1e6, BENCHMARK_FEE_BPS, feeReceiver); // make sure treasury is deployed before subsequent tests
+        vm.stopPrank();
 
         // Create and sign payment info
         paymentInfo = _createPaymentEscrowAuthorization(payerEOA, BENCHMARK_AMOUNT);
