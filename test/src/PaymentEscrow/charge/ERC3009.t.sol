@@ -448,6 +448,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         // Ensure newFeeRecipient is not zero address or other special addresses
+        assumePayable(newFeeRecipient);
         vm.assume(newFeeRecipient != address(0));
         vm.assume(newFeeRecipient != address(paymentEscrow));
         vm.assume(newFeeRecipient != receiver);

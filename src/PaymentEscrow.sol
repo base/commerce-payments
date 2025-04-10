@@ -5,6 +5,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 import {OperatorTreasury} from "./OperatorTreasury.sol";
@@ -57,11 +58,17 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Typehash used for hashing PaymentInfo structs
     bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
-        "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
+        "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
+
+    /// @notice Mapping from operator to their treasury
+    mapping(address operator => address treasury) public operatorTreasury;
 
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
+
+    /// @notice Implementation contract for operator treasuries
+    OperatorTreasury public immutable treasuryImplementation;
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -165,9 +172,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Token transfer failed
     error TokenTransferFailed();
-
-    /// @notice Implementation contract for operator treasuries
-    OperatorTreasury public immutable treasuryImplementation;
 
     constructor() {
         // Deploy implementation that will be cloned

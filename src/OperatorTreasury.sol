@@ -7,7 +7,6 @@ import {PaymentEscrow} from "./PaymentEscrow.sol";
 /// @title OperatorTreasury
 /// @notice Holds funds for a single operator's payments
 /// @dev Created by PaymentEscrow to isolate operator funds
-
 contract OperatorTreasury {
     /// @notice The PaymentEscrow contract that created this treasury
     address public immutable escrow;
