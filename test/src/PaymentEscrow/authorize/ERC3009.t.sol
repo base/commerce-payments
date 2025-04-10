@@ -222,7 +222,8 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
-        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), amount);
+        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
 
@@ -242,9 +243,12 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, confirmAmount, hooks[TokenCollector.ERC3009], signature);
-
-        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), confirmAmount);
-        assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - confirmAmount);
+        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        assertEq(mockERC3009Token.balanceOf(operatorTreasury), confirmAmount);
+        assertEq(
+            mockERC3009Token.balanceOf(payerEOA),
+            payerBalanceBefore - authorizedAmount + (authorizedAmount - confirmAmount)
+        );
     }
 
     function test_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint120 amount) public {
@@ -263,14 +267,15 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-        uint256 escrowBalanceBefore = mockERC3009Token.balanceOf(address(paymentEscrow));
 
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Verify balances - full amount should go to escrow since fees are 0
+        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
-        assertEq(mockERC3009Token.balanceOf(address(paymentEscrow)), escrowBalanceBefore + amount);
+        assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount);
     }
 
     function test_emitsCorrectEvents(uint120 authorizedAmount, uint120 valueToConfirm) public {

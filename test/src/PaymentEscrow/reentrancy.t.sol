@@ -27,8 +27,6 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
         uint120 amount = 10 ether;
         mockERC3009Token.mint(address(paymentEscrow), amount); // give escrow liquidity
         mockERC3009Token.mint(address(reentrantTokenCollector), amount); // give evil collector enough liquidity for attack
-        vm.prank(address(reentrantTokenCollector));
-        mockERC3009Token.approve(address(paymentEscrow), amount); // allow paymentEscrow to transfer tokens from collector
         PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
             operator: attacker,
             payer: attacker,

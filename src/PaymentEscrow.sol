@@ -4,8 +4,10 @@ pragma solidity ^0.8.28;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 
 import {TokenCollector} from "./collectors/TokenCollector.sol";
+import {OperatorTreasury} from "./OperatorTreasury.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -53,8 +55,19 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint120 refundableAmount;
     }
 
+    /// @notice Typehash used for hashing PaymentInfo structs
+    bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
+        "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
+    );
+
+    /// @notice Mapping from operator to their treasury
+    mapping(address operator => address treasury) public operatorTreasury;
+
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
+
+    /// @notice Implementation contract for operator treasuries
+    OperatorTreasury public immutable treasuryImplementation;
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -89,6 +102,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Emitted when a captured payment is refunded
     event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector);
+
+    /// @notice Event emitted when new treasury is created
+    event TreasuryCreated(address indexed operator, address treasury);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
@@ -150,10 +166,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Refund attempted with amount exceeding previous non-refunded captures
     error RefundExceedsCapture(uint256 refund, uint256 captured);
 
-    /// @notice Typehash used for hashing PaymentInfo structs
-    bytes32 public constant PAYMENT_INFO_TYPEHASH = keccak256(
-        "PaymentInfo(address operator,address payer,address receiver,address token,uint256 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
-    );
+    /// @notice Treasury not found for an operator
+    error TreasuryNotFound(address operator);
+
+    constructor() {
+        // Deploy implementation that will be cloned
+        treasuryImplementation = new OperatorTreasury(PaymentEscrow(address(this)));
+    }
 
     /// @notice Check call sender is specified address
     modifier onlySender(address sender) {
@@ -306,8 +325,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
-        // Transfer tokens to payer
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        // Transfer tokens to payer from treasury
+        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Returns any escrowed funds to payer
@@ -328,8 +347,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         paymentState[paymentInfoHash].capturableAmount = 0;
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
-        // Transfer tokens to payer
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        // Transfer tokens to payer from treasury
+        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
     }
 
     /// @notice Return previously-captured tokens to payer
@@ -363,7 +382,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         _collectTokens(
             paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
         );
-        SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, amount);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, amount, paymentInfo.payer);
     }
 
     /// @notice Get hash of PaymentInfo struct
@@ -392,12 +411,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
+        address treasury = _getOrCreateTreasury(paymentInfo.operator);
+
         // Measure balance change for collecting tokens to enforce as equal to expected amount
-        uint256 escrowBalanceBefore = IERC20(paymentInfo.token).balanceOf(address(this));
+        uint256 treasuryBalanceBefore = IERC20(paymentInfo.token).balanceOf(treasury);
 
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
-        uint256 escrowBalanceAfter = IERC20(paymentInfo.token).balanceOf(address(this));
-        if (escrowBalanceAfter != escrowBalanceBefore + amount) revert TokenCollectionFailed();
+        uint256 treasuryBalanceAfter = IERC20(paymentInfo.token).balanceOf(treasury);
+        if (treasuryBalanceAfter != treasuryBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
@@ -409,9 +430,20 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
+        address treasury = operatorTreasury[msg.sender];
+        if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
+
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
-        if (feeAmount > 0) SafeTransferLib.safeTransfer(token, feeReceiver, feeAmount);
-        if (amount - feeAmount > 0) SafeTransferLib.safeTransfer(token, receiver, amount - feeAmount);
+
+        // Send fee portion if non-zero
+        if (feeAmount > 0) {
+            OperatorTreasury(treasury).sendTokens(token, feeAmount, feeReceiver);
+        }
+
+        // Send remaining amount to receiver
+        if (amount - feeAmount > 0) {
+            OperatorTreasury(treasury).sendTokens(token, amount - feeAmount, receiver);
+        }
     }
 
     /// @notice Validates required properties of a payment
@@ -462,5 +494,29 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
         }
+    }
+
+    /// @notice Get or create treasury for an operator
+    /// @param operator The operator to get/create treasury for
+    /// @return treasury The operator's treasury address
+    function _getOrCreateTreasury(address operator) internal returns (address treasury) {
+        treasury = operatorTreasury[operator];
+        if (treasury == address(0)) {
+            // Deploy minimal clone of implementation
+            treasury = LibClone.clone(address(treasuryImplementation));
+            operatorTreasury[operator] = treasury;
+            emit TreasuryCreated(operator, treasury);
+        }
+    }
+
+    /// @notice Helper to send tokens from an operator's treasury
+    /// @param operator The operator whose treasury to use
+    /// @param token The token to send
+    /// @param amount Amount of tokens to send
+    /// @param recipient Address to receive the tokens
+    function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
+        address treasury = operatorTreasury[operator];
+        if (treasury == address(0)) revert TreasuryNotFound(operator);
+        OperatorTreasury(treasury).sendTokens(token, amount, recipient);
     }
 }
