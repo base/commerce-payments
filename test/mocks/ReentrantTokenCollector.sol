@@ -12,7 +12,7 @@ contract ReentrantTokenCollector is Test, TokenCollector {
 
     bool called = false;
 
-    function collectTokens(bytes32, PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
+    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
         external
         override
         onlyPaymentEscrow

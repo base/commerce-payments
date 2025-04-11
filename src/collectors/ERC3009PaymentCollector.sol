@@ -24,13 +24,11 @@ contract ERC3009PaymentCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
-    function collectTokens(
-        bytes32,
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
-        uint256 amount,
-        bytes calldata collectorData
-    ) external override onlyPaymentEscrow {
-        // Cache values used multiple times
+    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
+        external
+        override
+        onlyPaymentEscrow
+    {
         address token = paymentInfo.token;
         address payer = paymentInfo.payer;
         uint256 maxAmount = paymentInfo.maxAmount;
