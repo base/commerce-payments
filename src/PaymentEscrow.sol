@@ -464,7 +464,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
-        // Cache timestamps since they're used multiple times
         uint48 preApprovalExp = paymentInfo.preApprovalExpiry;
         uint48 authorizationExp = paymentInfo.authorizationExpiry;
         uint48 refundExp = paymentInfo.refundExpiry;
@@ -499,7 +498,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees
     function _validateFee(PaymentInfo calldata paymentInfo, uint16 feeBps, address feeReceiver) internal pure {
-        // Cache fee parameters since they're used multiple times
         uint16 minFeeBps = paymentInfo.minFeeBps;
         uint16 maxFeeBps = paymentInfo.maxFeeBps;
         address configuredFeeReceiver = paymentInfo.feeReceiver;
