@@ -222,7 +222,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
@@ -243,7 +243,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
 
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, confirmAmount, hooks[TokenCollector.ERC3009], signature);
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTreasury), confirmAmount);
         assertEq(
             mockERC3009Token.balanceOf(payerEOA),
@@ -272,7 +272,7 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
         // Verify balances - full amount should go to escrow since fees are 0
-        address operatorTreasury = paymentEscrow.operatorTreasury(operator);
+        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
 
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
         assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount);

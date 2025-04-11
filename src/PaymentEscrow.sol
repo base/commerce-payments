@@ -60,9 +60,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
-    /// @notice Mapping from operator to their treasury
-    mapping(address operator => address treasury) public operatorTreasury;
-
     /// @notice State per unique payment
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
@@ -168,6 +165,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Treasury not found for an operator
     error TreasuryNotFound(address operator);
+
+    /// @notice Token transfer failed
+    error TokenTransferFailed();
 
     constructor() {
         // Deploy implementation that will be cloned
@@ -394,6 +394,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         return keccak256(abi.encode(block.chainid, address(this), paymentInfoHash));
     }
 
+    /// @notice Get the treasury address for an operator
+    /// @param operator The operator to get the treasury for
+    /// @return The operator's treasury address
+    function getOperatorTreasury(address operator) public view returns (address) {
+        bytes32 salt = keccak256(abi.encode(operator));
+        return LibClone.predictDeterministicAddress(address(treasuryImplementation), salt, address(this));
+    }
+
     /// @notice Transfer tokens into this contract
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount of tokens to collect
@@ -411,9 +419,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        address treasury = _getOrCreateTreasury(paymentInfo.operator);
+        address treasury = getOperatorTreasury(paymentInfo.operator);
 
-        // Measure balance change for collecting tokens to enforce as equal to expected amount
+        // Measure balance change of treasury to enforce as equal to expected amount
         uint256 treasuryBalanceBefore = IERC20(paymentInfo.token).balanceOf(treasury);
 
         TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
@@ -430,19 +438,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        address treasury = operatorTreasury[msg.sender];
-        if (treasury == address(0)) revert TreasuryNotFound(msg.sender);
-
         uint256 feeAmount = uint256(amount) * feeBps / 10_000;
 
         // Send fee portion if non-zero
         if (feeAmount > 0) {
-            OperatorTreasury(treasury).sendTokens(token, feeAmount, feeReceiver);
+            _sendTokens(msg.sender, token, feeAmount, feeReceiver);
         }
 
         // Send remaining amount to receiver
         if (amount - feeAmount > 0) {
-            OperatorTreasury(treasury).sendTokens(token, amount - feeAmount, receiver);
+            _sendTokens(msg.sender, token, amount - feeAmount, receiver);
         }
     }
 
@@ -496,27 +501,36 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
     }
 
-    /// @notice Get or create treasury for an operator
+    /// @dev Get or create treasury for an operator
     /// @param operator The operator to get/create treasury for
     /// @return treasury The operator's treasury address
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
-        treasury = operatorTreasury[operator];
-        if (treasury == address(0)) {
-            // Deploy minimal clone of implementation
-            treasury = LibClone.clone(address(treasuryImplementation));
-            operatorTreasury[operator] = treasury;
+        bytes32 salt = keccak256(abi.encode(operator));
+        treasury = LibClone.predictDeterministicAddress(address(treasuryImplementation), salt, address(this));
+
+        // Deploy if contract does not exist
+        if (treasury.code.length == 0) {
+            treasury = LibClone.cloneDeterministic(address(treasuryImplementation), salt);
             emit TreasuryCreated(operator, treasury);
         }
     }
 
-    /// @notice Helper to send tokens from an operator's treasury
+    /// @notice Send tokens from an operator's treasury
     /// @param operator The operator whose treasury to use
     /// @param token The token to send
     /// @param amount Amount of tokens to send
     /// @param recipient Address to receive the tokens
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
-        address treasury = operatorTreasury[operator];
-        if (treasury == address(0)) revert TreasuryNotFound(operator);
+        address treasury = getOperatorTreasury(operator);
+        // Try low-level call first
+        bytes memory callData = abi.encodeWithSelector(OperatorTreasury.sendTokens.selector, token, amount, recipient);
+        (bool success, bytes memory returnData) = treasury.call(callData);
+        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
+            return;
+        }
+
+        // If call failed, deploy treasury and try again
+        treasury = _getOrCreateTreasury(operator);
         OperatorTreasury(treasury).sendTokens(token, amount, recipient);
     }
 }

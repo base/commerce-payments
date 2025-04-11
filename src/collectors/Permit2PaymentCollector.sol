@@ -27,7 +27,7 @@ contract Permit2PaymentCollector is TokenCollector {
         uint256 amount,
         bytes calldata signature
     ) external override onlyPaymentEscrow {
-        address treasury = paymentEscrow.operatorTreasury(paymentInfo.operator);
+        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
         permit2.permitTransferFrom({
             permit: ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),
