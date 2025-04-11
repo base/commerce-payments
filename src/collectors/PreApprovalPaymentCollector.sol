@@ -32,12 +32,12 @@ contract PreApprovalPaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
-    function collectTokens(
-        bytes32 paymentInfoHash,
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
-        uint256 amount,
-        bytes calldata
-    ) external override onlyPaymentEscrow {
+    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
+        external
+        override
+        onlyPaymentEscrow
+    {
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Check payment pre-approved
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 

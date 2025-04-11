@@ -228,9 +228,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         );
 
         // Transfer tokens into escrow
-        _collectTokens(
-            paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment
-        );
+        _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
 
         // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
@@ -268,9 +266,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         );
 
         // Transfer tokens into escrow
-        _collectTokens(
-            paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment
-        );
+        _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
     }
 
     /// @notice Transfer previously-escrowed funds to receiver
@@ -383,9 +379,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         emit PaymentRefunded(paymentInfoHash, amount, tokenCollector);
 
         // Transfer tokens into escrow and forward to payer
-        _collectTokens(
-            paymentInfoHash, paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund
-        );
+        _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
         _sendTokens(paymentInfo.operator, paymentInfo.token, amount, paymentInfo.payer);
     }
 
@@ -413,7 +407,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param collectorData Data to pass to the token collector
     /// @param collectorType Type of collector to enforce (payment or refund)
     function _collectTokens(
-        bytes32 paymentInfoHash,
         PaymentInfo calldata paymentInfo,
         uint256 amount,
         address tokenCollector,
@@ -430,7 +423,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Measure balance change of token store to enforce as equal to expected amount
         uint256 tokenStoreBalanceBefore = IERC20(paymentInfo.token).balanceOf(tokenStore);
 
-        TokenCollector(tokenCollector).collectTokens(paymentInfoHash, paymentInfo, amount, collectorData);
+        TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
         uint256 tokenStoreBalanceAfter = IERC20(paymentInfo.token).balanceOf(tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }

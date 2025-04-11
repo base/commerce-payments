@@ -30,16 +30,12 @@ abstract contract TokenCollector {
     }
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
-    /// @param paymentInfoHash Hash of payment info
     /// @param paymentInfo Payment info struct
     /// @param amount Amount of tokens to pull
     /// @param collectorData Data to pass to the token collector
-    function collectTokens(
-        bytes32 paymentInfoHash,
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
-        uint256 amount,
-        bytes calldata collectorData
-    ) external virtual;
+    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
+        external
+        virtual;
 
     /// @notice Get the type of token collector
     /// @return CollectorType Type of token collector
@@ -53,6 +49,7 @@ abstract contract TokenCollector {
         address payer = paymentInfo.payer;
         paymentInfo.payer = address(0);
         bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
         return hashPayerAgnostic;
     }
 }

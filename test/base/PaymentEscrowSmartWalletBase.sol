@@ -125,9 +125,17 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
             period: type(uint48).max,
             start: 0,
             end: uint48(paymentInfo.preApprovalExpiry),
-            salt: uint256(paymentInfoHash),
+            salt: uint256(_getHashPayerAgnostic(paymentInfo)),
             extraData: hex""
         });
+    }
+
+    function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
+        return hashPayerAgnostic;
     }
 
     function _signSpendPermission(
