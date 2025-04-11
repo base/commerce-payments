@@ -101,7 +101,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     event PaymentRefunded(bytes32 indexed paymentInfoHash, uint256 amount, address tokenCollector);
 
     /// @notice Event emitted when new token store is created
-    event TreasuryCreated(address indexed operator, address tokenStore);
+    event TokenStoreCreated(address indexed operator, address tokenStore);
 
     /// @notice Sender for a function call does not follow access control requirements
     error InvalidSender(address sender, address expected);
@@ -163,8 +163,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Refund attempted with amount exceeding previous non-refunded captures
     error RefundExceedsCapture(uint256 refund, uint256 captured);
 
-    /// @notice Treasury not found for an operator
-    error TreasuryNotFound(address operator);
+    /// @notice Token store not found for an operator
+    error TokenStoreNotFound(address operator);
 
     /// @notice Token transfer failed
     error TokenTransferFailed();
@@ -528,7 +528,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Deploy if contract does not exist
         if (tokenStore.code.length == 0) {
             tokenStore = LibClone.cloneDeterministic(address(tokenStoreImplementation), salt);
-            emit TreasuryCreated(operator, tokenStore);
+            emit TokenStoreCreated(operator, tokenStore);
         }
     }
 

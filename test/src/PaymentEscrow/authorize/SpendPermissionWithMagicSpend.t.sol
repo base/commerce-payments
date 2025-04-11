@@ -48,6 +48,8 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             magicSpendBalanceBefore - amount,
             "MagicSpend balance should decrease by amount"
         );
-        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount, "Treasury balance should increase by amount");
+        assertEq(
+            mockERC3009Token.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount"
+        );
     }
 }
