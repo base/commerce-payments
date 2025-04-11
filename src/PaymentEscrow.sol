@@ -506,17 +506,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @return treasury The operator's treasury address
     function _getOrCreateTreasury(address operator) internal returns (address treasury) {
         bytes32 salt = keccak256(abi.encode(operator));
-        // Try to predict the address first
         treasury = LibClone.predictDeterministicAddress(address(treasuryImplementation), salt, address(this));
 
-        // Deploy if not exists
+        // Deploy if contract does not exist
         if (treasury.code.length == 0) {
             treasury = LibClone.cloneDeterministic(address(treasuryImplementation), salt);
             emit TreasuryCreated(operator, treasury);
         }
     }
 
-    /// @notice Helper to send tokens from an operator's treasury
+    /// @notice Send tokens from an operator's treasury
     /// @param operator The operator whose treasury to use
     /// @param token The token to send
     /// @param amount Amount of tokens to send
@@ -532,8 +531,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // If call failed, deploy treasury and try again
         treasury = _getOrCreateTreasury(operator);
-
-        // Now that we know the contract exists, use normal call
         OperatorTreasury(treasury).sendTokens(token, amount, recipient);
     }
 }
