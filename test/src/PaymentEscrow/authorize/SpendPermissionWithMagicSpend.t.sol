@@ -39,7 +39,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             abi.encode(signature, abi.encode(withdrawRequest))
         );
 
-        // Get treasury address after creation
+        // Get token store address after creation
         address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
 
         // Verify balances - funds should move from MagicSpend to escrow
@@ -48,6 +48,8 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             magicSpendBalanceBefore - amount,
             "MagicSpend balance should decrease by amount"
         );
-        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount, "Treasury balance should increase by amount");
+        assertEq(
+            mockERC3009Token.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount"
+        );
     }
 }

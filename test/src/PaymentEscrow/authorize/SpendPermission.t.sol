@@ -45,6 +45,8 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
             walletBalanceBefore - amount,
             "Wallet balance should decrease by amount"
         );
-        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount, "Treasury balance should increase by amount");
+        assertEq(
+            mockERC3009Token.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount"
+        );
     }
 }
