@@ -4,11 +4,11 @@ pragma solidity ^0.8.13;
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {PaymentEscrow} from "./PaymentEscrow.sol";
 
-/// @title OperatorTreasury
+/// @title TokenStore
 /// @notice Holds funds for a single operator's payments
 /// @dev Created by PaymentEscrow to isolate operator funds
-contract OperatorTreasury {
-    /// @notice The PaymentEscrow contract that created this treasury
+contract TokenStore {
+    /// @notice The PaymentEscrow contract that created this token store
     address public immutable escrow;
 
     error OnlyEscrow();

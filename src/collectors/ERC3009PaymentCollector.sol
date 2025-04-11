@@ -36,8 +36,8 @@ contract ERC3009PaymentCollector is TokenCollector {
         // Construct nonce as payer-less payment info hash for offchain preparation convenience
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
-        // Get treasury address
-        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
+        // Get token store address
+        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
 
         // Pull tokens into this contract
         IERC3009(paymentInfo.token).receiveWithAuthorization({
@@ -56,8 +56,8 @@ contract ERC3009PaymentCollector is TokenCollector {
             SafeTransferLib.safeTransfer(paymentInfo.token, paymentInfo.payer, excess);
         }
 
-        // Transfer tokens directly to treasury
-        SafeTransferLib.safeTransfer(paymentInfo.token, treasury, amount);
+        // Transfer tokens directly to token store
+        SafeTransferLib.safeTransfer(paymentInfo.token, tokenStore, amount);
     }
 
     /// @notice Parse and process ERC-6492 signatures

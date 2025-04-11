@@ -40,7 +40,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         );
 
         // Get treasury address after creation
-        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
+        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
 
         // Verify balances - funds should move from MagicSpend to escrow
         assertEq(
@@ -48,6 +48,6 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
             magicSpendBalanceBefore - amount,
             "MagicSpend balance should decrease by amount"
         );
-        assertEq(mockERC3009Token.balanceOf(operatorTreasury), amount, "Treasury balance should increase by amount");
+        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount, "Treasury balance should increase by amount");
     }
 }

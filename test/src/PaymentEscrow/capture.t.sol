@@ -169,10 +169,10 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
 
         // Verify balances and state
-        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
+        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
         assertEq(mockERC3009Token.balanceOf(receiver), receiverExpectedBalance);
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
-        assertEq(mockERC3009Token.balanceOf(operatorTreasury), authorizedAmount - captureAmount);
+        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), authorizedAmount - captureAmount);
     }
 
     function test_succeeds_withMultipleCaptures(uint120 authorizedAmount) public {

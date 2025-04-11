@@ -116,9 +116,9 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
 
-        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
+        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-        uint256 operatorTreasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTreasury);
+        uint256 operatorTreasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTokenStore);
 
         // Reclaim after deadline
         vm.warp(timeAfterDeadline);
@@ -127,7 +127,7 @@ contract ReclaimTest is PaymentEscrowBase {
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + amount);
-        assertEq(mockERC3009Token.balanceOf(operatorTreasury), operatorTreasuryBalanceBefore - amount);
+        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), operatorTreasuryBalanceBefore - amount);
     }
 
     function test_emitsExpectedEvents(uint120 amount) public {
