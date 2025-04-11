@@ -18,8 +18,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: initialAmount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: initialAmount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, initialAmount);
 
@@ -47,7 +47,7 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(overflowValue > type(uint120).max);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: 1});
 
     //     uint48 refundDeadline = uint48(block.timestamp + 1 days);
     //     uint256 refundSalt = 123;
@@ -81,8 +81,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     mockERC3009Token.mint(payerEOA, amount);
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
@@ -116,8 +116,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, value: captureAmount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, value: captureAmount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, captureAmount);
 
@@ -155,8 +155,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
@@ -182,8 +182,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
@@ -222,8 +222,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
 
     //     mockERC3009Token.mint(payerEOA, amount);
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     // First authorize and capture
     //     vm.startPrank(operator);
@@ -259,8 +259,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
@@ -291,8 +291,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     mockERC3009Token.mint(payerEOA, amount);
 
@@ -340,8 +340,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     // Mint tokens for payer
     //     mockERC3009Token.mint(payerEOA, amount);
@@ -379,8 +379,8 @@ contract RefundWithSponsorTest is PaymentEscrowBase {
     //     vm.assume(refundDeadline > block.timestamp);
 
     //     PaymentEscrow.PaymentInfo memory paymentInfo =
-    //         _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
-    //     bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+    //         _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+    //     bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
     //     // Mint tokens for payer
     //     mockERC3009Token.mint(payerEOA, amount);

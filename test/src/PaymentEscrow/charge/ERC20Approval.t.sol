@@ -11,7 +11,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -37,7 +37,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
@@ -63,7 +63,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);

@@ -101,15 +101,15 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         mockERC3009Token.mint(payerEOA, 1000e9);
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount)
+    function _createPaymentInfo(address payer, uint120 maxAmount)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)
     {
-        return _createPaymentEscrowAuthorization(payer, maxAmount, address(mockERC3009Token));
+        return _createPaymentInfo(payer, maxAmount, address(mockERC3009Token));
     }
 
-    function _createPaymentEscrowAuthorization(address payer, uint120 maxAmount, address token)
+    function _createPaymentInfo(address payer, uint120 maxAmount, address token)
         internal
         view
         returns (PaymentEscrow.PaymentInfo memory)
@@ -130,18 +130,20 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         });
     }
 
-    function _signPaymentInfo(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
+    function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
         view
         returns (bytes memory)
     {
-        address payer = paymentInfo.payer;
-        paymentInfo.payer = address(0);
-        bytes32 nonce = paymentEscrow.getHash(paymentInfo);
-        paymentInfo.payer = payer;
+        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         bytes32 digest = _getERC3009Digest(
-            payer, address(erc3009PaymentCollector), paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
+            paymentInfo.payer,
+            address(erc3009PaymentCollector),
+            paymentInfo.maxAmount,
+            0,
+            paymentInfo.preApprovalExpiry,
+            nonce
         );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
@@ -192,5 +194,13 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         return abi.encodePacked(r, s, v);
+    }
+
+    function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
+        address payer = paymentInfo.payer;
+        paymentInfo.payer = address(0);
+        bytes32 hash = paymentEscrow.getHash(paymentInfo);
+        paymentInfo.payer = payer;
+        return hash;
     }
 }

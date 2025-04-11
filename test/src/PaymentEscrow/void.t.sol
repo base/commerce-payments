@@ -8,7 +8,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_reverts_whenNotOperator() public {
         uint120 authorizedAmount = 100e9;
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         address randomAddress = makeAddr("randomAddress");
         vm.prank(randomAddress);
@@ -23,7 +23,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
@@ -37,11 +37,11 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);
@@ -65,11 +65,11 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
     function test_void_emitsCorrectEvents() public {
         uint120 authorizedAmount = 100e9;
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization to escrow funds
         vm.prank(operator);

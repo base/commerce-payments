@@ -10,11 +10,10 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
@@ -33,14 +32,13 @@ contract ReclaimTest is PaymentEscrowBase {
         uint48 authorizationExpiry = uint48(block.timestamp + 1 days);
         vm.assume(currentTime < authorizationExpiry);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
         // Set both deadlines - ensure preApprovalExpiry is before authorizationExpiry
         paymentInfo.authorizationExpiry = authorizationExpiry;
         paymentInfo.preApprovalExpiry = authorizationExpiry - 1 hours; // Set authorize deadline before capture deadline
 
         // First authorize the payment
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
@@ -58,8 +56,7 @@ contract ReclaimTest is PaymentEscrowBase {
     function test_reverts_ifAuthorizedValueIsZero(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // Try to reclaim without any authorization
         vm.warp(paymentInfo.authorizationExpiry);
@@ -73,11 +70,10 @@ contract ReclaimTest is PaymentEscrowBase {
     function test_reverts_ifAlreadyReclaimed(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
@@ -103,14 +99,13 @@ contract ReclaimTest is PaymentEscrowBase {
         vm.assume(timeAfterDeadline > authorizationExpiry);
         vm.assume(timeAfterDeadline < type(uint48).max);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
         // Set both deadlines - ensure preApprovalExpiry is before authorizationExpiry
         paymentInfo.authorizationExpiry = authorizationExpiry;
         paymentInfo.preApprovalExpiry = authorizationExpiry - 1 hours; // Set authorize deadline before capture deadline
 
         // First authorize the payment
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
@@ -133,11 +128,10 @@ contract ReclaimTest is PaymentEscrowBase {
     function test_emitsExpectedEvents(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // First authorize the payment
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);

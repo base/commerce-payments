@@ -6,20 +6,23 @@ import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {TokenCollector} from "../../../src/collectors/TokenCollector.sol";
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 
-contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
+contract PreApprovalPaymentCollectorTest is PaymentEscrowBase {
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
         vm.expectRevert(abi.encodeWithSelector(TokenCollector.OnlyPaymentEscrow.selector));
-        erc3009PaymentCollector.collectTokens(paymentInfo, amount, "");
+        preApprovalPaymentCollector.collectTokens(paymentInfo, amount, "");
     }
 
     function test_collectTokens_succeeds_whenCalledByPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         MockERC3009Token(address(mockERC3009Token)).mint(payerEOA, amount);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
-        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+        vm.prank(payerEOA);
+        mockERC3009Token.approve(address(preApprovalPaymentCollector), amount);
+        vm.prank(payerEOA);
+        preApprovalPaymentCollector.preApprove(paymentInfo);
         vm.prank(address(paymentEscrow));
-        erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+        preApprovalPaymentCollector.collectTokens(paymentInfo, amount, "");
     }
 }

@@ -10,10 +10,10 @@ contract CaptureTest is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
         vm.assume(sender != paymentInfo.operator);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
@@ -24,8 +24,7 @@ contract CaptureTest is PaymentEscrowBase {
     }
 
     function test_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1}); // Any non-zero value
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         vm.prank(operator);
         vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
@@ -35,8 +34,7 @@ contract CaptureTest is PaymentEscrowBase {
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: 1});
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1});
 
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
@@ -54,11 +52,11 @@ contract CaptureTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
         vm.assume(captureAmount > 0 && captureAmount <= authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
         paymentInfo.authorizationExpiry = authorizationExpiry;
         paymentInfo.preApprovalExpiry = authorizationExpiry;
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.warp(paymentInfo.preApprovalExpiry - 1);
         vm.prank(operator);
@@ -80,11 +78,11 @@ contract CaptureTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
         uint256 captureAmount = authorizedAmount + 1; // Try to capture more than authorized
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -105,9 +103,9 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -126,9 +124,9 @@ contract CaptureTest is PaymentEscrowBase {
 
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -153,9 +151,9 @@ contract CaptureTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 1 && authorizedAmount <= payerBalance);
         uint256 captureAmount = authorizedAmount / 2;
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -182,9 +180,9 @@ contract CaptureTest is PaymentEscrowBase {
         uint256 firstCaptureAmount = authorizedAmount / 2;
         uint256 secondCaptureAmount = authorizedAmount - firstCaptureAmount;
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -217,11 +215,11 @@ contract CaptureTest is PaymentEscrowBase {
         uint120 authorizedAmount = 100e9;
         uint120 captureAmount = 60e9;
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm the authorization
         vm.prank(operator);
@@ -250,11 +248,11 @@ contract CaptureTest is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
         paymentInfo.minFeeBps = minFeeBps;
         paymentInfo.maxFeeBps = maxFeeBps;
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
@@ -281,11 +279,11 @@ contract CaptureTest is PaymentEscrowBase {
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization(payerEOA, authorizedAmount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
         paymentInfo.minFeeBps = minFeeBps;
         paymentInfo.maxFeeBps = maxFeeBps;
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
@@ -309,16 +307,13 @@ contract CaptureTest is PaymentEscrowBase {
         vm.assume(captureFeeBps >= minFeeBps && captureFeeBps <= maxFeeBps);
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization({
-            payer: payerEOA,
-            maxAmount: authorizedAmount,
-            token: address(mockERC3009Token)
-        });
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo({payer: payerEOA, maxAmount: authorizedAmount, token: address(mockERC3009Token)});
         paymentInfo.feeReceiver = address(0);
         paymentInfo.minFeeBps = minFeeBps;
         paymentInfo.maxFeeBps = maxFeeBps;
 
-        bytes memory signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);

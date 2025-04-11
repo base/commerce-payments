@@ -13,8 +13,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         // Assume reasonable values
         vm.assume(walletBalance >= maxAmount && maxAmount >= amount && amount > 0);
 
-        // Create payment info with SpendPermission auth type
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentEscrowAuthorization({
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
             payer: address(smartWalletDeployed),
             maxAmount: maxAmount,
             token: address(mockERC3009Token)

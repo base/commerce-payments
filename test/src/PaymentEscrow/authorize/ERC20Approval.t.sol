@@ -12,7 +12,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
         // Give payer tokens and approve escrow
@@ -31,8 +31,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_reverts_tokenIsPreApprovedButFundsAreNotTransferred(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token));
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC3009Token));
         // Pre-approve in escrow
         vm.prank(payerEOA);
         PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
@@ -49,8 +48,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC20Token));
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC20Token));
 
         // approve hook to transfer tokens
         vm.prank(payerEOA);
@@ -72,8 +70,7 @@ contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_ifTokenIsPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization(payerEOA, amount, address(mockERC3009Token));
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC3009Token));
         // Pre-approve in escrow
         vm.prank(payerEOA);
         PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);

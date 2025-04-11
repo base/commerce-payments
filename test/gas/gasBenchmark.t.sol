@@ -15,9 +15,9 @@ contract GasBenchmarkBase is PaymentEscrowBase {
         super.setUp();
 
         // Perform warmup authorization to handle first-time deployment costs associated with future potential design iterations
-        PaymentEscrow.PaymentInfo memory warmupInfo = _createPaymentEscrowAuthorization(payerEOA, 1e6);
+        PaymentEscrow.PaymentInfo memory warmupInfo = _createPaymentInfo(payerEOA, 1e6);
         warmupInfo.salt = 1; // different salt to avoid paymentInfo hash collision
-        bytes memory warmupSignature = _signPaymentInfo(warmupInfo, payer_EOA_PK);
+        bytes memory warmupSignature = _signERC3009ReceiveWithAuthorizationStruct(warmupInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, 1e6);
         vm.startPrank(operator);
         paymentEscrow.authorize(warmupInfo, 1e6, address(erc3009PaymentCollector), warmupSignature);
@@ -25,8 +25,8 @@ contract GasBenchmarkBase is PaymentEscrowBase {
         vm.stopPrank();
 
         // Create and sign payment info
-        paymentInfo = _createPaymentEscrowAuthorization(payerEOA, BENCHMARK_AMOUNT);
-        signature = _signPaymentInfo(paymentInfo, payer_EOA_PK);
+        paymentInfo = _createPaymentInfo(payerEOA, BENCHMARK_AMOUNT);
+        signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // Give payer tokens
         mockERC3009Token.mint(payerEOA, BENCHMARK_AMOUNT);

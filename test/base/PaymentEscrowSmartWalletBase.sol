@@ -130,14 +130,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         });
     }
 
-    function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
-        address payer = paymentInfo.payer;
-        paymentInfo.payer = address(0);
-        bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
-        paymentInfo.payer = payer;
-        return hashPayerAgnostic;
-    }
-
     function _signSpendPermission(
         SpendPermissionManager.SpendPermission memory spendPermission,
         uint256 ownerPk,
