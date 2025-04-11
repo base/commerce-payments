@@ -16,7 +16,7 @@ contract PreApproveTest is PaymentEscrowBase {
 
         vm.prank(invalidSender);
         vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentInfo.payer));
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
     }
 
     function test_reverts_ifPaymentIsAlreadyAuthorized(uint120 amount) public {
@@ -30,14 +30,14 @@ contract PreApproveTest is PaymentEscrowBase {
         mockERC3009Token.mint(payerEOA, amount);
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Now try to pre-approve
         vm.prank(payerEOA);
         vm.expectRevert(
             abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentAlreadyCollected.selector, paymentInfoHash)
         );
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
     }
 
     function test_succeeds_ifCalledByPayer(uint120 amount) public {
@@ -46,16 +46,16 @@ contract PreApproveTest is PaymentEscrowBase {
         PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
 
         // Verify state change by trying to authorize with empty signature
         mockERC3009Token.mint(payerEOA, amount);
         vm.startPrank(payerEOA);
-        mockERC3009Token.approve(address(hooks[TokenCollector.ERC20]), amount);
+        mockERC3009Token.approve(address(preApprovalPaymentCollector), amount);
         vm.stopPrank();
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.ERC20], ""); // ERC20Approval should work after pre-approval
+        paymentEscrow.authorize(paymentInfo, amount, address(preApprovalPaymentCollector), ""); // ERC20Approval should work after pre-approval
     }
 
     function test_reverts_ifCalledBypayerMultipleTimes(uint120 amount) public {
@@ -67,11 +67,11 @@ contract PreApproveTest is PaymentEscrowBase {
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
 
         vm.startPrank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
         vm.expectRevert(
             abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentAlreadyPreApproved.selector, paymentInfoHash)
         );
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
     }
 
     function test_emitsExpectedEvents(uint120 amount) public {
@@ -86,6 +86,6 @@ contract PreApproveTest is PaymentEscrowBase {
         emit PreApprovalPaymentCollector.PaymentPreApproved(paymentInfoHash);
 
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
     }
 }

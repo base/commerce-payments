@@ -34,7 +34,9 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.SpendPermission], abi.encode(signature, "")); // Empty collectorData for regular spend
+        paymentEscrow.authorize(
+            paymentInfo, amount, address(spendPermissionPaymentCollector), abi.encode(signature, "")
+        ); // Empty collectorData for regular spend
 
         // Get token store address after creation
         address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);

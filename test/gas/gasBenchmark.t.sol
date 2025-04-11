@@ -20,7 +20,7 @@ contract GasBenchmarkBase is PaymentEscrowBase {
         bytes memory warmupSignature = _signPaymentInfo(warmupInfo, payer_EOA_PK);
         mockERC3009Token.mint(payerEOA, 1e6);
         vm.startPrank(operator);
-        paymentEscrow.authorize(warmupInfo, 1e6, hooks[TokenCollector.ERC3009], warmupSignature);
+        paymentEscrow.authorize(warmupInfo, 1e6, address(erc3009PaymentCollector), warmupSignature);
         paymentEscrow.capture(warmupInfo, 1e6, BENCHMARK_FEE_BPS, feeReceiver); // make sure token store is deployed before subsequent tests
         vm.stopPrank();
 
@@ -36,7 +36,7 @@ contract GasBenchmarkBase is PaymentEscrowBase {
 contract AuthorizeGasBenchmark is GasBenchmarkBase {
     function test_authorize_benchmark() public {
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
     }
 }
 
@@ -44,7 +44,7 @@ contract ChargeGasBenchmark is GasBenchmarkBase {
     function test_charge_benchmark() public {
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature, BENCHMARK_FEE_BPS, feeReceiver
+            paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature, BENCHMARK_FEE_BPS, feeReceiver
         );
     }
 }
@@ -55,7 +55,7 @@ contract CaptureGasBenchmark is GasBenchmarkBase {
 
         // Pre-authorize
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
     }
 
     function test_capture_benchmark() public {
@@ -70,7 +70,7 @@ contract VoidGasBenchmark is GasBenchmarkBase {
 
         // Pre-authorize
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
     }
 
     function test_void_benchmark() public {
@@ -85,7 +85,7 @@ contract ReclaimGasBenchmark is GasBenchmarkBase {
 
         // Pre-authorize
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
 
         // Warp past authorization expiry
         vm.warp(paymentInfo.authorizationExpiry);
@@ -103,7 +103,7 @@ contract RefundGasBenchmark is GasBenchmarkBase {
 
         // Pre-authorize and capture
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
         vm.prank(operator);
         paymentEscrow.capture(paymentInfo, BENCHMARK_AMOUNT, BENCHMARK_FEE_BPS, feeReceiver);
 
@@ -115,6 +115,6 @@ contract RefundGasBenchmark is GasBenchmarkBase {
 
     function test_refund_benchmark() public {
         vm.prank(operator);
-        paymentEscrow.refund(paymentInfo, BENCHMARK_AMOUNT, hooks[TokenCollector.OperatorRefund], "");
+        paymentEscrow.refund(paymentInfo, BENCHMARK_AMOUNT, address(operatorRefundCollector), "");
     }
 }

@@ -69,7 +69,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture partial amount
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
         paymentEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
@@ -98,7 +98,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
@@ -134,7 +134,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 

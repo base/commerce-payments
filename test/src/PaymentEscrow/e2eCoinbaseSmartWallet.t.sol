@@ -27,7 +27,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         paymentEscrow.charge(
             paymentInfo,
             amount,
-            hooks[TokenCollector.ERC3009],
+            address(erc3009PaymentCollector),
             signature,
             paymentInfo.minFeeBps,
             paymentInfo.feeReceiver
@@ -61,7 +61,7 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         paymentEscrow.charge(
             paymentInfo,
             amount,
-            hooks[TokenCollector.ERC3009],
+            address(erc3009PaymentCollector),
             signature,
             paymentInfo.minFeeBps,
             paymentInfo.feeReceiver

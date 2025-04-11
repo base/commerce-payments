@@ -69,7 +69,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         // This is what needs to be signed by the smart wallet
         bytes32 erc3009Digest = _getERC3009Digest(
-            payer, hooks[TokenCollector.ERC3009], paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
+            payer, address(erc3009PaymentCollector), paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
         );
 
         // Now wrap the ERC3009 digest in the smart wallet's domain
@@ -119,7 +119,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
 
         return SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,
-            spender: hooks[TokenCollector.SpendPermission],
+            spender: address(spendPermissionPaymentCollector),
             token: address(paymentInfo.token),
             allowance: uint160(paymentInfo.maxAmount),
             period: type(uint48).max,

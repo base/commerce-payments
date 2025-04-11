@@ -26,16 +26,6 @@ import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTra
 contract PaymentEscrowBase is Test, DeployPermit2 {
     using PermitHash for ISignatureTransfer.PermitTransferFrom;
 
-    // Enum to make it easier to reference hooks in tests
-    enum TokenCollector {
-        ERC3009,
-        ERC20,
-        Permit2,
-        SpendPermission,
-        OperatorRefund,
-        ERC20UnsafeTransfer
-    }
-
     PaymentEscrow public paymentEscrow;
     MockERC3009Token public mockERC3009Token;
     MockERC20 public mockERC20Token;
@@ -46,15 +36,12 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     MagicSpend public magicSpend;
 
     // TokenCollector contracts
-    ERC3009PaymentCollector public erc3009Hook;
-    PreApprovalPaymentCollector public erc20Hook;
-    Permit2PaymentCollector public permit2Hook;
-    SpendPermissionPaymentCollector public spendPermissionHook;
+    ERC3009PaymentCollector public erc3009PaymentCollector;
+    PreApprovalPaymentCollector public preApprovalPaymentCollector;
+    Permit2PaymentCollector public permit2PaymentCollector;
+    SpendPermissionPaymentCollector public spendPermissionPaymentCollector;
     OperatorRefundCollector public operatorRefundCollector;
-    ERC20UnsafeTransferTokenCollector public erc20UnsafeTransferHook;
-
-    // Mapping to store token collector addresses
-    mapping(TokenCollector => address) public hooks;
+    ERC20UnsafeTransferTokenCollector public erc20UnsafeTransferPaymentCollector;
 
     uint256 public magicSpendOwnerPk = 0xC014BA53;
     address public magicSpendOwner;
@@ -93,21 +80,13 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         paymentEscrow = new PaymentEscrow();
 
         // Deploy token collector contracts
-        erc3009Hook = new ERC3009PaymentCollector(address(paymentEscrow), multicall3);
-        erc20Hook = new PreApprovalPaymentCollector(address(paymentEscrow));
-        permit2Hook = new Permit2PaymentCollector(address(paymentEscrow), permit2);
-        spendPermissionHook =
+        erc3009PaymentCollector = new ERC3009PaymentCollector(address(paymentEscrow), multicall3);
+        preApprovalPaymentCollector = new PreApprovalPaymentCollector(address(paymentEscrow));
+        permit2PaymentCollector = new Permit2PaymentCollector(address(paymentEscrow), permit2);
+        spendPermissionPaymentCollector =
             new SpendPermissionPaymentCollector(address(paymentEscrow), address(spendPermissionManager));
         operatorRefundCollector = new OperatorRefundCollector(address(paymentEscrow));
-        erc20UnsafeTransferHook = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
-
-        // Store token collector addresses in mapping
-        hooks[TokenCollector.ERC3009] = address(erc3009Hook);
-        hooks[TokenCollector.ERC20] = address(erc20Hook);
-        hooks[TokenCollector.Permit2] = address(permit2Hook);
-        hooks[TokenCollector.SpendPermission] = address(spendPermissionHook);
-        hooks[TokenCollector.OperatorRefund] = address(operatorRefundCollector);
-        hooks[TokenCollector.ERC20UnsafeTransfer] = address(erc20UnsafeTransferHook);
+        erc20UnsafeTransferPaymentCollector = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
 
         // Setup roles
         operator = vm.addr(1);
@@ -162,7 +141,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         paymentInfo.payer = payer;
 
         bytes32 digest = _getERC3009Digest(
-            payer, hooks[TokenCollector.ERC3009], paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
+            payer, address(erc3009PaymentCollector), paymentInfo.maxAmount, 0, paymentInfo.preApprovalExpiry, nonce
         );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
@@ -203,7 +182,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
             abi.encode(
                 _PERMIT_TRANSFER_FROM_TYPEHASH,
                 tokenPermissionsHash,
-                hooks[TokenCollector.Permit2],
+                address(permit2PaymentCollector),
                 permit.nonce,
                 permit.deadline
             )

@@ -35,7 +35,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         paymentEscrow.authorize(
             paymentInfo,
             amount,
-            hooks[TokenCollector.SpendPermission],
+            address(spendPermissionPaymentCollector),
             abi.encode(signature, abi.encode(withdrawRequest))
         );
 
