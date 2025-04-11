@@ -302,8 +302,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Update payment state, converting capturable amount to refundable amount
-        state.capturableAmount -= uint120(amount);
-        state.refundableAmount += uint120(amount);
+        unchecked {
+            // We've already checked that capturableAmount >= amount
+            state.capturableAmount -= uint120(amount);
+            // refundableAmount + amount cannot exceed maxAmount which fits in uint120
+            state.refundableAmount += uint120(amount);
+        }
         paymentState[paymentInfoHash] = state;
         emit PaymentCaptured(paymentInfoHash, amount);
 
@@ -416,6 +420,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes calldata collectorData,
         TokenCollector.CollectorType collectorType
     ) internal {
+        address token = paymentInfo.token;
+
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
@@ -438,16 +444,19 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        uint256 feeAmount = uint256(amount) * feeBps / 10_000;
+        unchecked {
+            // feeBps is already validated to be <= 10_000 in _validateFee
+            uint256 feeAmount = uint256(amount) * feeBps / 10_000;
 
-        // Send fee portion if non-zero
-        if (feeAmount > 0) {
-            _sendTokens(msg.sender, token, feeAmount, feeReceiver);
-        }
+            // Send fee portion if non-zero
+            if (feeAmount > 0) {
+                _sendTokens(msg.sender, token, feeAmount, feeReceiver);
+            }
 
-        // Send remaining amount to receiver
-        if (amount - feeAmount > 0) {
-            _sendTokens(msg.sender, token, amount - feeAmount, receiver);
+            // Send remaining amount to receiver
+            if (amount - feeAmount > 0) {
+                _sendTokens(msg.sender, token, amount - feeAmount, receiver);
+            }
         }
     }
 
@@ -455,31 +464,33 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
+        uint48 preApprovalExp = paymentInfo.preApprovalExpiry;
+        uint48 authorizationExp = paymentInfo.authorizationExpiry;
+        uint48 refundExp = paymentInfo.refundExpiry;
+        uint48 currentTime = uint48(block.timestamp);
+        uint16 minFeeBps = paymentInfo.minFeeBps;
+        uint16 maxFeeBps = paymentInfo.maxFeeBps;
+
         // Check amount does not exceed maximum
         if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
 
-        // Check timestamp before pre-approval expiry
-        if (block.timestamp >= paymentInfo.preApprovalExpiry) {
-            revert AfterPreApprovalExpiry(uint48(block.timestamp), uint48(paymentInfo.preApprovalExpiry));
+        unchecked {
+            // Timestamp comparisons cannot overflow uint48
+            if (currentTime >= paymentInfo.preApprovalExpiry) {
+                revert AfterPreApprovalExpiry(currentTime, paymentInfo.preApprovalExpiry);
+            }
         }
 
         // Check expiry timestamps properly ordered
-        if (
-            paymentInfo.preApprovalExpiry > paymentInfo.authorizationExpiry
-                || paymentInfo.authorizationExpiry > paymentInfo.refundExpiry
-        ) {
-            revert InvalidExpiries(
-                paymentInfo.preApprovalExpiry, paymentInfo.authorizationExpiry, paymentInfo.refundExpiry
-            );
+        if (preApprovalExp > authorizationExp || authorizationExp > refundExp) {
+            revert InvalidExpiries(preApprovalExp, authorizationExp, refundExp);
         }
 
         // Check fee bps do not exceed maximum value
-        if (paymentInfo.maxFeeBps > 10_000) revert FeeBpsOverflow(paymentInfo.maxFeeBps);
+        if (maxFeeBps > 10_000) revert FeeBpsOverflow(maxFeeBps);
 
         // Check min fee bps does not exceed max fee
-        if (paymentInfo.minFeeBps > paymentInfo.maxFeeBps) {
-            revert InvalidFeeBpsRange(paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
-        }
+        if (minFeeBps > maxFeeBps) revert InvalidFeeBpsRange(minFeeBps, maxFeeBps);
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment info
@@ -487,17 +498,21 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees
     function _validateFee(PaymentInfo calldata paymentInfo, uint16 feeBps, address feeReceiver) internal pure {
+        uint16 minFeeBps = paymentInfo.minFeeBps;
+        uint16 maxFeeBps = paymentInfo.maxFeeBps;
+        address configuredFeeReceiver = paymentInfo.feeReceiver;
+
         // Check fee bps within [min, max]
-        if (feeBps < paymentInfo.minFeeBps || feeBps > paymentInfo.maxFeeBps) {
-            revert FeeBpsOutOfRange(feeBps, paymentInfo.minFeeBps, paymentInfo.maxFeeBps);
+        if (feeBps < minFeeBps || feeBps > maxFeeBps) {
+            revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
         }
 
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
         // Check fee recipient matches payment info if non-zero
-        if (paymentInfo.feeReceiver != address(0) && paymentInfo.feeReceiver != feeReceiver) {
-            revert InvalidFeeReceiver(feeReceiver, paymentInfo.feeReceiver);
+        if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
+            revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
     }
 
