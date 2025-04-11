@@ -1,15 +1,6 @@
-<<<<<<< Updated upstream
-AuthorizeGasBenchmark:test_authorize_benchmark() (gas: 155534)
-CaptureGasBenchmark:test_capture_benchmark() (gas: 69237)
-ChargeGasBenchmark:test_charge_benchmark() (gas: 164407)
-ReclaimGasBenchmark:test_reclaim_benchmark() (gas: 55132)
-RefundGasBenchmark:test_refund_benchmark() (gas: 81175)
-VoidGasBenchmark:test_void_benchmark() (gas: 54950)
-=======
 AuthorizeGasBenchmark:test_authorize_benchmark() (gas: 153583)
 CaptureGasBenchmark:test_capture_benchmark() (gas: 68076)
 ChargeGasBenchmark:test_charge_benchmark() (gas: 158877)
 ReclaimGasBenchmark:test_reclaim_benchmark() (gas: 55481)
 RefundGasBenchmark:test_refund_benchmark() (gas: 79677)
 VoidGasBenchmark:test_void_benchmark() (gas: 55809)
->>>>>>> Stashed changes
