@@ -14,7 +14,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
 
         // Create payment info with SpendPermissionWithMagicSpend auth type
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization(address(smartWalletDeployed), amount, address(mockERC3009Token));
+            _createPaymentInfo(address(smartWalletDeployed), amount, address(mockERC3009Token));
 
         // Create the spend permission
         SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentInfo);
@@ -35,7 +35,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         paymentEscrow.authorize(
             paymentInfo,
             amount,
-            hooks[TokenCollector.SpendPermission],
+            address(spendPermissionPaymentCollector),
             abi.encode(signature, abi.encode(withdrawRequest))
         );
 

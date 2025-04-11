@@ -11,7 +11,7 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -24,7 +24,12 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
             abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentNotPreApproved.selector, paymentInfoHash)
         );
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            address(preApprovalPaymentCollector),
+            "",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver
         );
     }
 
@@ -32,11 +37,11 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
 
         // Give payer tokens but DON'T approve escrow
         mockERC3009Token.mint(payerEOA, amount);
@@ -45,7 +50,12 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(SafeTransferLib.TransferFromFailed.selector));
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            address(preApprovalPaymentCollector),
+            "",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver
         );
     }
 
@@ -53,16 +63,16 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
 
         // Pre-approve in escrow
         vm.prank(payerEOA);
-        PreApprovalPaymentCollector(address(hooks[TokenCollector.ERC20])).preApprove(paymentInfo);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
 
         // Give payer tokens and approve escrow
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(payerEOA);
-        mockERC3009Token.approve(address(hooks[TokenCollector.ERC20]), amount);
+        mockERC3009Token.approve(address(preApprovalPaymentCollector), amount);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 receiverBalanceBefore = mockERC3009Token.balanceOf(receiver);
@@ -71,7 +81,12 @@ contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
         // Charge with empty signature
         vm.prank(operator);
         paymentEscrow.charge(
-            paymentInfo, amount, hooks[TokenCollector.ERC20], "", paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfo,
+            amount,
+            address(preApprovalPaymentCollector),
+            "",
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver
         );
 
         // Verify balances including fee distribution

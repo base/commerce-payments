@@ -29,7 +29,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
         plainToken.mint(payerEOA, amount);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
-            _createPaymentEscrowAuthorization({payer: payerEOA, maxAmount: amount, token: address(plainToken)});
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(plainToken)});
 
         // Generate Permit2 signature using the same deadline as paymentInfo
         bytes memory signature = _signPermit2Transfer({
@@ -42,7 +42,7 @@ contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
 
         // Should succeed via Permit2 authorization
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, hooks[TokenCollector.Permit2], signature);
+        paymentEscrow.authorize(paymentInfo, amount, address(permit2PaymentCollector), signature);
 
         // Verify the transfer worked
         address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
