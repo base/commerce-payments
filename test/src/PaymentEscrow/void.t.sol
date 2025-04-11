@@ -47,9 +47,9 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, hooks[TokenCollector.ERC3009], signature);
 
-        address operatorTreasury = paymentEscrow.getOperatorTreasury(operator);
+        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
-        uint256 treasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTreasury);
+        uint256 treasuryBalanceBefore = mockERC3009Token.balanceOf(operatorTokenStore);
 
         // Then void the authorization
         vm.prank(operator);
@@ -59,7 +59,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         // Verify funds were returned to payer
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore + authorizedAmount);
-        assertEq(mockERC3009Token.balanceOf(operatorTreasury), treasuryBalanceBefore - authorizedAmount);
+        assertEq(mockERC3009Token.balanceOf(operatorTokenStore), treasuryBalanceBefore - authorizedAmount);
     }
 
     function test_void_emitsCorrectEvents() public {

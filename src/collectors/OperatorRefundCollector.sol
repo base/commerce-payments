@@ -23,10 +23,10 @@ contract OperatorRefundCollector is TokenCollector {
         override
         onlyPaymentEscrow
     {
-        // Get treasury address
-        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
+        // Get token store address
+        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
 
-        // Transfer tokens from operator directly to treasury
-        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.operator, treasury, amount);
+        // Transfer tokens from operator directly to token store
+        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.operator, tokenStore, amount);
     }
 }

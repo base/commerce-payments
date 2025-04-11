@@ -41,11 +41,11 @@ contract PreApprovalPaymentCollector is TokenCollector {
         // Check payment pre-approved
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 
-        // Get treasury address
-        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
+        // Get token store address
+        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
 
-        // Transfer tokens from payer directly to treasury
-        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, treasury, amount);
+        // Transfer tokens from payer directly to token store
+        SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, tokenStore, amount);
     }
 
     /// @notice Registers buyer's token approval for a specific payment

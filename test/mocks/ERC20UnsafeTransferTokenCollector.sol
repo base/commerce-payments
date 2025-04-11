@@ -51,10 +51,10 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
             revert PaymentNotPreApproved(paymentInfoHash);
         }
 
-        // Get treasury address
-        address treasury = paymentEscrow.getOperatorTreasury(paymentInfo.operator);
+        // Get token store address
+        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
 
-        // transfer too few token to treasury
-        IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, treasury, paymentInfo.maxAmount - 1);
+        // transfer too few token to tokenStore
+        IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, tokenStore, paymentInfo.maxAmount - 1);
     }
 }
