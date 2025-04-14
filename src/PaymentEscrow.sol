@@ -13,7 +13,7 @@ import {TokenStore} from "./TokenStore.sol";
 /// @dev By escrowing payment, this contract can mimic the 2-step payment pattern of "authorization" and "capture".
 /// @dev Authorization is defined as placing a hold on a payer's funds temporarily.
 /// @dev Capture is defined as distributing payment to the end recipient.
-/// @dev An Operator plays the primary role of moving payments between both parties.
+/// @dev A trusted Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
@@ -59,11 +59,11 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
-    /// @notice State per unique payment
-    mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
-
     /// @notice Implementation contract for operator token stores
     address public immutable tokenStoreImplementation;
+
+    /// @notice State per unique payment
+    mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -168,22 +168,24 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Token transfer failed
     error TokenTransferFailed();
 
-    constructor() {
-        // Deploy implementation that will be cloned
-        tokenStoreImplementation = address(new TokenStore(address(this)));
-    }
-
     /// @notice Check call sender is specified address
+    /// @param sender Address to enforce is the call sender
     modifier onlySender(address sender) {
         if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
         _;
     }
 
     /// @notice Ensures amount is non-zero and does not overflow storage
+    /// @param amount Quantity of tokens being requested for a given operation
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert ZeroAmount();
         if (amount > type(uint120).max) revert AmountOverflow(amount, type(uint120).max);
         _;
+    }
+
+    /// @notice Constructor that auto-deploys TokenStore implementation to clone
+    constructor() {
+        tokenStoreImplementation = address(new TokenStore(address(this)));
     }
 
     /// @notice Transfers funds from payer to receiver in one step
@@ -325,7 +327,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from token store
-        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount);
     }
 
     /// @notice Returns any escrowed funds to payer
@@ -347,7 +349,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from token store
-        _sendTokens(paymentInfo.operator, paymentInfo.token, authorizedAmount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount);
     }
 
     /// @notice Return previously-captured tokens to payer
@@ -379,7 +381,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Transfer tokens into escrow and forward to payer
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
-        _sendTokens(paymentInfo.operator, paymentInfo.token, amount, paymentInfo.payer);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, amount);
     }
 
     /// @notice Get hash of PaymentInfo struct
@@ -442,12 +444,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
             // Send fee portion if non-zero
             if (feeAmount > 0) {
-                _sendTokens(msg.sender, token, feeAmount, feeReceiver);
+                _sendTokens(msg.sender, token, feeReceiver, feeAmount);
             }
 
             // Send remaining amount to receiver
             if (amount - feeAmount > 0) {
-                _sendTokens(msg.sender, token, amount - feeAmount, receiver);
+                _sendTokens(msg.sender, token, receiver, amount - feeAmount);
             }
         }
     }
@@ -505,9 +507,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Send tokens from an operator's token store
     /// @param operator The operator whose token store to use
     /// @param token The token to send
-    /// @param amount Amount of tokens to send
     /// @param recipient Address to receive the tokens
-    function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
+    /// @param amount Amount of tokens to send
+    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
         // Attempt to transfer tokens
         address tokenStore = getTokenStore(operator);
         bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);

@@ -22,8 +22,8 @@ contract TokenStore {
 
     /// @notice Send tokens to a recipient, called by escrow during capture/refund
     /// @param token The token being received
-    /// @param amount Amount of tokens to receive
     /// @param recipient Address to receive the tokens
+    /// @param amount Amount of tokens to receive
     function sendTokens(address token, address recipient, uint256 amount) external returns (bool) {
         if (msg.sender != paymentEscrow) revert OnlyPaymentEscrow();
         SafeTransferLib.safeTransfer(token, recipient, amount);
