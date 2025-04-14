@@ -15,23 +15,26 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
+    /// @notice SpendPermissionManager singleton
     SpendPermissionManager public immutable spendPermissionManager;
 
     /// @notice Spend permission approval failed
     error SpendPermissionApprovalFailed();
 
+    /// @notice Constructor
+    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
+    /// @param spendPermissionManager_ SpendPermissionManager singleton
     constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
         spendPermissionManager = SpendPermissionManager(payable(spendPermissionManager_));
     }
 
     /// @inheritdoc TokenCollector
     /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
-        external
-        override
-        onlyPaymentEscrow
-    {
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+    function _collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        uint256 amount,
+        bytes calldata collectorData
+    ) internal override {
         address token = paymentInfo.token;
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,
@@ -53,7 +56,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
             if (!approved) revert SpendPermissionApprovalFailed();
         }
 
-        // Transfer tokens into collector, potentially using account withdraw request if provided
+        // Transfer tokens into collector, first using a MagicSpend WithdrawRequest if provided
         if (encodedWithdrawRequest.length == 0) {
             spendPermissionManager.spend(permission, uint160(amount));
         } else {
@@ -62,7 +65,8 @@ contract SpendPermissionPaymentCollector is TokenCollector {
             spendPermissionManager.spendWithWithdraw(permission, uint160(amount), withdrawRequest);
         }
 
-        // Transfer tokens from collector to escrow
+        // Transfer tokens from collector to token store
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         SafeTransferLib.safeTransfer(token, tokenStore, amount);
     }
 }

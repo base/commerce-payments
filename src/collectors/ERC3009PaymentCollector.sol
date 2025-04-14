@@ -15,20 +15,24 @@ contract ERC3009PaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
-    bytes32 internal constant ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
+    bytes32 internal constant _ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 
+    /// @notice Public Multicall3 singleton for safe ERC-6492 external calls
     IMulticall3 public immutable multicall3;
 
+    /// @notice Constructor
+    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
+    /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
     constructor(address paymentEscrow_, address multicall3_) TokenCollector(paymentEscrow_) {
         multicall3 = IMulticall3(multicall3_);
     }
 
     /// @inheritdoc TokenCollector
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
-        external
-        override
-        onlyPaymentEscrow
-    {
+    function _collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        uint256 amount,
+        bytes calldata collectorData
+    ) internal override {
         address token = paymentInfo.token;
         address payer = paymentInfo.payer;
         uint256 maxAmount = paymentInfo.maxAmount;
@@ -40,7 +44,7 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         // Get token store address
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // Pull tokens into this contract
         IERC3009(token).receiveWithAuthorization({
@@ -78,7 +82,7 @@ contract ERC3009PaymentCollector is TokenCollector {
         assembly {
             suffix := mload(add(add(signature, 32), sub(mload(signature), 32)))
         }
-        if (suffix != ERC6492_MAGIC_VALUE) return signature;
+        if (suffix != _ERC6492_MAGIC_VALUE) return signature;
 
         // Parse inner signature from ERC-6492 format
         bytes memory erc6492Data = new bytes(signature.length - 32);

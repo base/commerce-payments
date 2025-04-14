@@ -47,7 +47,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
 
-        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
         uint256 tokenStoreBalanceBefore = mockERC3009Token.balanceOf(operatorTokenStore);
 

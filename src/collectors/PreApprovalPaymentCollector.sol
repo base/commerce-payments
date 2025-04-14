@@ -28,23 +28,22 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @notice Track if a payment has been pre-approved
     mapping(bytes32 paymentInfoHash => bool approved) public isPreApproved;
 
+    /// @notice Constructor
+    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
     /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
-        external
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
+        internal
         override
-        onlyPaymentEscrow
     {
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         // Check payment pre-approved
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 
-        // Get token store address
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
-
         // Transfer tokens from payer directly to token store
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         SafeTransferLib.safeTransferFrom(paymentInfo.token, paymentInfo.payer, tokenStore, amount);
     }
 
@@ -55,13 +54,13 @@ contract PreApprovalPaymentCollector is TokenCollector {
         // Check sender is buyer
         if (msg.sender != paymentInfo.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
-        // Check status is not authorized or already pre-approved
+        // Check has not already pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
-        if (hasCollectedPayment) {
-            revert PaymentAlreadyCollected(paymentInfoHash);
-        }
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
+
+        // Check has not already collected
+        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
+        if (hasCollectedPayment) revert PaymentAlreadyCollected(paymentInfoHash);
 
         // Set payment as pre-approved
         isPreApproved[paymentInfoHash] = true;

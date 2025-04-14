@@ -19,15 +19,15 @@ abstract contract TokenCollector {
     /// @notice Call sender is not PaymentEscrow
     error OnlyPaymentEscrow();
 
+    /// @notice Constructor
+    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     constructor(address paymentEscrow_) {
         paymentEscrow = PaymentEscrow(paymentEscrow_);
     }
 
-    /// @notice Enforce only PaymentEscrow can call
-    modifier onlyPaymentEscrow() {
-        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
-        _;
-    }
+    /// @notice Get the type of token collector
+    /// @return CollectorType Type of token collector
+    function collectorType() external view virtual returns (CollectorType);
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct
@@ -35,11 +35,20 @@ abstract contract TokenCollector {
     /// @param collectorData Data to pass to the token collector
     function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
         external
-        virtual;
+    {
+        if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
+        _collectTokens(paymentInfo, amount, collectorData);
+    }
 
-    /// @notice Get the type of token collector
-    /// @return CollectorType Type of token collector
-    function collectorType() external view virtual returns (CollectorType);
+    /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
+    /// @param paymentInfo Payment info struct
+    /// @param amount Amount of tokens to pull
+    /// @param collectorData Data to pass to the token collector
+    function _collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        uint256 amount,
+        bytes calldata collectorData
+    ) internal virtual;
 
     /// @notice Get hash for PaymentInfo with null payer address
     /// @dev Proactively setting payer back to original value covers accidental bugs of memory location being used elsewhere
