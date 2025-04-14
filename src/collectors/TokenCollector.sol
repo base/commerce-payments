@@ -25,6 +25,10 @@ abstract contract TokenCollector {
         paymentEscrow = PaymentEscrow(paymentEscrow_);
     }
 
+    /// @notice Get the type of token collector
+    /// @return CollectorType Type of token collector
+    function collectorType() external view virtual returns (CollectorType);
+
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct
     /// @param amount Amount of tokens to pull
@@ -45,10 +49,6 @@ abstract contract TokenCollector {
         uint256 amount,
         bytes calldata collectorData
     ) internal virtual;
-
-    /// @notice Get the type of token collector
-    /// @return CollectorType Type of token collector
-    function collectorType() external view virtual returns (CollectorType);
 
     /// @notice Get hash for PaymentInfo with null payer address
     /// @dev Proactively setting payer back to original value covers accidental bugs of memory location being used elsewhere
