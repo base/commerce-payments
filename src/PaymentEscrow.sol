@@ -510,7 +510,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
         // Attempt to transfer tokens
         address tokenStore = getTokenStore(operator);
-        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, amount, recipient);
+        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
         (bool success, bytes memory returnData) = tokenStore.call(callData);
         if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
             return;
@@ -523,7 +523,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
                 salt: bytes32(bytes20(operator))
             });
             emit TokenStoreCreated(operator, tokenStore);
-            TokenStore(tokenStore).sendTokens(token, amount, recipient);
+            TokenStore(tokenStore).sendTokens(token, recipient, amount);
         }
     }
 }
