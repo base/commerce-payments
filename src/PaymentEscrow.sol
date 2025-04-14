@@ -63,7 +63,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     mapping(bytes32 paymentInfoHash => PaymentState state) public paymentState;
 
     /// @notice Implementation contract for operator token stores
-    TokenStore public immutable tokenStoreImplementation;
+    address public immutable tokenStoreImplementation;
 
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
@@ -170,7 +170,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     constructor() {
         // Deploy implementation that will be cloned
-        tokenStoreImplementation = new TokenStore(PaymentEscrow(address(this)));
+        tokenStoreImplementation = address(new TokenStore(address(this)));
     }
 
     /// @notice Check call sender is specified address
@@ -394,9 +394,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Get the token store address for an operator
     /// @param operator The operator to get the token store for
     /// @return The operator's token store address
-    function getOperatorTokenStore(address operator) public view returns (address) {
-        bytes32 salt = keccak256(abi.encode(operator));
-        return LibClone.predictDeterministicAddress(address(tokenStoreImplementation), salt, address(this));
+    function getTokenStore(address operator) public view returns (address) {
+        return LibClone.predictDeterministicAddress({
+            implementation: tokenStoreImplementation,
+            salt: bytes32(bytes20(operator)),
+            deployer: address(this)
+        });
     }
 
     /// @notice Transfer tokens into this contract
@@ -413,15 +416,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         TokenCollector.CollectorType collectorType
     ) internal {
         address token = paymentInfo.token;
+        address tokenStore = getTokenStore(paymentInfo.operator);
 
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
-        address tokenStore = getOperatorTokenStore(paymentInfo.operator);
-
         // Measure balance change of token store to enforce as equal to expected amount
         uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
-
         TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
         uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
@@ -466,12 +467,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check amount does not exceed maximum
         if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
 
-        unchecked {
-            // Timestamp comparisons cannot overflow uint48
-            if (currentTime >= paymentInfo.preApprovalExpiry) {
-                revert AfterPreApprovalExpiry(currentTime, paymentInfo.preApprovalExpiry);
-            }
-        }
+        // Timestamp comparisons cannot overflow uint48
+        if (currentTime >= preApprovalExp) revert AfterPreApprovalExpiry(currentTime, preApprovalExp);
 
         // Check expiry timestamps properly ordered
         if (preApprovalExp > authorizationExp || authorizationExp > refundExp) {
@@ -495,9 +492,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address configuredFeeReceiver = paymentInfo.feeReceiver;
 
         // Check fee bps within [min, max]
-        if (feeBps < minFeeBps || feeBps > maxFeeBps) {
-            revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
-        }
+        if (feeBps < minFeeBps || feeBps > maxFeeBps) revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
 
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
@@ -508,36 +503,28 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
     }
 
-    /// @dev Get or create token store for an operator
-    /// @param operator The operator to get/create token store for
-    /// @return tokenStore The operator's token store address
-    function _getOrCreateTokenStore(address operator) internal returns (address tokenStore) {
-        bytes32 salt = keccak256(abi.encode(operator));
-        tokenStore = LibClone.predictDeterministicAddress(address(tokenStoreImplementation), salt, address(this));
-
-        // Deploy if contract does not exist
-        if (tokenStore.code.length == 0) {
-            tokenStore = LibClone.cloneDeterministic(address(tokenStoreImplementation), salt);
-            emit TokenStoreCreated(operator, tokenStore);
-        }
-    }
-
     /// @notice Send tokens from an operator's token store
     /// @param operator The operator whose token store to use
     /// @param token The token to send
     /// @param amount Amount of tokens to send
     /// @param recipient Address to receive the tokens
     function _sendTokens(address operator, address token, uint256 amount, address recipient) internal {
-        address tokenStore = getOperatorTokenStore(operator);
-        // Try low-level call first
+        // Attempt to transfer tokens
+        address tokenStore = getTokenStore(operator);
         bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, amount, recipient);
         (bool success, bytes memory returnData) = tokenStore.call(callData);
         if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
             return;
         }
 
-        // If call failed, deploy token store and try again
-        tokenStore = _getOrCreateTokenStore(operator);
-        TokenStore(tokenStore).sendTokens(token, amount, recipient);
+        // If call failed because token store does not exist, deploy token store and try again
+        if (tokenStore.code.length == 0) {
+            tokenStore = LibClone.cloneDeterministic({
+                implementation: tokenStoreImplementation,
+                salt: bytes32(bytes20(operator))
+            });
+            emit TokenStoreCreated(operator, tokenStore);
+            TokenStore(tokenStore).sendTokens(token, amount, recipient);
+        }
     }
 }

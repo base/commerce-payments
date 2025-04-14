@@ -52,7 +52,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         }
 
         // Get token store address
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // transfer too few token to tokenStore
         IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, tokenStore, paymentInfo.maxAmount - 1);

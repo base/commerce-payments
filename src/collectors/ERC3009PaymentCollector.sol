@@ -40,7 +40,7 @@ contract ERC3009PaymentCollector is TokenCollector {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         // Get token store address
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // Pull tokens into this contract
         IERC3009(token).receiveWithAuthorization({

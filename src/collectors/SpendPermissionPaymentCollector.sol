@@ -31,7 +31,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         override
         onlyPaymentEscrow
     {
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         address token = paymentInfo.token;
         SpendPermissionManager.SpendPermission memory permission = SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,

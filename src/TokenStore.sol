@@ -2,7 +2,6 @@
 pragma solidity ^0.8.13;
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PaymentEscrow} from "./PaymentEscrow.sol";
 
 /// @title TokenStore
 /// @notice Holds funds for a single operator's payments
@@ -12,23 +11,17 @@ contract TokenStore {
     address public immutable escrow;
 
     error OnlyEscrow();
-    error TransferFailed();
 
-    constructor(PaymentEscrow escrow_) {
-        escrow = address(escrow_);
-    }
-
-    /// @notice Only allow the escrow contract to call
-    modifier onlyEscrow() {
-        if (msg.sender != escrow) revert OnlyEscrow();
-        _;
+    constructor(address escrow_) {
+        escrow = escrow_;
     }
 
     /// @notice Send tokens to a recipient, called by escrow during capture/refund
     /// @param token The token being received
     /// @param amount Amount of tokens to receive
     /// @param recipient Address to receive the tokens
-    function sendTokens(address token, uint256 amount, address recipient) external onlyEscrow returns (bool) {
+    function sendTokens(address token, uint256 amount, address recipient) external returns (bool) {
+        if (msg.sender != escrow) revert OnlyEscrow();
         SafeTransferLib.safeTransfer(token, recipient, amount);
         return true;
     }

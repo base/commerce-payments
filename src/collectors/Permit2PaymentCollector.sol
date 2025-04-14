@@ -27,7 +27,7 @@ contract Permit2PaymentCollector is TokenCollector {
         onlyPaymentEscrow
     {
         uint256 nonce = uint256(_getHashPayerAgnostic(paymentInfo));
-        address tokenStore = paymentEscrow.getOperatorTokenStore(paymentInfo.operator);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         permit2.permitTransferFrom({
             permit: ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),

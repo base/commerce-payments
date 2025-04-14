@@ -40,7 +40,7 @@ contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWal
         );
 
         // Get token store address after creation
-        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
 
         // Verify balances - funds should move from MagicSpend to escrow
         assertEq(

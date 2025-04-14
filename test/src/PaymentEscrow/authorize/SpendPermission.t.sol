@@ -38,7 +38,7 @@ contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
         ); // Empty collectorData for regular spend
 
         // Get token store address after creation
-        address operatorTokenStore = paymentEscrow.getOperatorTokenStore(operator);
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
 
         // Verify balances
         assertEq(

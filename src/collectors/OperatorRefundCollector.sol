@@ -24,7 +24,7 @@ contract OperatorRefundCollector is TokenCollector {
         onlyPaymentEscrow
     {
         address operator = paymentInfo.operator;
-        address tokenStore = paymentEscrow.getOperatorTokenStore(operator);
+        address tokenStore = paymentEscrow.getTokenStore(operator);
 
         // Transfer tokens from operator directly to token store
         SafeTransferLib.safeTransferFrom(paymentInfo.token, operator, tokenStore, amount);
