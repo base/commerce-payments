@@ -13,15 +13,16 @@ contract OperatorRefundCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Refund;
 
+    /// @notice Constructor
+    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
     /// @dev Requires previous ERC-20 allowance set by operator on this token collector
     /// @dev Only operator can initate token collection so authentication is inherited from Escrow
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
-        external
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
+        internal
         override
-        onlyPaymentEscrow
     {
         address operator = paymentInfo.operator;
         address tokenStore = paymentEscrow.getTokenStore(operator);

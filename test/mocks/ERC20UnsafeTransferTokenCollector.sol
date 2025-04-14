@@ -41,10 +41,9 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         emit PaymentPreApproved(paymentInfoHash);
     }
 
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
-        external
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
+        internal
         override
-        onlyPaymentEscrow
     {
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         if (!isPreApproved[paymentInfoHash]) {

@@ -115,8 +115,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         view
         returns (SpendPermissionManager.SpendPermission memory)
     {
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-
         return SpendPermissionManager.SpendPermission({
             account: paymentInfo.payer,
             spender: address(spendPermissionPaymentCollector),

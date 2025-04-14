@@ -415,16 +415,15 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes calldata collectorData,
         TokenCollector.CollectorType collectorType
     ) internal {
-        address token = paymentInfo.token;
-        address tokenStore = getTokenStore(paymentInfo.operator);
-
         // Check token collector matches required type
         if (TokenCollector(tokenCollector).collectorType() != collectorType) revert InvalidCollectorForOperation();
 
         // Measure balance change of token store to enforce as equal to expected amount
-        uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
+        address token = paymentInfo.token;
+        address tokenStore = getTokenStore(paymentInfo.operator);
+        uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(token, tokenStore);
         TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
-        uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
+        uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(token, tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
