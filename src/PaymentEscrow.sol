@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
@@ -421,10 +420,10 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address tokenStore = getOperatorTokenStore(paymentInfo.operator);
 
         // Measure balance change of token store to enforce as equal to expected amount
-        uint256 tokenStoreBalanceBefore = IERC20(paymentInfo.token).balanceOf(tokenStore);
+        uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
 
         TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
-        uint256 tokenStoreBalanceAfter = IERC20(paymentInfo.token).balanceOf(tokenStore);
+        uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(paymentInfo.token, tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
