@@ -25,6 +25,9 @@ contract ERC3009PaymentCollector is TokenCollector {
         keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")
     );
 
+    /// @notice Error emitted when both USDC-style and standard ERC3009 receiveWithAuthorization calls fail
+    error ReceiveWithAuthorizationFailed();
+
     /// @notice Constructor
     /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
@@ -50,7 +53,9 @@ contract ERC3009PaymentCollector is TokenCollector {
         bool success =
             _tryUSDCStyleTransfer(token, paymentInfo, signature) || _tryStandardTransfer(token, paymentInfo, signature);
 
-        require(success, "Both USDC and standard ERC3009 calls failed");
+        if (!success) {
+            revert ReceiveWithAuthorizationFailed();
+        }
 
         // Handle excess tokens and final transfer
         _handleTokenTransfers(token, payer, tokenStore, maxAmount, amount);
