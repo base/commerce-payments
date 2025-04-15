@@ -2,12 +2,12 @@
 pragma solidity ^0.8.28;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
-import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 import {TokenCollector} from "../../../src/collectors/TokenCollector.sol";
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 import {MockStandardERC3009Token} from "../../mocks/MockStandardERC3009Token.sol";
 
-contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
+contract ERC3009PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     MockStandardERC3009Token public mockStandardToken;
 
     function setUp() public override {
@@ -67,8 +67,6 @@ contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
 
         // Use our new signing function instead of the USDC one
         bytes memory signature = _signStandardERC3009Authorization(paymentInfo, payer_EOA_PK);
-
-        // Record initial balance
         uint256 initialBalance = mockStandardToken.balanceOf(payerEOA);
 
         vm.prank(address(paymentEscrow));
@@ -76,6 +74,28 @@ contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
 
         address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         assertEq(mockStandardToken.balanceOf(tokenStore), amount);
-        assertEq(mockStandardToken.balanceOf(payerEOA), 0);
+        assertEq(mockStandardToken.balanceOf(payerEOA), initialBalance - amount);
+    }
+
+    function test_collectTokens_succeeds_withERC6492Signature(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        mockERC3009Token.mint(smartWalletCounterfactual, amount);
+
+        assertEq(smartWalletCounterfactual.code.length, 0, "Smart wallet should not be deployed yet");
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(smartWalletCounterfactual, amount);
+
+        bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
+
+        vm.prank(address(paymentEscrow));
+        erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+
+        assertEq(
+            mockERC3009Token.balanceOf(paymentEscrow.getTokenStore(paymentInfo.operator)),
+            amount,
+            "Token store balance did not increase by correct amount"
+        );
+        assertEq(mockERC3009Token.balanceOf(smartWalletCounterfactual), 0, "Smart wallet balance should be 0");
     }
 }

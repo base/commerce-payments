@@ -7,12 +7,9 @@ import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.s
 
 contract AuthorizeWithSpendPermissionTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_withDeployedSmartWallet(uint120 maxAmount, uint120 amount) public {
-        // Get wallet's current balance
-        uint256 walletBalance = mockERC3009Token.balanceOf(address(smartWalletDeployed));
-
         // Assume reasonable values
-        vm.assume(walletBalance >= maxAmount && maxAmount >= amount && amount > 0);
-
+        vm.assume(maxAmount >= amount && amount > 0);
+        mockERC3009Token.mint(address(smartWalletDeployed), amount);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
             payer: address(smartWalletDeployed),
             maxAmount: maxAmount,
