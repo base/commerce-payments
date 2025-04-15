@@ -9,7 +9,6 @@ import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function setUp() public override {
         super.setUp();
-        // Only do the Permit2 approvals in setUp
         vm.prank(address(smartWalletDeployed));
         mockERC20Token.approve(address(permit2), type(uint256).max);
         vm.prank(smartWalletCounterfactual);
@@ -41,7 +40,6 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function test_collectTokens_succeeds_withERC6492Signature(uint120 amount) public {
         vm.assume(amount > 0);
 
-        // Mint exactly what we need
         mockERC20Token.mint(smartWalletCounterfactual, amount);
 
         assertEq(smartWalletCounterfactual.code.length, 0, "Smart wallet should not be deployed yet");

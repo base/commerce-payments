@@ -93,18 +93,8 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
-        // First get the normal smart wallet signature
         bytes memory signature = _signSmartWalletERC3009(paymentInfo, ownerPk, ownerIndex);
-
-        // Prepare the factory call data
-        bytes[] memory allInitialOwners = new bytes[](1);
-        allInitialOwners[0] = abi.encode(vm.addr(ownerPk));
-        bytes memory factoryCallData =
-            abi.encodeCall(CoinbaseSmartWalletFactory.createAccount, (allInitialOwners, ownerIndex));
-
-        // Then wrap it in ERC6492 format
-        bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, signature);
-        return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
+        return _wrapWithERC6492(signature, ownerPk, ownerIndex);
     }
 
     /// @notice Helper to create a SpendPermission struct with test defaults
@@ -162,14 +152,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         );
         bytes memory signature = _sign(ownerPk, replaySafeHash);
         bytes memory wrappedSignature = abi.encode(CoinbaseSmartWallet.SignatureWrapper(ownerIndex, signature));
-
-        // Wrap in ERC6492 format
-        bytes[] memory allInitialOwners = new bytes[](1);
-        allInitialOwners[0] = abi.encode(vm.addr(ownerPk));
-        bytes memory factoryCallData =
-            abi.encodeCall(CoinbaseSmartWalletFactory.createAccount, (allInitialOwners, ownerIndex));
-        bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, wrappedSignature);
-        return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
+        return _wrapWithERC6492(wrappedSignature, ownerPk, ownerIndex);
     }
 
     function _createWithdrawRequest(SpendPermissionManager.SpendPermission memory spendPermission)
@@ -226,7 +209,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         bytes32 domainSeparator = IPermit2(permit2).DOMAIN_SEPARATOR();
         bytes32 permit2Digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
 
-        // Now wrap the permit2 digest in the smart wallet's domain, just like in _signSmartWalletERC3009
+        // Now wrap the permit2 digest in the smart wallet's domain
         bytes32 smartWalletDomainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -243,15 +226,23 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         // Create the smart wallet signature
         bytes memory signature = _sign(ownerPk, finalHash);
         bytes memory wrappedSignature = abi.encode(CoinbaseSmartWallet.SignatureWrapper(ownerIndex, signature));
+        return _wrapWithERC6492(wrappedSignature, ownerPk, ownerIndex);
+    }
 
-        // Wrap in ERC6492 format, just like in _signSmartWalletERC3009WithERC6492
+    // Helper to wrap any smart wallet signature in ERC6492 format
+    function _wrapWithERC6492(bytes memory smartWalletSignature, uint256 ownerPk, uint256 ownerIndex)
+        internal
+        view
+        returns (bytes memory)
+    {
+        // Prepare the factory call data
         bytes[] memory allInitialOwners = new bytes[](1);
         allInitialOwners[0] = abi.encode(vm.addr(ownerPk));
         bytes memory factoryCallData =
             abi.encodeCall(CoinbaseSmartWalletFactory.createAccount, (allInitialOwners, ownerIndex));
 
-        bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, wrappedSignature);
-
+        // Wrap in ERC6492 format
+        bytes memory eip6492Signature = abi.encode(address(smartWalletFactory), factoryCallData, smartWalletSignature);
         return abi.encodePacked(eip6492Signature, EIP6492_MAGIC_VALUE);
     }
 }
