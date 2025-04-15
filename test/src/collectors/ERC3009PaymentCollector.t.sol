@@ -2,11 +2,11 @@
 pragma solidity ^0.8.28;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
-import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 import {TokenCollector} from "../../../src/collectors/TokenCollector.sol";
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 
-contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
+contract ERC3009PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
@@ -21,5 +21,32 @@ contract ERC3009PaymentCollectorTest is PaymentEscrowBase {
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         vm.prank(address(paymentEscrow));
         erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+    }
+
+    function test_collectTokens_succeeds_withERC6492Signature(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        // Mint exactly what we need
+        mockERC3009Token.mint(smartWalletCounterfactual, amount);
+
+        assertEq(smartWalletCounterfactual.code.length, 0, "Smart wallet should not be deployed yet");
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(smartWalletCounterfactual, amount);
+
+        bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
+
+        vm.prank(address(paymentEscrow));
+        erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+
+        assertEq(
+            mockERC3009Token.balanceOf(paymentEscrow.getTokenStore(paymentInfo.operator)),
+            amount,
+            "Token store balance did not increase by correct amount"
+        );
+        assertEq(
+            mockERC3009Token.balanceOf(smartWalletCounterfactual),
+            0, // Should be 0 since we minted exactly what we needed
+            "Smart wallet balance should be 0"
+        );
     }
 }
