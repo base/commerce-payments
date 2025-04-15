@@ -82,7 +82,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         // Deploy token collector contracts
         erc3009PaymentCollector = new ERC3009PaymentCollector(address(paymentEscrow), multicall3);
         preApprovalPaymentCollector = new PreApprovalPaymentCollector(address(paymentEscrow));
-        permit2PaymentCollector = new Permit2PaymentCollector(address(paymentEscrow), permit2);
+        permit2PaymentCollector = new Permit2PaymentCollector(address(paymentEscrow), permit2, multicall3);
         spendPermissionPaymentCollector =
             new SpendPermissionPaymentCollector(address(paymentEscrow), address(spendPermissionManager));
         operatorRefundCollector = new OperatorRefundCollector(address(paymentEscrow));
