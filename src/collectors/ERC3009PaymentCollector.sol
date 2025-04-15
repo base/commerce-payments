@@ -4,9 +4,8 @@ pragma solidity ^0.8.28;
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {IERC3009} from "../interfaces/IERC3009.sol";
-import {IMulticall3} from "../interfaces/IMulticall3.sol";
-import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
+import {TokenCollector} from "./TokenCollector.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 
 /// @title ERC3009PaymentCollector

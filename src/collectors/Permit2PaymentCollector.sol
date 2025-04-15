@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
-import {IMulticall3} from "../interfaces/IMulticall3.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
