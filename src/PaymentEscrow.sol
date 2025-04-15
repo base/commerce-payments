@@ -73,6 +73,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address receiver,
         address token,
         uint256 amount,
+        uint16 feeBps,
+        address feeReceiver,
         address tokenCollector
     );
 
@@ -88,7 +90,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount);
+    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount, uint16 feeBps, address feeReceiver);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
     event PaymentVoided(bytes32 indexed paymentInfoHash, uint256 amount);
@@ -218,15 +220,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Set payment state with refundable amount
         paymentState[paymentInfoHash] =
             PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
-        emit PaymentCharged(
-            paymentInfoHash,
-            paymentInfo.operator,
-            paymentInfo.payer,
-            paymentInfo.receiver,
-            paymentInfo.token,
-            amount,
-            tokenCollector
-        );
+        _emitPaymentCharged(paymentInfoHash, paymentInfo, amount, feeBps, feeReceiver, tokenCollector);
 
         // Transfer tokens into escrow
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
@@ -306,7 +300,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             state.refundableAmount += uint120(amount);
         }
         paymentState[paymentInfoHash] = state;
-        emit PaymentCaptured(paymentInfoHash, amount);
+        emit PaymentCaptured(paymentInfoHash, amount, feeBps, feeReceiver);
 
         // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
@@ -527,5 +521,34 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             emit TokenStoreCreated(operator, tokenStore);
             TokenStore(tokenStore).sendTokens(token, recipient, amount);
         }
+    }
+
+    /// @notice Emits the PaymentCharged event
+    /// @dev Helper to reduce stack depth
+    /// @param paymentInfoHash The hash of the payment info
+    /// @param paymentInfo The payment info struct
+    /// @param amount The amount of tokens charged
+    /// @param feeBps The fee percentage in basis points
+    /// @param feeReceiver The address to receive the fees
+    /// @param tokenCollector The address of the token collector
+    function _emitPaymentCharged(
+        bytes32 paymentInfoHash,
+        PaymentInfo calldata paymentInfo,
+        uint256 amount,
+        uint16 feeBps,
+        address feeReceiver,
+        address tokenCollector
+    ) internal {
+        emit PaymentCharged(
+            paymentInfoHash,
+            paymentInfo.operator,
+            paymentInfo.payer,
+            paymentInfo.receiver,
+            paymentInfo.token,
+            amount,
+            feeBps,
+            feeReceiver,
+            tokenCollector
+        );
     }
 }

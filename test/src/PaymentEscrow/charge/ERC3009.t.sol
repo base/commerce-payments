@@ -294,6 +294,8 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
             paymentInfo.receiver,
             paymentInfo.token,
             valueToCharge,
+            paymentInfo.minFeeBps,
+            paymentInfo.feeReceiver,
             address(erc3009PaymentCollector)
         );
 
