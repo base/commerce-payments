@@ -188,7 +188,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         view
         returns (bytes memory)
     {
-        // First construct the permit2 hash exactly as in _signPermit2Transfer
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
             permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),
             nonce: uint256(_getHashPayerAgnostic(paymentInfo)),
@@ -209,7 +208,6 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         bytes32 domainSeparator = IPermit2(permit2).DOMAIN_SEPARATOR();
         bytes32 permit2Digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, permitHash));
 
-        // Now wrap the permit2 digest in the smart wallet's domain
         bytes32 smartWalletDomainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
