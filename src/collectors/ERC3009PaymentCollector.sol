@@ -20,6 +20,11 @@ contract ERC3009PaymentCollector is TokenCollector {
     /// @notice Public Multicall3 singleton for safe ERC-6492 external calls
     IMulticall3 public immutable multicall3;
 
+    // Selector for standard ERC3009 receiveWithAuthorization
+    bytes4 private constant STANDARD_RECEIVE_WITH_AUTH_SELECTOR = bytes4(
+        keccak256("receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)")
+    );
+
     /// @notice Constructor
     /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
@@ -36,38 +41,89 @@ contract ERC3009PaymentCollector is TokenCollector {
         address token = paymentInfo.token;
         address payer = paymentInfo.payer;
         uint256 maxAmount = paymentInfo.maxAmount;
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        // Construct nonce as payer-less payment info hash for offchain preparation convenience
+        // Try USDC-style first, then fallback to standard if it fails
+        bool success =
+            _tryUSDCStyleTransfer(token, paymentInfo, signature) || _tryStandardTransfer(token, paymentInfo, signature);
+
+        require(success, "Both USDC and standard ERC3009 calls failed");
+
+        // Handle excess tokens and final transfer
+        _handleTokenTransfers(token, payer, tokenStore, maxAmount, amount);
+    }
+
+    function _tryUSDCStyleTransfer(
+        address token,
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        bytes memory signature
+    ) internal returns (bool) {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
-        // Get token store address
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
+        (bool success,) = token.call(
+            abi.encodeWithSelector(
+                IERC3009.receiveWithAuthorization.selector,
+                paymentInfo.payer,
+                address(this),
+                paymentInfo.maxAmount,
+                0,
+                paymentInfo.preApprovalExpiry,
+                nonce,
+                signature
+            )
+        );
 
-        // Pull tokens into this contract
-        IERC3009(token).receiveWithAuthorization({
-            from: payer,
-            to: address(this),
-            value: maxAmount,
-            validAfter: 0,
-            validBefore: paymentInfo.preApprovalExpiry,
-            nonce: nonce,
-            signature: signature
-        });
+        return success;
+    }
 
-        // Return excess tokens to payer if any
+    function _tryStandardTransfer(address token, PaymentEscrow.PaymentInfo calldata paymentInfo, bytes memory signature)
+        internal
+        returns (bool)
+    {
+        if (signature.length != 65) return false;
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+
+        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
+
+        (bool success,) = token.call(
+            abi.encodeWithSelector(
+                STANDARD_RECEIVE_WITH_AUTH_SELECTOR,
+                paymentInfo.payer,
+                address(this),
+                paymentInfo.maxAmount,
+                0,
+                paymentInfo.preApprovalExpiry,
+                nonce,
+                v,
+                r,
+                s
+            )
+        );
+
+        return success;
+    }
+
+    function _handleTokenTransfers(address token, address payer, address tokenStore, uint256 maxAmount, uint256 amount)
+        internal
+    {
         unchecked {
-            // Cannot underflow since amount is validated to be <= maxAmount by PaymentEscrow
             uint256 excess = maxAmount - amount;
             if (excess > 0) {
                 SafeTransferLib.safeTransfer(token, payer, excess);
             }
         }
-
-        // Transfer tokens directly to token store
-        SafeTransferLib.safeTransfer(paymentInfo.token, tokenStore, amount);
+        SafeTransferLib.safeTransfer(token, tokenStore, amount);
     }
 
     /// @notice Parse and process ERC-6492 signatures
