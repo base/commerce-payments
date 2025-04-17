@@ -179,6 +179,23 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
+    function test_reverts_whenFeeBpsRangeInvalid(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps) public {
+        vm.assume(amount > 0);
+        vm.assume(maxFeeBps < 10_000);
+        vm.assume(minFeeBps <= 10_000);
+        vm.assume(minFeeBps > maxFeeBps);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidFeeBpsRange.selector, minFeeBps, maxFeeBps));
+        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+    }
+
     function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
 
