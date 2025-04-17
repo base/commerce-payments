@@ -216,6 +216,20 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
+    function test_reverts_whenUsingIncorrectTokenCollectorForOperation(uint120 amount) public {
+        uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
+
+        vm.assume(amount > 0 && amount <= payerBalance);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidCollectorForOperation.selector));
+        paymentEscrow.authorize(paymentInfo, amount, address(operatorRefundCollector), signature);
+    }
+
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
         uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
 
