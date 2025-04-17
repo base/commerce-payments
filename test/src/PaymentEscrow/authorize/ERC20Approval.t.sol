@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
+import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {PreApprovalPaymentCollector} from "../../../../src/collectors/PreApprovalPaymentCollector.sol";
+
 import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
+import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract AuthorizeWithERC20ApprovalTest is PaymentEscrowSmartWalletBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {

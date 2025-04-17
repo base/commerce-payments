@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowBase} from "../base/PaymentEscrowBase.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+
+import {PaymentEscrowBase} from "../base/PaymentEscrowBase.sol";
 
 contract GasBenchmarkBase is PaymentEscrowBase {
     uint120 internal constant BENCHMARK_AMOUNT = 100e6;

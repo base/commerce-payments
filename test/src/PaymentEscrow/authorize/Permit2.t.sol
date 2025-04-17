@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
+
+import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
+
+import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract AuthorizeWithPermit2Test is PaymentEscrowSmartWalletBase {
     // Non-ERC3009 token to guarantee no false positive use of Permit2 path

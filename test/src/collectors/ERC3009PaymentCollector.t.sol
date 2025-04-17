@@ -2,9 +2,10 @@
 pragma solidity ^0.8.28;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 import {TokenCollector} from "../../../src/collectors/TokenCollector.sol";
+
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
+import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract ERC3009PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {

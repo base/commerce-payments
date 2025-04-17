@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
-import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
+import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 import {PreApprovalPaymentCollector} from "../../../../src/collectors/PreApprovalPaymentCollector.sol";
+
+import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 
 contract ChargeWithERC20ApprovalTest is PaymentEscrowBase {
     function test_reverts_tokenIsNotPreApproved(uint120 amount) public {

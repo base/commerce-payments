@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
-import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MagicSpend} from "magicspend/MagicSpend.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+
+import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
+
+import {PaymentEscrowSmartWalletBase} from "../../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract AuthorizeWithSpendPermissionWithMagicSpendTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_withMagicSpendWithdraw(uint120 amount) public {
