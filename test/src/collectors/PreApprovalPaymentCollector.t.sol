@@ -8,6 +8,71 @@ import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract PreApprovalPaymentCollectorTest is PaymentEscrowBase {
+    // ======= preApprove =======
+
+    function test_preApprove_reverts_ifSenderIsNotPayer(address invalidSender, uint120 amount) public {
+        vm.assume(invalidSender != payerEOA);
+        vm.assume(invalidSender != address(0));
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+
+        vm.prank(invalidSender);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentInfo.payer));
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+    }
+
+    function test_preApprove_reverts_ifPaymentIsAlreadyAuthorized(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+
+        // First authorize the payment
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+        mockERC3009Token.mint(payerEOA, amount);
+
+        vm.prank(operator);
+        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        // Now try to pre-approve
+        vm.prank(payerEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentAlreadyCollected.selector, paymentInfoHash)
+        );
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+    }
+
+    function test_preApprove_reverts_ifCalledBypayerMultipleTimes(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});
+
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+
+        vm.startPrank(payerEOA);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+        vm.expectRevert(
+            abi.encodeWithSelector(PreApprovalPaymentCollector.PaymentAlreadyPreApproved.selector, paymentInfoHash)
+        );
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+    }
+
+    function test_preApprove_emitsExpectedEvents(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+
+        vm.expectEmit(true, false, false, false);
+        emit PreApprovalPaymentCollector.PaymentPreApproved(paymentInfoHash);
+
+        vm.prank(payerEOA);
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+    }
+
+    // ======= collectTokens =======
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
@@ -15,7 +80,7 @@ contract PreApprovalPaymentCollectorTest is PaymentEscrowBase {
         preApprovalPaymentCollector.collectTokens(paymentInfo, amount, "");
     }
 
-    function test_reverts_ifTokenIsNotPreApproved(uint120 amount) public {
+    function test_collectTokens_reverts_ifTokenIsNotPreApproved(uint120 amount) public {
         vm.assume(amount > 0);
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
