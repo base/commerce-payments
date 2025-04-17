@@ -162,12 +162,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Refund attempted with amount exceeding previous non-refunded captures
     error RefundExceedsCapture(uint256 refund, uint256 captured);
 
-    /// @notice Token store not found for an operator
-    error TokenStoreNotFound(address operator);
-
-    /// @notice Token transfer failed
-    error TokenTransferFailed();
-
     /// @notice Check call sender is specified address
     /// @param sender Address to enforce is the call sender
     modifier onlySender(address sender) {
