@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
-import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
+import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
+import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
-contract AuthorizeWithERC3009Test is PaymentEscrowBase {
+import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+
+import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
+import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+
+contract AuthorizeTest is PaymentEscrowSmartWalletBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
@@ -179,6 +185,23 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
+    function test_reverts_whenFeeBpsRangeInvalid(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps) public {
+        vm.assume(amount > 0);
+        vm.assume(maxFeeBps < 10_000);
+        vm.assume(minFeeBps <= 10_000);
+        vm.assume(minFeeBps > maxFeeBps);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidFeeBpsRange.selector, minFeeBps, maxFeeBps));
+        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+    }
+
     function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
 
@@ -199,6 +222,42 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
+    function test_reverts_whenUsingIncorrectTokenCollectorForOperation(uint120 amount) public {
+        uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
+
+        vm.assume(amount > 0 && amount <= payerBalance);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidCollectorForOperation.selector));
+        paymentEscrow.authorize(paymentInfo, amount, address(operatorRefundCollector), signature);
+    }
+
+    function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC20Token));
+
+        // approve hook to transfer tokens
+        vm.prank(payerEOA);
+        mockERC20Token.approve(address(erc20UnsafeTransferPaymentCollector), amount);
+
+        // Pre-approve in hook
+        vm.prank(payerEOA);
+        ERC20UnsafeTransferTokenCollector(address(erc20UnsafeTransferPaymentCollector)).preApprove(paymentInfo);
+
+        // mint tokens to buyer
+        mockERC20Token.mint(payerEOA, amount);
+
+        // Try to authorize - should fail on token transfer
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenCollectionFailed.selector));
+        paymentEscrow.authorize(paymentInfo, amount, address(erc20UnsafeTransferPaymentCollector), "");
+    }
+
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
         uint256 payerBalance = mockERC3009Token.balanceOf(payerEOA);
 
@@ -216,6 +275,130 @@ contract AuthorizeWithERC3009Test is PaymentEscrowBase {
         address operatorTokenStore = paymentEscrow.getTokenStore(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
+    }
+
+    function test_succeeds_usingPermit2PaymentCollector(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        // Deploy a regular ERC20 without ERC3009
+        MockERC20 plainToken = new MockERC20("Plain Token", "PLAIN", 18);
+
+        // payer needs to approve Permit2 to spend their tokens
+        vm.startPrank(payerEOA);
+        plainToken.approve(permit2, type(uint256).max);
+        vm.stopPrank();
+
+        // Mint enough tokens to the payer
+        plainToken.mint(payerEOA, amount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(plainToken)});
+
+        // Generate Permit2 signature using the same deadline as paymentInfo
+        bytes memory signature = _signPermit2Transfer({
+            token: address(plainToken),
+            amount: amount,
+            deadline: paymentInfo.preApprovalExpiry,
+            nonce: uint256(_getHashPayerAgnostic(paymentInfo)),
+            privateKey: payer_EOA_PK
+        });
+
+        // Should succeed via Permit2 authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(paymentInfo, amount, address(permit2PaymentCollector), signature);
+
+        // Verify the transfer worked
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        assertEq(plainToken.balanceOf(operatorTokenStore), amount);
+        assertEq(plainToken.balanceOf(payerEOA), 0);
+    }
+
+    function test_succeeds_usingSpendPermissionPaymentCollector(uint120 maxAmount, uint120 amount) public {
+        // Assume reasonable values
+        vm.assume(maxAmount >= amount && amount > 0);
+        mockERC3009Token.mint(address(smartWalletDeployed), amount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
+            payer: address(smartWalletDeployed),
+            maxAmount: maxAmount,
+            token: address(mockERC3009Token)
+        });
+
+        // Create and sign the spend permission
+        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentInfo);
+
+        bytes memory signature = _signSpendPermission(
+            permission,
+            DEPLOYED_WALLET_OWNER_PK,
+            0 // owner index
+        );
+
+        // Record balances before
+        uint256 walletBalanceBefore = mockERC3009Token.balanceOf(address(smartWalletDeployed));
+
+        // Submit authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(
+            paymentInfo, amount, address(spendPermissionPaymentCollector), abi.encode(signature, "")
+        ); // Empty collectorData for regular spend
+
+        // Get token store address after creation
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+
+        // Verify balances
+        assertEq(
+            mockERC3009Token.balanceOf(address(smartWalletDeployed)),
+            walletBalanceBefore - amount,
+            "Wallet balance should decrease by amount"
+        );
+        assertEq(
+            mockERC3009Token.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount"
+        );
+    }
+
+    function test_succeeds_usingSpendPermissionPaymentCollector_withMagicSpend(uint120 amount) public {
+        // Assume reasonable values and fund MagicSpend
+        vm.assume(amount > 0);
+        mockERC3009Token.mint(address(magicSpend), amount);
+
+        // Create payment info with SpendPermissionWithMagicSpend auth type
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo(address(smartWalletDeployed), amount, address(mockERC3009Token));
+
+        // Create the spend permission
+        SpendPermissionManager.SpendPermission memory permission = _createSpendPermission(paymentInfo);
+
+        // Create and sign withdraw request
+        MagicSpend.WithdrawRequest memory withdrawRequest = _createWithdrawRequest(permission);
+        withdrawRequest.asset = address(mockERC3009Token);
+        withdrawRequest.amount = amount;
+        withdrawRequest.signature = _signWithdrawRequest(address(smartWalletDeployed), withdrawRequest);
+
+        bytes memory signature = _signSpendPermission(permission, DEPLOYED_WALLET_OWNER_PK, 0);
+
+        // Record balances before
+        uint256 magicSpendBalanceBefore = mockERC3009Token.balanceOf(address(magicSpend));
+
+        // Submit authorization
+        vm.prank(operator);
+        paymentEscrow.authorize(
+            paymentInfo,
+            amount,
+            address(spendPermissionPaymentCollector),
+            abi.encode(signature, abi.encode(withdrawRequest))
+        );
+
+        // Get token store address after creation
+        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+
+        // Verify balances - funds should move from MagicSpend to escrow
+        assertEq(
+            mockERC3009Token.balanceOf(address(magicSpend)),
+            magicSpendBalanceBefore - amount,
+            "MagicSpend balance should decrease by amount"
+        );
+        assertEq(
+            mockERC3009Token.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount"
+        );
     }
 
     function test_authorize_succeeds_whenValueLessThanAuthorized(uint120 authorizedAmount, uint120 confirmAmount)

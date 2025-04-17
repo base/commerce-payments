@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract CaptureTest is PaymentEscrowBase {
@@ -293,6 +294,40 @@ contract CaptureTest is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
         );
         paymentEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, paymentInfo.feeReceiver);
+    }
+
+    function test_reverts_whenFeeReceiverInvalid(
+        uint120 authorizedAmount,
+        uint16 minFeeBps,
+        uint16 maxFeeBps,
+        uint16 captureFeeBps,
+        address invalidFeeReceiver
+    ) public {
+        // Assume reasonable bounds for fees
+        vm.assume(authorizedAmount > 0);
+        vm.assume(minFeeBps > 0);
+        vm.assume(maxFeeBps >= minFeeBps && maxFeeBps < 10000);
+        vm.assume(captureFeeBps >= minFeeBps && captureFeeBps <= maxFeeBps);
+        vm.assume(invalidFeeReceiver != address(0));
+        vm.assume(invalidFeeReceiver != feeReceiver);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+        paymentInfo.feeReceiver = feeReceiver;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        vm.expectRevert(
+            abi.encodeWithSelector(PaymentEscrow.InvalidFeeReceiver.selector, invalidFeeReceiver, feeReceiver)
+        );
+        paymentEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, invalidFeeReceiver);
     }
 
     function test_succeeds_withOperatorSetFeeRecipient(

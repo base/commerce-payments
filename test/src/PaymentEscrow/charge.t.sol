@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
-import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-contract ChargeWithERC3009Test is PaymentEscrowBase {
+import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
+
+import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+
+contract ChargeTest is PaymentEscrowBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
