@@ -5,9 +5,9 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 
-import {PaymentEscrowBase} from "../../../base/PaymentEscrowBase.sol";
+import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
-contract ChargeWithERC3009Test is PaymentEscrowBase {
+contract ChargeTest is PaymentEscrowBase {
     function test_reverts_whenValueIsZero() public {
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
