@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
-import {PreApprovalPaymentCollector} from "../../../src/collectors/PreApprovalPaymentCollector.sol";
-import {ReentrantTokenCollector} from "../../../test/mocks/ReentrantTokenCollector.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {console} from "forge-std/console.sol";
+
+import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {PreApprovalPaymentCollector} from "../../../src/collectors/PreApprovalPaymentCollector.sol";
+
+import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+import {ReentrantTokenCollector} from "../../../test/mocks/ReentrantTokenCollector.sol";
 
 contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
     ReentrantTokenCollector reentrantTokenCollector;
