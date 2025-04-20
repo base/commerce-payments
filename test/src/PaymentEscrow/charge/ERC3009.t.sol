@@ -289,10 +289,7 @@ contract ChargeWithERC3009Test is PaymentEscrowBase {
         vm.expectEmit(true, false, false, true);
         emit PaymentEscrow.PaymentCharged(
             paymentInfoHash,
-            paymentInfo.operator,
-            paymentInfo.payer,
-            paymentInfo.receiver,
-            paymentInfo.token,
+            paymentInfo,
             valueToCharge,
             paymentInfo.minFeeBps,
             paymentInfo.feeReceiver,

@@ -54,7 +54,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
         // Then void the authorization
         vm.prank(operator);
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, paymentInfo, authorizedAmount);
         paymentEscrow.void(paymentInfo);
 
         // Verify funds were returned to payer
@@ -77,7 +77,7 @@ contract AuthorizationVoidedTest is PaymentEscrowBase {
 
         // Record all expected events in order
         vm.expectEmit(true, false, false, false);
-        emit PaymentEscrow.PaymentVoided(paymentInfoHash, authorizedAmount);
+        emit PaymentEscrow.PaymentVoided(paymentInfoHash, paymentInfo, authorizedAmount);
 
         // Then void the authorization and verify events
         vm.prank(operator);
