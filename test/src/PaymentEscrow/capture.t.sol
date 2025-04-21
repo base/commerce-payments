@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
-
+import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract CaptureTest is PaymentEscrowBase {
@@ -330,6 +330,27 @@ contract CaptureTest is PaymentEscrowBase {
             abi.encodeWithSelector(PaymentEscrow.InvalidFeeReceiver.selector, invalidFeeReceiver, feeReceiver)
         );
         paymentEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, invalidFeeReceiver);
+    }
+
+    function test_reverts_ifSendTokensReverts(uint120 authorizedAmount) public {
+        vm.assume(authorizedAmount > 0);
+        address revertingToken = address(new MockRevertOnTransferToken(address(preApprovalPaymentCollector)));
+        MockRevertOnTransferToken(revertingToken).mint(payerEOA, authorizedAmount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.token = revertingToken;
+
+        vm.prank(payerEOA);
+        MockRevertOnTransferToken(revertingToken).approve(address(preApprovalPaymentCollector), authorizedAmount);
+        vm.prank(payerEOA);
+        preApprovalPaymentCollector.preApprove(paymentInfo);
+
+        vm.startPrank(paymentInfo.operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
+
+        vm.expectRevert();
+        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        vm.stopPrank();
     }
 
     function test_succeeds_withOperatorSetFeeRecipient(
