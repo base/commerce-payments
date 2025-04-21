@@ -143,7 +143,7 @@ contract ReclaimTest is PaymentEscrowBase {
 
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentReclaimed(paymentInfoHash, paymentInfo, amount);
+        emit PaymentEscrow.PaymentReclaimed(paymentInfoHash, amount);
 
         vm.prank(payerEOA);
         paymentEscrow.reclaim(paymentInfo);
