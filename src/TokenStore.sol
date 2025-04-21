@@ -25,6 +25,7 @@ contract TokenStore {
     /// @param token The token being received
     /// @param recipient Address to receive the tokens
     /// @param amount Amount of tokens to receive
+    /// @return success True if the transfer was successful
     function sendTokens(address token, address recipient, uint256 amount) external returns (bool) {
         if (msg.sender != paymentEscrow) revert OnlyPaymentEscrow();
         SafeERC20.safeTransfer(IERC20(token), recipient, amount);
