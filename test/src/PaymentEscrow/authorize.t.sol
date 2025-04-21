@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {MagicSpend} from "magicspend/MagicSpend.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 

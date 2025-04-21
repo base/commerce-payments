@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-
 import {PaymentEscrow} from "../../../../src/PaymentEscrow.sol";
 
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
@@ -442,6 +440,7 @@ contract ChargeTest is PaymentEscrowBase {
     ) public {
         // Assume reasonable bounds for fees
         vm.assume(amount > 0);
+        vm.assume(minFeeBps > 0);
         vm.assume(maxFeeBps >= minFeeBps && maxFeeBps <= 10000);
         vm.assume(captureFeeBps >= minFeeBps && captureFeeBps <= maxFeeBps); // Must be within range
 

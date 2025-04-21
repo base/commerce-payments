@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IERC3009} from "../interfaces/IERC3009.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
@@ -58,11 +59,11 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
             // Cannot underflow since amount is validated to be <= maxAmount by PaymentEscrow
             uint256 excess = maxAmount - amount;
             if (excess > 0) {
-                SafeTransferLib.safeTransfer(token, payer, excess);
+                SafeERC20.safeTransfer(IERC20(token), payer, excess);
             }
         }
 
         // Transfer tokens directly to token store
-        SafeTransferLib.safeTransfer(paymentInfo.token, tokenStore, amount);
+        SafeERC20.safeTransfer(IERC20(paymentInfo.token), tokenStore, amount);
     }
 }

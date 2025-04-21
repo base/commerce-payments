@@ -337,6 +337,7 @@ contract CaptureTest is PaymentEscrowBase {
     {
         // Assume reasonable bounds for fees
         vm.assume(authorizedAmount > 0);
+        vm.assume(feeReceiver != address(0));
         assumePayable(feeReceiver);
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);

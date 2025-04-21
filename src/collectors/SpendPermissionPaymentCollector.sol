@@ -3,7 +3,8 @@ pragma solidity ^0.8.28;
 
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MagicSpend} from "magicspend/MagicSpend.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
@@ -67,6 +68,6 @@ contract SpendPermissionPaymentCollector is TokenCollector {
 
         // Transfer tokens from collector to token store
         address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
-        SafeTransferLib.safeTransfer(token, tokenStore, amount);
+        SafeERC20.safeTransfer(IERC20(token), tokenStore, amount);
     }
 }

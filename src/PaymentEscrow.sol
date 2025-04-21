@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
@@ -16,6 +17,8 @@ import {TokenStore} from "./TokenStore.sol";
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow is ReentrancyGuardTransient {
+    using SafeERC20 for IERC20;
+
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
@@ -397,9 +400,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Measure balance change of token store to enforce as equal to expected amount
         address token = paymentInfo.token;
         address tokenStore = getTokenStore(paymentInfo.operator);
-        uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(token, tokenStore);
+        uint256 tokenStoreBalanceBefore = IERC20(token).balanceOf(tokenStore);
         TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
-        uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(token, tokenStore);
+        uint256 tokenStoreBalanceAfter = IERC20(token).balanceOf(tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
