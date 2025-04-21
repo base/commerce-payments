@@ -24,17 +24,17 @@ abstract contract ERC6492SignatureHandler {
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
         // Early return if signature less than 32 bytes
         if (signature.length < 32) return signature;
-
+        uint256 signatureLength = signature.length;
         // Early return if signature suffix not ERC-6492 magic value
         bytes32 suffix;
         assembly {
-            suffix := mload(add(add(signature, 32), sub(mload(signature), 32)))
+            suffix := mload(add(add(signature, 32), sub(signatureLength, 32)))
         }
         if (suffix != _ERC6492_MAGIC_VALUE) return signature;
 
         // Parse inner signature from ERC-6492 format
-        bytes memory erc6492Data = new bytes(signature.length - 32);
-        for (uint256 i; i < signature.length - 32; i++) {
+        bytes memory erc6492Data = new bytes(signatureLength - 32);
+        for (uint256 i; i < signatureLength - 32; i++) {
             erc6492Data[i] = signature[i];
         }
         address prepareTarget;
