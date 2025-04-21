@@ -68,27 +68,20 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Emitted when a payment is charged and immediately captured
     event PaymentCharged(
         bytes32 indexed paymentInfoHash,
-        address operator,
-        address payer,
-        address receiver,
-        address token,
+        PaymentInfo paymentInfo,
         uint256 amount,
+        uint16 feeBps,
+        address feeReceiver,
         address tokenCollector
     );
 
     /// @notice Emitted when authorized (escrowed) amount is increased
     event PaymentAuthorized(
-        bytes32 indexed paymentInfoHash,
-        address operator,
-        address payer,
-        address receiver,
-        address token,
-        uint256 amount,
-        address tokenCollector
+        bytes32 indexed paymentInfoHash, PaymentInfo paymentInfo, uint256 amount, address tokenCollector
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount);
+    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount, uint16 feeBps, address feeReceiver);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
     event PaymentVoided(bytes32 indexed paymentInfoHash, uint256 amount);
@@ -212,15 +205,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Set payment state with refundable amount
         paymentState[paymentInfoHash] =
             PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
-        emit PaymentCharged(
-            paymentInfoHash,
-            paymentInfo.operator,
-            paymentInfo.payer,
-            paymentInfo.receiver,
-            paymentInfo.token,
-            amount,
-            tokenCollector
-        );
+        emit PaymentCharged(paymentInfoHash, paymentInfo, amount, feeBps, feeReceiver, tokenCollector);
 
         // Transfer tokens into escrow
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
@@ -250,15 +235,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Set payment state with capturable amount
         paymentState[paymentInfoHash] =
             PaymentState({hasCollectedPayment: true, capturableAmount: uint120(amount), refundableAmount: 0});
-        emit PaymentAuthorized(
-            paymentInfoHash,
-            paymentInfo.operator,
-            paymentInfo.payer,
-            paymentInfo.receiver,
-            paymentInfo.token,
-            amount,
-            tokenCollector
-        );
+        emit PaymentAuthorized(paymentInfoHash, paymentInfo, amount, tokenCollector);
 
         // Transfer tokens into escrow
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
@@ -300,7 +277,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             state.refundableAmount += uint120(amount);
         }
         paymentState[paymentInfoHash] = state;
-        emit PaymentCaptured(paymentInfoHash, amount);
+        emit PaymentCaptured(paymentInfoHash, amount, feeBps, feeReceiver);
 
         // Transfer tokens to receiver and fee receiver
         _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
