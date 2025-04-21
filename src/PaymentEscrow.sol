@@ -417,7 +417,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     {
         unchecked {
             // feeBps is already validated to be <= 10_000 in _validateFee
-            uint256 feeAmount = uint256(amount) * feeBps / 10_000;
+            uint256 feeAmount = amount * uint256(feeBps) / 10_000;
 
             // Send fee portion if non-zero
             if (feeAmount > 0) {
