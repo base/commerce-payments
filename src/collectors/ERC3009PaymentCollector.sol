@@ -55,12 +55,9 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
         });
 
         // Return excess tokens to payer if any
-        unchecked {
-            // Cannot underflow since amount is validated to be <= maxAmount by PaymentEscrow
-            uint256 excess = maxAmount - amount;
-            if (excess > 0) {
-                SafeERC20.safeTransfer(IERC20(token), payer, excess);
-            }
+        uint256 excess = maxAmount - amount;
+        if (excess > 0) {
+            SafeERC20.safeTransfer(IERC20(token), payer, excess);
         }
 
         // Transfer tokens directly to token store

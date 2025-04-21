@@ -276,12 +276,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Update payment state, converting capturable amount to refundable amount
-        unchecked {
-            // We've already checked that capturableAmount >= amount
-            state.capturableAmount -= uint120(amount);
-            // refundableAmount + amount cannot exceed maxAmount which fits in uint120
-            state.refundableAmount += uint120(amount);
-        }
+        state.capturableAmount -= uint120(amount);
+        state.refundableAmount += uint120(amount);
         paymentState[paymentInfoHash] = state;
         emit PaymentCaptured(paymentInfoHash, amount, feeBps, feeReceiver);
 
@@ -415,19 +411,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        unchecked {
-            // feeBps is already validated to be <= 10_000 in _validateFee
-            uint256 feeAmount = amount * uint256(feeBps) / 10_000;
+        uint256 feeAmount = amount * uint256(feeBps) / 10_000;
 
-            // Send fee portion if non-zero
-            if (feeAmount > 0) {
-                _sendTokens(msg.sender, token, feeReceiver, feeAmount);
-            }
+        // Send fee portion if non-zero
+        if (feeAmount > 0) {
+            _sendTokens(msg.sender, token, feeReceiver, feeAmount);
+        }
 
-            // Send remaining amount to receiver
-            if (amount - feeAmount > 0) {
-                _sendTokens(msg.sender, token, receiver, amount - feeAmount);
-            }
+        // Send remaining amount to receiver
+        if (amount - feeAmount > 0) {
+            _sendTokens(msg.sender, token, receiver, amount - feeAmount);
         }
     }
 
