@@ -189,7 +189,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
     function charge(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
@@ -253,7 +253,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to capture
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
     function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
         external
         nonReentrant
