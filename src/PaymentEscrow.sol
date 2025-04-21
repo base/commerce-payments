@@ -435,15 +435,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
+        uint120 maxAmount = paymentInfo.maxAmount;
         uint48 preApprovalExp = paymentInfo.preApprovalExpiry;
         uint48 authorizationExp = paymentInfo.authorizationExpiry;
         uint48 refundExp = paymentInfo.refundExpiry;
-        uint48 currentTime = uint48(block.timestamp);
         uint16 minFeeBps = paymentInfo.minFeeBps;
         uint16 maxFeeBps = paymentInfo.maxFeeBps;
+        uint48 currentTime = uint48(block.timestamp);
 
         // Check amount does not exceed maximum
-        if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
+        if (amount > maxAmount) revert ExceedsMaxAmount(amount, maxAmount);
 
         // Timestamp comparisons cannot overflow uint48
         if (currentTime >= preApprovalExp) revert AfterPreApprovalExpiry(currentTime, preApprovalExp);
