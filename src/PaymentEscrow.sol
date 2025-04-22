@@ -402,6 +402,37 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
+    /// @notice Send tokens from an operator's token store
+    /// @param operator The operator whose token store to use
+    /// @param token The token to send
+    /// @param recipient Address to receive the tokens
+    /// @param amount Amount of tokens to send
+    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
+        // Attempt to transfer tokens
+        address tokenStore = getTokenStore(operator);
+        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
+        (bool success, bytes memory returnData) = tokenStore.call(callData);
+        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
+            return;
+        }
+
+        if (tokenStore.code.length == 0) {
+            // Call failed from undeployed TokenStore, deploy and try again
+            tokenStore = LibClone.cloneDeterministic({
+                implementation: tokenStoreImplementation,
+                salt: bytes32(bytes20(operator))
+            });
+            emit TokenStoreCreated(operator, tokenStore);
+            TokenStore(tokenStore).sendTokens(token, recipient, amount);
+        } else {
+            // Call failed from revert, bubble up data
+            assembly ("memory-safe") {
+                let returnDataSize := mload(returnData)
+                revert(add(32, returnData), returnDataSize)
+            }
+        }
+    }
+
     /// @notice Sends tokens to receiver and/or feeReceiver
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
@@ -477,37 +508,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check fee recipient matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
-        }
-    }
-
-    /// @notice Send tokens from an operator's token store
-    /// @param operator The operator whose token store to use
-    /// @param token The token to send
-    /// @param recipient Address to receive the tokens
-    /// @param amount Amount of tokens to send
-    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
-        // Attempt to transfer tokens
-        address tokenStore = getTokenStore(operator);
-        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
-        (bool success, bytes memory returnData) = tokenStore.call(callData);
-        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
-            return;
-        }
-
-        // If call failed because token store does not exist, deploy token store and try again
-        if (tokenStore.code.length == 0) {
-            tokenStore = LibClone.cloneDeterministic({
-                implementation: tokenStoreImplementation,
-                salt: bytes32(bytes20(operator))
-            });
-            emit TokenStoreCreated(operator, tokenStore);
-            TokenStore(tokenStore).sendTokens(token, recipient, amount);
-        } else {
-            // bubble up revert if sendTokens reverts in TokenStore
-            assembly ("memory-safe") {
-                let returnDataSize := mload(returnData)
-                revert(add(32, returnData), returnDataSize)
-            }
         }
     }
 }
