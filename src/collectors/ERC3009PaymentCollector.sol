@@ -54,13 +54,11 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
             signature: signature
         });
 
-        // Return excess tokens to payer if any
+        // Return any excess tokens to payer
         uint256 excess = maxAmount - amount;
-        if (excess > 0) {
-            SafeERC20.safeTransfer(IERC20(token), payer, excess);
-        }
+        if (excess > 0) SafeERC20.safeTransfer(IERC20(token), payer, excess);
 
         // Transfer tokens directly to token store
-        SafeERC20.safeTransfer(IERC20(paymentInfo.token), tokenStore, amount);
+        SafeERC20.safeTransfer(IERC20(token), tokenStore, amount);
     }
 }

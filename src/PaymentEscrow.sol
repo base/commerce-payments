@@ -6,8 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
-import {TokenCollector} from "./collectors/TokenCollector.sol";
 import {TokenStore} from "./TokenStore.sol";
+import {TokenCollector} from "./collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.

@@ -33,21 +33,6 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
     constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
-    /// @inheritdoc TokenCollector
-    /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
-        internal
-        override
-    {
-        // Check payment pre-approved
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
-
-        // Transfer tokens from payer directly to token store
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
-        SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.payer, tokenStore, amount);
-    }
-
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment info
     /// @param paymentInfo PaymentInfo struct
@@ -66,5 +51,20 @@ contract PreApprovalPaymentCollector is TokenCollector {
         // Set payment as pre-approved
         isPreApproved[paymentInfoHash] = true;
         emit PaymentPreApproved(paymentInfoHash);
+    }
+
+    /// @inheritdoc TokenCollector
+    /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
+        internal
+        override
+    {
+        // Check payment pre-approved
+        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
+
+        // Transfer tokens from payer directly to token store
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
+        SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.payer, tokenStore, amount);
     }
 }

@@ -25,10 +25,6 @@ abstract contract TokenCollector {
         paymentEscrow = PaymentEscrow(paymentEscrow_);
     }
 
-    /// @notice Get the type of token collector
-    /// @return CollectorType Type of token collector
-    function collectorType() external view virtual returns (CollectorType);
-
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct
     /// @param amount Amount of tokens to pull
@@ -39,6 +35,10 @@ abstract contract TokenCollector {
         if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
         _collectTokens(paymentInfo, amount, collectorData);
     }
+
+    /// @notice Get the type of token collector
+    /// @return CollectorType Type of token collector
+    function collectorType() external view virtual returns (CollectorType);
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct

@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-/// @dev ERC-3009 does not actually support this method, but it should.
-/// @dev We should use this opportunity to change the standard to use generic signatures this time.
-/// @dev USDC and EURC use this interface without it being an official standard yet.
 /// @dev Reverts if signature validation fails.
 interface IERC3009 {
     function receiveWithAuthorization(

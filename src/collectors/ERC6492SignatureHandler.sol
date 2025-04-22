@@ -6,7 +6,7 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 /// @title ERC6492SignatureHandler
 /// @notice Base contract for handling ERC-6492 signatures
 /// @dev This contract does not perform standard ERC-6492 signature handling flow because it does not itself
-///      validate the signature. It simply ensures any ERC-6492 factory/prepare data is executed it present since
+///      validate the signature. It simply calls any ERC-6492 factory/prepare data if present since
 ///      signature validators may not implement ERC-6492 handling.
 /// @author Coinbase
 abstract contract ERC6492SignatureHandler {
@@ -25,9 +25,8 @@ abstract contract ERC6492SignatureHandler {
     /// @param signature User-provided signature
     /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
-        uint256 signatureLength = signature.length;
-
         // Early return if signature less than 32 bytes
+        uint256 signatureLength = signature.length;
         if (signatureLength < 32) return signature;
 
         // Early return if signature suffix not ERC-6492 magic value

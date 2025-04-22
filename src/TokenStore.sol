@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title TokenStore
 /// @notice Holds funds for a single operator's payments
-/// @dev Created by PaymentEscrow to isolate operator funds
+/// @dev Deployed on demand by PaymentEscrow via CREATE2 clones
 /// @author Coinbase
 contract TokenStore {
     /// @notice PaymentEscrow singleton that created this token store

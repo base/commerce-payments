@@ -4,8 +4,8 @@ pragma solidity ^0.8.28;
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
-import {PaymentEscrow} from "../PaymentEscrow.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
+import {PaymentEscrow} from "../PaymentEscrow.sol";
 
 /// @title Permit2PaymentCollector
 /// @notice Collect payments using Permit2 signatures
