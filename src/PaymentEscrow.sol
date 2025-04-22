@@ -6,8 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
-import {TokenCollector} from "./collectors/TokenCollector.sol";
 import {TokenStore} from "./TokenStore.sol";
+import {TokenCollector} from "./collectors/TokenCollector.sol";
 
 /// @title PaymentEscrow
 /// @notice Facilitate payments through an escrow.
@@ -62,6 +62,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
+    uint16 internal constant _MAX_FEE_BPS = 10_000;
+
     /// @notice Implementation contract for operator token stores
     address public immutable tokenStoreImplementation;
 
@@ -73,9 +75,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         bytes32 indexed paymentInfoHash,
         PaymentInfo paymentInfo,
         uint256 amount,
+        address tokenCollector,
         uint16 feeBps,
-        address feeReceiver,
-        address tokenCollector
+        address feeReceiver
     );
 
     /// @notice Emitted when authorized (escrowed) amount is increased
@@ -130,9 +132,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
     /// @notice Fee recipient cannot be changed
     error InvalidFeeReceiver(address attempted, address expected);
-
-    /// @notice Fee bps is zero with a non-zero fee receiver
-    error ZeroFeeBps();
 
     /// @notice Token collector is not valid for the operation
     error InvalidCollectorForOperation();
@@ -211,7 +210,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Set payment state with refundable amount
         paymentState[paymentInfoHash] =
             PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
-        emit PaymentCharged(paymentInfoHash, paymentInfo, amount, feeBps, feeReceiver, tokenCollector);
+        emit PaymentCharged(paymentInfoHash, paymentInfo, amount, tokenCollector, feeBps, feeReceiver);
 
         // Transfer tokens into escrow
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
@@ -397,9 +396,38 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address token = paymentInfo.token;
         address tokenStore = getTokenStore(paymentInfo.operator);
         uint256 tokenStoreBalanceBefore = IERC20(token).balanceOf(tokenStore);
-        TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
+        TokenCollector(tokenCollector).collectTokens(paymentInfo, tokenStore, amount, collectorData);
         uint256 tokenStoreBalanceAfter = IERC20(token).balanceOf(tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
+    }
+
+    /// @notice Send tokens from an operator's token store
+    /// @param operator The operator whose token store to use
+    /// @param token The token to send
+    /// @param recipient Address to receive the tokens
+    /// @param amount Amount of tokens to send
+    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
+        // Attempt to transfer tokens
+        address tokenStore = getTokenStore(operator);
+        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
+        (bool success, bytes memory returnData) = tokenStore.call(callData);
+        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
+            return;
+        } else if (tokenStore.code.length == 0) {
+            // Call failed from undeployed TokenStore, deploy and try again
+            tokenStore = LibClone.cloneDeterministic({
+                implementation: tokenStoreImplementation,
+                salt: bytes32(bytes20(operator))
+            });
+            emit TokenStoreCreated(operator, tokenStore);
+            TokenStore(tokenStore).sendTokens(token, recipient, amount);
+        } else {
+            // Call failed from revert, bubble up data
+            assembly ("memory-safe") {
+                let returnDataSize := mload(returnData)
+                revert(add(32, returnData), returnDataSize)
+            }
+        }
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
@@ -411,17 +439,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        uint256 feeAmount = amount * uint256(feeBps) / 10_000;
+        uint256 feeAmount = amount * feeBps / _MAX_FEE_BPS;
 
         // Send fee portion if non-zero
-        if (feeAmount > 0) {
-            _sendTokens(msg.sender, token, feeReceiver, feeAmount);
-        }
+        if (feeAmount > 0) _sendTokens(msg.sender, token, feeReceiver, feeAmount);
 
         // Send remaining amount to receiver
-        if (amount - feeAmount > 0) {
-            _sendTokens(msg.sender, token, receiver, amount - feeAmount);
-        }
+        if (amount > feeAmount) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
     }
 
     /// @notice Validates required properties of a payment
@@ -448,7 +472,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Check fee bps do not exceed maximum value
-        if (maxFeeBps > 10_000) revert FeeBpsOverflow(maxFeeBps);
+        if (maxFeeBps > _MAX_FEE_BPS) revert FeeBpsOverflow(maxFeeBps);
 
         // Check min fee bps does not exceed max fee
         if (minFeeBps > maxFeeBps) revert InvalidFeeBpsRange(minFeeBps, maxFeeBps);
@@ -467,47 +491,11 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (feeBps < minFeeBps || feeBps > maxFeeBps) revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
 
         // Check fee recipient only zero address if zero fee bps
-        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
+        if (feeReceiver == address(0) && feeBps > 0) revert ZeroFeeReceiver();
 
-        // Check feeBps nonzero if feeReceiver is set
-        if (feeReceiver != address(0) && feeBps == 0) {
-            revert ZeroFeeBps();
-        }
-
-        // Check fee recipient matches payment info if non-zero
+        // Check fee receiver matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
-        }
-    }
-
-    /// @notice Send tokens from an operator's token store
-    /// @param operator The operator whose token store to use
-    /// @param token The token to send
-    /// @param recipient Address to receive the tokens
-    /// @param amount Amount of tokens to send
-    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
-        // Attempt to transfer tokens
-        address tokenStore = getTokenStore(operator);
-        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
-        (bool success, bytes memory returnData) = tokenStore.call(callData);
-        if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
-            return;
-        }
-
-        // If call failed because token store does not exist, deploy token store and try again
-        if (tokenStore.code.length == 0) {
-            tokenStore = LibClone.cloneDeterministic({
-                implementation: tokenStoreImplementation,
-                salt: bytes32(bytes20(operator))
-            });
-            emit TokenStoreCreated(operator, tokenStore);
-            TokenStore(tokenStore).sendTokens(token, recipient, amount);
-        } else {
-            // bubble up revert if sendTokens reverts in TokenStore
-            assembly ("memory-safe") {
-                let returnDataSize := mload(returnData)
-                revert(add(32, returnData), returnDataSize)
-            }
         }
     }
 }

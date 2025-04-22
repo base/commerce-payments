@@ -27,21 +27,13 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     function _collectTokens(
         PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
         uint256 amount,
         bytes calldata collectorData
     ) internal override {
         address token = paymentInfo.token;
         address payer = paymentInfo.payer;
         uint256 maxAmount = paymentInfo.maxAmount;
-
-        // Apply ERC-6492 preparation call if present
-        bytes memory signature = _handleERC6492Signature(collectorData);
-
-        // Construct nonce as payer-less payment info hash for offchain preparation convenience
-        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
-
-        // Get token store address
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // Pull tokens into this contract
         IERC3009(token).receiveWithAuthorization({
@@ -50,17 +42,14 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
             value: maxAmount,
             validAfter: 0,
             validBefore: paymentInfo.preApprovalExpiry,
-            nonce: nonce,
-            signature: signature
+            nonce: _getHashPayerAgnostic(paymentInfo),
+            signature: _handleERC6492Signature(collectorData)
         });
 
-        // Return excess tokens to payer if any
-        uint256 excess = maxAmount - amount;
-        if (excess > 0) {
-            SafeERC20.safeTransfer(IERC20(token), payer, excess);
-        }
+        // Return any excess tokens to payer
+        if (maxAmount > amount) SafeERC20.safeTransfer(IERC20(token), payer, maxAmount - amount);
 
         // Transfer tokens directly to token store
-        SafeERC20.safeTransfer(IERC20(paymentInfo.token), tokenStore, amount);
+        SafeERC20.safeTransfer(IERC20(token), tokenStore, amount);
     }
 }

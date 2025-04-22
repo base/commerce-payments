@@ -19,14 +19,16 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         vm.expectRevert(abi.encodeWithSelector(TokenCollector.OnlyPaymentEscrow.selector));
-        permit2PaymentCollector.collectTokens(paymentInfo, amount, "");
+        permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, "");
     }
 
     function test_collectTokens_succeeds_whenCalledByPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         MockERC3009Token(address(mockERC3009Token)).mint(payerEOA, amount);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         bytes memory signature = _signPermit2Transfer({
             token: address(mockERC3009Token),
             amount: amount,
@@ -35,7 +37,7 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
             privateKey: payer_EOA_PK
         });
         vm.prank(address(paymentEscrow));
-        permit2PaymentCollector.collectTokens(paymentInfo, amount, signature);
+        permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
     }
 
     function test_collectTokens_succeeds_withERC6492Signature(uint120 amount) public {
@@ -47,11 +49,12 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
 
         PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo(smartWalletCounterfactual, amount, address(mockERC20Token));
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         bytes memory signature = _signPermit2WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
         vm.prank(address(paymentEscrow));
-        permit2PaymentCollector.collectTokens(paymentInfo, amount, signature);
+        permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
 
         assertEq(
             mockERC20Token.balanceOf(paymentEscrow.getTokenStore(paymentInfo.operator)),

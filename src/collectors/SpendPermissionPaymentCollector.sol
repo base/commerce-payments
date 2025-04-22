@@ -33,6 +33,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function _collectTokens(
         PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
         uint256 amount,
         bytes calldata collectorData
     ) internal override {
@@ -67,7 +68,6 @@ contract SpendPermissionPaymentCollector is TokenCollector {
         }
 
         // Transfer tokens from collector to token store
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         SafeERC20.safeTransfer(IERC20(token), tokenStore, amount);
     }
 }

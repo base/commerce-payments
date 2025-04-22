@@ -3,10 +3,10 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 
-import {TokenStore} from "../../../src/TokenStore.sol";
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {TokenStore} from "../../src/TokenStore.sol";
+import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 
-import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {PaymentEscrowBase} from "../base/PaymentEscrowBase.sol";
 
 contract TokenStoreTest is PaymentEscrowBase {
     TokenStore public tokenStore;
@@ -18,7 +18,7 @@ contract TokenStoreTest is PaymentEscrowBase {
         mockERC20Token.mint(address(tokenStore), INITIAL_BALANCE);
     }
 
-    function test_constructor_setsPaymentEscrow() public {
+    function test_constructor_setsPaymentEscrow() public view {
         assertEq(tokenStore.paymentEscrow(), address(paymentEscrow), "PaymentEscrow address not set correctly");
     }
 

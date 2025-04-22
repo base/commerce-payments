@@ -11,17 +11,19 @@ contract ERC3009PaymentCollectorTest is PaymentEscrowSmartWalletBase {
     function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         vm.expectRevert(abi.encodeWithSelector(TokenCollector.OnlyPaymentEscrow.selector));
-        erc3009PaymentCollector.collectTokens(paymentInfo, amount, "");
+        erc3009PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, "");
     }
 
     function test_collectTokens_succeeds_whenCalledByPaymentEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         MockERC3009Token(address(mockERC3009Token)).mint(payerEOA, amount);
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         vm.prank(address(paymentEscrow));
-        erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+        erc3009PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
     }
 
     function test_collectTokens_succeeds_withERC6492Signature(uint120 amount) public {
@@ -32,11 +34,12 @@ contract ERC3009PaymentCollectorTest is PaymentEscrowSmartWalletBase {
         assertEq(smartWalletCounterfactual.code.length, 0, "Smart wallet should not be deployed yet");
 
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(smartWalletCounterfactual, amount);
+        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
         vm.prank(address(paymentEscrow));
-        erc3009PaymentCollector.collectTokens(paymentInfo, amount, signature);
+        erc3009PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
 
         assertEq(
             mockERC3009Token.balanceOf(paymentEscrow.getTokenStore(paymentInfo.operator)),
