@@ -133,9 +133,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Fee recipient cannot be changed
     error InvalidFeeReceiver(address attempted, address expected);
 
-    /// @notice Fee bps is zero with a non-zero fee receiver
-    error ZeroFeeBps();
-
     /// @notice Token collector is not valid for the operation
     error InvalidCollectorForOperation();
 
@@ -495,9 +492,6 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Check fee recipient only zero address if zero fee bps
         if (feeReceiver == address(0) && feeBps > 0) revert ZeroFeeReceiver();
-
-        // Check feeBps nonzero if fee receiver is set
-        if (feeReceiver != address(0) && feeBps == 0) revert ZeroFeeBps();
 
         // Check fee receiver matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {

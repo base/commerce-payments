@@ -378,31 +378,6 @@ contract CaptureTest is PaymentEscrowBase {
         vm.stopPrank();
     }
 
-    function test_reverts_whenFeeBpsAreZeroAndFeeReceiverIsNonzero(uint120 authorizedAmount, address feeReceiver)
-        public
-    {
-        // Assume reasonable bounds for fees
-        vm.assume(authorizedAmount > 0);
-        vm.assume(feeReceiver != address(0));
-        assumePayable(feeReceiver);
-
-        mockERC3009Token.mint(payerEOA, authorizedAmount);
-
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
-        paymentInfo.minFeeBps = 0;
-        paymentInfo.maxFeeBps = 0;
-        paymentInfo.feeReceiver = address(0);
-
-        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
-
-        vm.prank(paymentInfo.operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
-
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.ZeroFeeBps.selector));
-        paymentEscrow.capture(paymentInfo, authorizedAmount, 0, feeReceiver);
-    }
-
     function test_succeeds_withOperatorSetFeeRecipient(
         uint120 authorizedAmount,
         uint16 minFeeBps,
