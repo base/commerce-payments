@@ -291,9 +291,9 @@ contract ChargeTest is PaymentEscrowBase {
             paymentInfoHash,
             paymentInfo,
             valueToCharge,
+            address(erc3009PaymentCollector),
             paymentInfo.minFeeBps,
-            paymentInfo.feeReceiver,
-            address(erc3009PaymentCollector)
+            paymentInfo.feeReceiver
         );
 
         // Execute charge
