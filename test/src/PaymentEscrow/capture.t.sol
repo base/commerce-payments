@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.sol";
+import {MockFailOnTransferToken} from "../../mocks/MockFailOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 
 contract CaptureTest is PaymentEscrowBase {
@@ -334,9 +335,10 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, invalidFeeReceiver);
     }
 
-    function test_reverts_ifSendTokensReverts(uint120 authorizedAmount) public {
+    function test_reverts_ifSendTokensReverts(uint120 authorizedAmount, bytes calldata revertData) public {
         vm.assume(authorizedAmount > 0);
-        address revertingToken = address(new MockRevertOnTransferToken(address(preApprovalPaymentCollector)));
+        address revertingToken =
+            address(new MockRevertOnTransferToken(address(preApprovalPaymentCollector), revertData));
         MockRevertOnTransferToken(revertingToken).mint(payerEOA, authorizedAmount);
 
         PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
@@ -350,7 +352,28 @@ contract CaptureTest is PaymentEscrowBase {
         vm.startPrank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
-        vm.expectRevert(SafeTransferLib.TransferFailed.selector);
+        vm.expectRevert(abi.encodeWithSelector(MockRevertOnTransferToken.CustomRevert.selector, revertData));
+        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        vm.stopPrank();
+    }
+
+    function test_reverts_ifSendTokensFails(uint120 authorizedAmount) public {
+        vm.assume(authorizedAmount > 0);
+        address revertingToken = address(new MockFailOnTransferToken(address(preApprovalPaymentCollector)));
+        MockFailOnTransferToken(revertingToken).mint(payerEOA, authorizedAmount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.token = revertingToken;
+
+        vm.prank(payerEOA);
+        MockFailOnTransferToken(revertingToken).approve(address(preApprovalPaymentCollector), authorizedAmount);
+        vm.prank(payerEOA);
+        preApprovalPaymentCollector.preApprove(paymentInfo);
+
+        vm.startPrank(paymentInfo.operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
+
+        vm.expectRevert(abi.encodeWithSelector(SafeERC20.SafeERC20FailedOperation.selector, revertingToken));
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
     }
