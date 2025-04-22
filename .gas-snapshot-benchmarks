@@ -1,6 +1,6 @@
 AuthorizeGasBenchmark:test_authorize_benchmark() (gas: 155657)
-CaptureGasBenchmark:test_capture_benchmark() (gas: 69986)
-ChargeGasBenchmark:test_charge_benchmark() (gas: 165238)
+CaptureGasBenchmark:test_capture_benchmark() (gas: 69915)
+ChargeGasBenchmark:test_charge_benchmark() (gas: 165167)
 ReclaimGasBenchmark:test_reclaim_benchmark() (gas: 55217)
 RefundGasBenchmark:test_refund_benchmark() (gas: 80064)
 VoidGasBenchmark:test_void_benchmark() (gas: 55079)

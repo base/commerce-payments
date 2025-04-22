@@ -445,7 +445,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (feeAmount > 0) _sendTokens(msg.sender, token, feeReceiver, feeAmount);
 
         // Send remaining amount to receiver
-        if (amount - feeAmount > 0) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
+        if (amount > feeAmount) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
     }
 
     /// @notice Validates required properties of a payment
