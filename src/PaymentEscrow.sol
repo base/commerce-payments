@@ -416,9 +416,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         (bool success, bytes memory returnData) = tokenStore.call(callData);
         if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
             return;
-        }
-
-        if (tokenStore.code.length == 0) {
+        } else if (tokenStore.code.length == 0) {
             // Call failed from undeployed TokenStore, deploy and try again
             tokenStore = LibClone.cloneDeterministic({
                 implementation: tokenStoreImplementation,
@@ -444,17 +442,13 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        uint256 feeAmount = amount * uint256(feeBps) / _MAX_FEE_BPS;
+        uint256 feeAmount = amount * feeBps / _MAX_FEE_BPS;
 
         // Send fee portion if non-zero
-        if (feeAmount > 0) {
-            _sendTokens(msg.sender, token, feeReceiver, feeAmount);
-        }
+        if (feeAmount > 0) _sendTokens(msg.sender, token, feeReceiver, feeAmount);
 
         // Send remaining amount to receiver
-        if (amount - feeAmount > 0) {
-            _sendTokens(msg.sender, token, receiver, amount - feeAmount);
-        }
+        if (amount - feeAmount > 0) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
     }
 
     /// @notice Validates required properties of a payment
@@ -500,14 +494,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (feeBps < minFeeBps || feeBps > maxFeeBps) revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
 
         // Check fee recipient only zero address if zero fee bps
-        if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
+        if (feeReceiver == address(0) && feeBps > 0) revert ZeroFeeReceiver();
 
-        // Check feeBps nonzero if feeReceiver is set
-        if (feeReceiver != address(0) && feeBps == 0) {
-            revert ZeroFeeBps();
-        }
+        // Check feeBps nonzero if fee receiver is set
+        if (feeReceiver != address(0) && feeBps == 0) revert ZeroFeeBps();
 
-        // Check fee recipient matches payment info if non-zero
+        // Check fee receiver matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
