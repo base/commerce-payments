@@ -5,6 +5,9 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 
 /// @title ERC6492SignatureHandler
 /// @notice Base contract for handling ERC-6492 signatures
+/// @dev This contract does not perform standard ERC-6492 signature handling flow because it does not itself
+///      validate the signature. It simply ensures any ERC-6492 factory/prepare data is executed it present since
+///      signature validators may not implement ERC-6492 handling.
 /// @author Coinbase
 abstract contract ERC6492SignatureHandler {
     bytes32 internal constant _ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
@@ -22,19 +25,21 @@ abstract contract ERC6492SignatureHandler {
     /// @param signature User-provided signature
     /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
+        uint256 signatureLength = signature.length;
+
         // Early return if signature less than 32 bytes
-        if (signature.length < 32) return signature;
+        if (signatureLength < 32) return signature;
 
         // Early return if signature suffix not ERC-6492 magic value
         bytes32 suffix;
         assembly {
-            suffix := mload(add(add(signature, 32), sub(mload(signature), 32)))
+            suffix := mload(add(add(signature, 32), sub(signatureLength, 32)))
         }
         if (suffix != _ERC6492_MAGIC_VALUE) return signature;
 
         // Parse inner signature from ERC-6492 format
-        bytes memory erc6492Data = new bytes(signature.length - 32);
-        for (uint256 i; i < signature.length - 32; i++) {
+        bytes memory erc6492Data = new bytes(signatureLength - 32);
+        for (uint256 i; i < signatureLength - 32; i++) {
             erc6492Data[i] = signature[i];
         }
         address prepareTarget;
