@@ -36,9 +36,6 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
         uint256 amount,
         bytes calldata collectorData
     ) internal override {
-        // Apply ERC-6492 preparation call if present
-        bytes memory signature = _handleERC6492Signature(collectorData);
-
         permit2.permitTransferFrom({
             permit: ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),
@@ -47,7 +44,7 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
             }),
             transferDetails: ISignatureTransfer.SignatureTransferDetails({to: tokenStore, requestedAmount: amount}),
             owner: paymentInfo.payer,
-            signature: signature
+            signature: _handleERC6492Signature(collectorData)
         });
     }
 }

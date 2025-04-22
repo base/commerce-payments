@@ -35,12 +35,6 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
         address payer = paymentInfo.payer;
         uint256 maxAmount = paymentInfo.maxAmount;
 
-        // Apply ERC-6492 preparation call if present
-        bytes memory signature = _handleERC6492Signature(collectorData);
-
-        // Construct nonce as payer-less payment info hash for offchain preparation convenience
-        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
-
         // Pull tokens into this contract
         IERC3009(token).receiveWithAuthorization({
             from: payer,
@@ -48,13 +42,12 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
             value: maxAmount,
             validAfter: 0,
             validBefore: paymentInfo.preApprovalExpiry,
-            nonce: nonce,
-            signature: signature
+            nonce: _getHashPayerAgnostic(paymentInfo),
+            signature: _handleERC6492Signature(collectorData)
         });
 
         // Return any excess tokens to payer
-        uint256 excess = maxAmount - amount;
-        if (excess > 0) SafeERC20.safeTransfer(IERC20(token), payer, excess);
+        if (maxAmount > amount) SafeERC20.safeTransfer(IERC20(token), payer, maxAmount - amount);
 
         // Transfer tokens directly to token store
         SafeERC20.safeTransfer(IERC20(token), tokenStore, amount);
