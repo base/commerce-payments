@@ -62,6 +62,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
     );
 
+    uint16 internal constant _MAX_FEE_BPS = 10_000;
+
     /// @notice Implementation contract for operator token stores
     address public immutable tokenStoreImplementation;
 
@@ -442,7 +444,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        uint256 feeAmount = amount * uint256(feeBps) / 10_000;
+        uint256 feeAmount = amount * uint256(feeBps) / _MAX_FEE_BPS;
 
         // Send fee portion if non-zero
         if (feeAmount > 0) {
@@ -479,7 +481,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Check fee bps do not exceed maximum value
-        if (maxFeeBps > 10_000) revert FeeBpsOverflow(maxFeeBps);
+        if (maxFeeBps > _MAX_FEE_BPS) revert FeeBpsOverflow(maxFeeBps);
 
         // Check min fee bps does not exceed max fee
         if (minFeeBps > maxFeeBps) revert InvalidFeeBpsRange(minFeeBps, maxFeeBps);
