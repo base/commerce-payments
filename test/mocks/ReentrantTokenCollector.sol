@@ -12,12 +12,10 @@ contract ReentrantTokenCollector is Test, TokenCollector {
 
     bool called = false;
 
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, address tokenStore, uint256, bytes calldata)
         internal
         override
     {
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
-
         if (!called) {
             called = true;
             PaymentEscrow.PaymentInfo memory paymentInfo2 = paymentInfo; // calldata is read-only

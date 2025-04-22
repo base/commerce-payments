@@ -27,13 +27,17 @@ abstract contract TokenCollector {
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct
+    /// @param tokenStore Address to collect tokens into
     /// @param amount Amount of tokens to pull
     /// @param collectorData Data to pass to the token collector
-    function collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata collectorData)
-        external
-    {
+    function collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
+        uint256 amount,
+        bytes calldata collectorData
+    ) external {
         if (msg.sender != address(paymentEscrow)) revert OnlyPaymentEscrow();
-        _collectTokens(paymentInfo, amount, collectorData);
+        _collectTokens(paymentInfo, tokenStore, amount, collectorData);
     }
 
     /// @notice Get the type of token collector
@@ -42,10 +46,12 @@ abstract contract TokenCollector {
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
     /// @param paymentInfo Payment info struct
+    /// @param tokenStore Address to collect tokens into
     /// @param amount Amount of tokens to pull
     /// @param collectorData Data to pass to the token collector
     function _collectTokens(
         PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
         uint256 amount,
         bytes calldata collectorData
     ) internal virtual;

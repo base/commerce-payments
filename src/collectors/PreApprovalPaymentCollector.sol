@@ -55,16 +55,17 @@ contract PreApprovalPaymentCollector is TokenCollector {
 
     /// @inheritdoc TokenCollector
     /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
-        internal
-        override
-    {
+    function _collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
+        uint256 amount,
+        bytes calldata
+    ) internal override {
         // Check payment pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
 
         // Transfer tokens from payer directly to token store
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.payer, tokenStore, amount);
     }
 }

@@ -32,13 +32,13 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @dev Use Permit2 signature transfer to collect any ERC-20 from payers
     function _collectTokens(
         PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
         uint256 amount,
         bytes calldata collectorData
     ) internal override {
         // Apply ERC-6492 preparation call if present
         bytes memory signature = _handleERC6492Signature(collectorData);
 
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
         permit2.permitTransferFrom({
             permit: ISignatureTransfer.PermitTransferFrom({
                 permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),

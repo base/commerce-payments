@@ -396,7 +396,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         address token = paymentInfo.token;
         address tokenStore = getTokenStore(paymentInfo.operator);
         uint256 tokenStoreBalanceBefore = IERC20(token).balanceOf(tokenStore);
-        TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
+        TokenCollector(tokenCollector).collectTokens(paymentInfo, tokenStore, amount, collectorData);
         uint256 tokenStoreBalanceAfter = IERC20(token).balanceOf(tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }

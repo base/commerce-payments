@@ -41,7 +41,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         emit PaymentPreApproved(paymentInfoHash);
     }
 
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256, bytes calldata)
+    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, address tokenStore, uint256, bytes calldata)
         internal
         override
     {
@@ -49,9 +49,6 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         if (!isPreApproved[paymentInfoHash]) {
             revert PaymentNotPreApproved(paymentInfoHash);
         }
-
-        // Get token store address
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
 
         // transfer too few token to tokenStore
         IERC20(paymentInfo.token).transferFrom(paymentInfo.payer, tokenStore, paymentInfo.maxAmount - 1);

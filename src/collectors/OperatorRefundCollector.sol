@@ -19,16 +19,14 @@ contract OperatorRefundCollector is TokenCollector {
     constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
 
     /// @inheritdoc TokenCollector
-    /// @dev Requires previous ERC-20 allowance set by operator on this token collector
+    /// @dev Transfers from operator directly to token store, requiring previous ERC-20 allowance set by operator on this token collector
     /// @dev Only operator can initate token collection so authentication is inherited from Escrow
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, uint256 amount, bytes calldata)
-        internal
-        override
-    {
-        address operator = paymentInfo.operator;
-        address tokenStore = paymentEscrow.getTokenStore(operator);
-
-        // Transfer tokens from operator directly to token store
-        SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), operator, tokenStore, amount);
+    function _collectTokens(
+        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
+        uint256 amount,
+        bytes calldata
+    ) internal override {
+        SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.operator, tokenStore, amount);
     }
 }
