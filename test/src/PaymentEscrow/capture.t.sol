@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
@@ -348,7 +350,7 @@ contract CaptureTest is PaymentEscrowBase {
         vm.startPrank(paymentInfo.operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
-        vm.expectRevert();
+        vm.expectRevert(SafeTransferLib.TransferFailed.selector);
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
     }
