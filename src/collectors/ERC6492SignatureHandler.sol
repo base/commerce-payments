@@ -25,9 +25,11 @@ abstract contract ERC6492SignatureHandler {
     /// @param signature User-provided signature
     /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
-        // Early return if signature less than 32 bytes
-        if (signature.length < 32) return signature;
         uint256 signatureLength = signature.length;
+
+        // Early return if signature less than 32 bytes
+        if (signatureLength < 32) return signature;
+
         // Early return if signature suffix not ERC-6492 magic value
         bytes32 suffix;
         assembly {

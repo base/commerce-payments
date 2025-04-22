@@ -469,13 +469,14 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
 
+        // Check feeBps nonzero if feeReceiver is set
+        if (feeReceiver != address(0) && feeBps == 0) {
+            revert ZeroFeeBps();
+        }
+
         // Check fee recipient matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
-        }
-        // Check feeBps nonzero if feeReceiver is set
-        if (feeReceiver != address(0) && paymentInfo.feeReceiver == address(0) && feeBps == 0) {
-            revert ZeroFeeBps();
         }
     }
 
