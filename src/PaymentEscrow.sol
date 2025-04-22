@@ -502,6 +502,12 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             });
             emit TokenStoreCreated(operator, tokenStore);
             TokenStore(tokenStore).sendTokens(token, recipient, amount);
+        } else {
+            // bubble up revert if sendTokens reverts in TokenStore
+            assembly ("memory-safe") {
+                let returnDataSize := mload(returnData)
+                revert(add(32, returnData), returnDataSize)
+            }
         }
     }
 }
