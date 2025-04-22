@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
 import {PaymentEscrow} from "../PaymentEscrow.sol";
@@ -28,6 +29,6 @@ contract OperatorRefundCollector is TokenCollector {
         address tokenStore = paymentEscrow.getTokenStore(operator);
 
         // Transfer tokens from operator directly to token store
-        SafeTransferLib.safeTransferFrom(paymentInfo.token, operator, tokenStore, amount);
+        SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), operator, tokenStore, amount);
     }
 }

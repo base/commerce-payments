@@ -3,9 +3,9 @@ pragma solidity ^0.8.28;
 
 import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
 import {Test} from "forge-std/Test.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 
 contract ReentrantTokenCollector is Test, TokenCollector {
     constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}

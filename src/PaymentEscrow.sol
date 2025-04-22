@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
@@ -16,6 +17,8 @@ import {TokenStore} from "./TokenStore.sol";
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
 contract PaymentEscrow is ReentrancyGuardTransient {
+    using SafeERC20 for IERC20;
+
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
     struct PaymentInfo {
         /// @dev Entity responsible for driving payment flow
@@ -128,6 +131,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Fee recipient cannot be changed
     error InvalidFeeReceiver(address attempted, address expected);
 
+    /// @notice Fee bps is zero with a non-zero fee receiver
+    error ZeroFeeBps();
+
     /// @notice Token collector is not valid for the operation
     error InvalidCollectorForOperation();
 
@@ -183,7 +189,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
     function charge(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
@@ -247,7 +253,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to capture
     /// @param feeBps Fee percentage to apply (must be within min/max range)
-    /// @param feeReceiver Address to receive fees (can only be set if original feeReceiver was 0)
+    /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
     function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
         external
         nonReentrant
@@ -270,12 +276,8 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Update payment state, converting capturable amount to refundable amount
-        unchecked {
-            // We've already checked that capturableAmount >= amount
-            state.capturableAmount -= uint120(amount);
-            // refundableAmount + amount cannot exceed maxAmount which fits in uint120
-            state.refundableAmount += uint120(amount);
-        }
+        state.capturableAmount -= uint120(amount);
+        state.refundableAmount += uint120(amount);
         paymentState[paymentInfoHash] = state;
         emit PaymentCaptured(paymentInfoHash, amount, feeBps, feeReceiver);
 
@@ -394,9 +396,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Measure balance change of token store to enforce as equal to expected amount
         address token = paymentInfo.token;
         address tokenStore = getTokenStore(paymentInfo.operator);
-        uint256 tokenStoreBalanceBefore = SafeTransferLib.balanceOf(token, tokenStore);
+        uint256 tokenStoreBalanceBefore = IERC20(token).balanceOf(tokenStore);
         TokenCollector(tokenCollector).collectTokens(paymentInfo, amount, collectorData);
-        uint256 tokenStoreBalanceAfter = SafeTransferLib.balanceOf(token, tokenStore);
+        uint256 tokenStoreBalanceAfter = IERC20(token).balanceOf(tokenStore);
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
@@ -409,19 +411,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
         internal
     {
-        unchecked {
-            // feeBps is already validated to be <= 10_000 in _validateFee
-            uint256 feeAmount = uint256(amount) * feeBps / 10_000;
+        uint256 feeAmount = amount * uint256(feeBps) / 10_000;
 
-            // Send fee portion if non-zero
-            if (feeAmount > 0) {
-                _sendTokens(msg.sender, token, feeReceiver, feeAmount);
-            }
+        // Send fee portion if non-zero
+        if (feeAmount > 0) {
+            _sendTokens(msg.sender, token, feeReceiver, feeAmount);
+        }
 
-            // Send remaining amount to receiver
-            if (amount - feeAmount > 0) {
-                _sendTokens(msg.sender, token, receiver, amount - feeAmount);
-            }
+        // Send remaining amount to receiver
+        if (amount - feeAmount > 0) {
+            _sendTokens(msg.sender, token, receiver, amount - feeAmount);
         }
     }
 
@@ -429,15 +428,16 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
+        uint120 maxAmount = paymentInfo.maxAmount;
         uint48 preApprovalExp = paymentInfo.preApprovalExpiry;
         uint48 authorizationExp = paymentInfo.authorizationExpiry;
         uint48 refundExp = paymentInfo.refundExpiry;
-        uint48 currentTime = uint48(block.timestamp);
         uint16 minFeeBps = paymentInfo.minFeeBps;
         uint16 maxFeeBps = paymentInfo.maxFeeBps;
+        uint48 currentTime = uint48(block.timestamp);
 
         // Check amount does not exceed maximum
-        if (amount > paymentInfo.maxAmount) revert ExceedsMaxAmount(amount, paymentInfo.maxAmount);
+        if (amount > maxAmount) revert ExceedsMaxAmount(amount, maxAmount);
 
         // Timestamp comparisons cannot overflow uint48
         if (currentTime >= preApprovalExp) revert AfterPreApprovalExpiry(currentTime, preApprovalExp);
@@ -468,6 +468,11 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Check fee recipient only zero address if zero fee bps
         if (feeBps > 0 && feeReceiver == address(0)) revert ZeroFeeReceiver();
+
+        // Check feeBps nonzero if feeReceiver is set
+        if (feeReceiver != address(0) && feeBps == 0) {
+            revert ZeroFeeBps();
+        }
 
         // Check fee recipient matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
