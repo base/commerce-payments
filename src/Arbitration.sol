@@ -85,6 +85,9 @@ contract ArbitrationOperator {
         external
         onlyArbiter
     {
+        // Check before release timestamp
+        if (block.timestamp >= releaseTimestamps[paymentId]) revert();
+
         // Check nonce not used
         (address payer, address receiver, address token) =
             abi.decode(_cachedInfo[paymentId], (address, address, address));
@@ -137,7 +140,7 @@ contract ArbitrationOperator {
             refundExpiry: type(uint48).max,
             minFeeBps: 0,
             maxFeeBps: MAX_FEE_BPS,
-            feeReceiver: arbiter,
+            feeReceiver: address(0),
             salt: (paymentId << 48) + releaseTimestamp
         });
     }
