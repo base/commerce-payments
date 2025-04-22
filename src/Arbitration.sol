@@ -81,7 +81,7 @@ contract ArbitrationOperator {
         paymentEscrow.capture(_getPaymentInfo(paymentId, payer, receiver, token), amount, 0, address(0));
     }
 
-    function earlyCapture(uint256 paymentId, uint256 amount, uint16 feeBps, uint256 nonce, bytes calldata signature)
+    function expeditedCapture(uint256 paymentId, uint256 amount, uint16 feeBps, uint256 nonce, bytes calldata signature)
         external
         onlyArbiter
     {
@@ -94,7 +94,8 @@ contract ArbitrationOperator {
         if (nonceUsed[receiver][nonce]) revert();
 
         // Check receiver signed early capture request
-        bytes32 message = SignatureCheckerLib.toEthSignedMessageHash(keccak256(abi.encode(paymentId, feeBps, nonce)));
+        bytes32 message =
+            SignatureCheckerLib.toEthSignedMessageHash(keccak256(abi.encode(paymentId, amount, feeBps, nonce)));
         if (!SignatureCheckerLib.isValidSignatureNow(receiver, message, signature)) revert();
 
         paymentEscrow.capture(_getPaymentInfo(paymentId, payer, receiver, token), amount, feeBps, arbiter);
