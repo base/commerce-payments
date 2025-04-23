@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity ^0.8.28;
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Test} from "forge-std/Test.sol";
+
+import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+import {IERC3009} from "../../src/interfaces/IERC3009.sol";
+
+import {PaymentEscrowBase} from "../base/PaymentEscrowBase.sol";
+
+contract PaymentEscrowForkBase is PaymentEscrowBase {
+    // Base mainnet USDC address
+    address constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+
+    address constant USDC_WHALE = 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A; // Binance
+
+    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
+        0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
+
+    uint256 public MAX_AMOUNT;
+
+    // Base mainnet RPC URL
+    string BASE_RPC_URL = vm.envString("BASE_RPC_URL");
+
+    // Contract instances
+    IERC20 public usdc;
+
+    function setUp() public virtual override {
+        // Create a fork of Base mainnet
+        vm.createSelectFork(BASE_RPC_URL);
+
+        // Call parent setup to deploy contracts
+        super.setUp();
+
+        // Initialize USDC contract
+        usdc = IERC20(BASE_USDC);
+
+        // Label addresses for better traces
+        vm.label(BASE_USDC, "USDC");
+
+        MAX_AMOUNT = usdc.balanceOf(USDC_WHALE);
+    }
+
+    function createPaymentInfo(address payer, uint120 maxAmount) internal returns (PaymentEscrow.PaymentInfo memory) {
+        return PaymentEscrow.PaymentInfo({
+            operator: operator,
+            payer: payer,
+            receiver: receiver,
+            token: address(usdc),
+            maxAmount: maxAmount,
+            preApprovalExpiry: type(uint48).max,
+            authorizationExpiry: type(uint48).max,
+            refundExpiry: type(uint48).max,
+            minFeeBps: 0,
+            maxFeeBps: 0,
+            feeReceiver: address(0),
+            salt: 0
+        });
+    }
+
+    // Helper function to fund an address with USDC
+    function _fundWithUSDC(address recipient, uint256 amount) internal {
+        // Impersonate the whale and transfer USDC
+        vm.startPrank(USDC_WHALE);
+        usdc.transfer(recipient, amount);
+        vm.stopPrank();
+
+        // Verify the transfer worked
+        assertEq(usdc.balanceOf(recipient), amount, "USDC funding failed");
+    }
+
+    function _getERC3009Digest(
+        address token,
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce
+    ) internal view returns (bytes32) {
+        bytes32 structHash =
+            keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
+        return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
+    }
+
+    function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
+        internal
+        view
+        override
+        returns (bytes memory)
+    {
+        bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
+
+        bytes32 digest = _getERC3009Digest(
+            paymentInfo.token,
+            paymentInfo.payer,
+            address(erc3009PaymentCollector),
+            paymentInfo.maxAmount,
+            0,
+            paymentInfo.preApprovalExpiry,
+            nonce
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+}

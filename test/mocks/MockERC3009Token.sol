@@ -79,6 +79,11 @@ contract MockERC3009Token is ERC20, IERC3009 {
         return keccak256(bytes("2"));
     }
 
+    /// @dev Returns the EIP-712 domain separator for the EIP-2612 permit.
+    function DOMAIN_SEPARATOR() public view virtual override(ERC20, IERC3009) returns (bytes32 result) {
+        return super.DOMAIN_SEPARATOR();
+    }
+
     event Debug(string name, bytes32 value);
     event Debug(string name, address value);
 }

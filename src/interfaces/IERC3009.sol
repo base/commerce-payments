@@ -15,4 +15,6 @@ interface IERC3009 {
 
     // Optional but useful for checking if an authorization has been used
     function authorizationState(address authorizer, bytes32 nonce) external view returns (bool);
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
 }

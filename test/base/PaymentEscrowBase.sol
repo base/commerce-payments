@@ -133,6 +133,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
         view
+        virtual
         returns (bytes memory)
     {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
