@@ -33,7 +33,6 @@ contract PaymentEscrowForkBase is PaymentEscrowSmartWalletBase {
         // Initialize USDC contract
         usdc = IERC20(BASE_USDC);
 
-        // Label addresses for better traces
         vm.label(BASE_USDC, "USDC");
 
         MAX_AMOUNT = usdc.balanceOf(USDC_WHALE);
@@ -70,20 +69,6 @@ contract PaymentEscrowForkBase is PaymentEscrowSmartWalletBase {
         // Verify the transfer worked
         assertEq(usdc.balanceOf(recipient), amount, "USDC funding failed");
     }
-
-    // function _getERC3009Digest(
-    //     address token,
-    //     address from,
-    //     address to,
-    //     uint256 value,
-    //     uint256 validAfter,
-    //     uint256 validBefore,
-    //     bytes32 nonce
-    // ) internal view returns (bytes32) {
-    //     bytes32 structHash =
-    //         keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
-    //     return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
-    // }
 
     function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
