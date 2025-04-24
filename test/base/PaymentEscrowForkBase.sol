@@ -7,16 +7,13 @@ import {Test} from "forge-std/Test.sol";
 import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
 import {IERC3009} from "../../src/interfaces/IERC3009.sol";
 
-import {PaymentEscrowBase} from "../base/PaymentEscrowBase.sol";
+import {PaymentEscrowSmartWalletBase} from "../base/PaymentEscrowSmartWalletBase.sol";
 
-contract PaymentEscrowForkBase is PaymentEscrowBase {
+contract PaymentEscrowForkBase is PaymentEscrowSmartWalletBase {
     // Base mainnet USDC address
     address constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     address constant USDC_WHALE = 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A; // Binance
-
-    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
-        0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
 
     uint256 public MAX_AMOUNT;
 
@@ -42,7 +39,11 @@ contract PaymentEscrowForkBase is PaymentEscrowBase {
         MAX_AMOUNT = usdc.balanceOf(USDC_WHALE);
     }
 
-    function createPaymentInfo(address payer, uint120 maxAmount) internal returns (PaymentEscrow.PaymentInfo memory) {
+    function createPaymentInfo(address payer, uint120 maxAmount)
+        internal
+        view
+        returns (PaymentEscrow.PaymentInfo memory)
+    {
         return PaymentEscrow.PaymentInfo({
             operator: operator,
             payer: payer,
@@ -70,19 +71,19 @@ contract PaymentEscrowForkBase is PaymentEscrowBase {
         assertEq(usdc.balanceOf(recipient), amount, "USDC funding failed");
     }
 
-    function _getERC3009Digest(
-        address token,
-        address from,
-        address to,
-        uint256 value,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce
-    ) internal view returns (bytes32) {
-        bytes32 structHash =
-            keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
-        return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
-    }
+    // function _getERC3009Digest(
+    //     address token,
+    //     address from,
+    //     address to,
+    //     uint256 value,
+    //     uint256 validAfter,
+    //     uint256 validBefore,
+    //     bytes32 nonce
+    // ) internal view returns (bytes32) {
+    //     bytes32 structHash =
+    //         keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
+    //     return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
+    // }
 
     function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal

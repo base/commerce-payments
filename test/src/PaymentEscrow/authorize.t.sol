@@ -7,7 +7,7 @@ import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
 import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 
-import {ERC20UnsafeTransferTokenCollector} from "../../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
+import {ERC20UnsafeTransferTokenCollector} from "../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
 
 contract AuthorizeTest is PaymentEscrowSmartWalletBase {
