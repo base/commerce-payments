@@ -52,6 +52,8 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     uint16 constant FEE_BPS = 100; // 1%
     uint256 internal constant payer_EOA_PK = 0x1234;
 
+    bytes32 constant _RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
+        0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
     bytes32 constant _TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
     bytes32 constant _PERMIT_TRANSFER_FROM_TYPEHASH = keccak256(
         "PermitTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline)TokenPermissions(address token,uint256 amount)"
@@ -133,11 +135,13 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
         internal
         view
+        virtual
         returns (bytes memory)
     {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         bytes32 digest = _getERC3009Digest(
+            paymentInfo.token,
             paymentInfo.payer,
             address(erc3009PaymentCollector),
             paymentInfo.maxAmount,
@@ -151,6 +155,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     }
 
     function _getERC3009Digest(
+        address token,
         address from,
         address to,
         uint256 value,
@@ -158,12 +163,9 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         uint256 validBefore,
         bytes32 nonce
     ) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                mockERC3009Token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(), from, to, value, validAfter, validBefore, nonce
-            )
-        );
-        return keccak256(abi.encodePacked("\x19\x01", mockERC3009Token.DOMAIN_SEPARATOR(), structHash));
+        bytes32 structHash =
+            keccak256(abi.encode(_RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
+        return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
     }
 
     function _signPermit2Transfer(address token, uint256 amount, uint256 deadline, uint256 nonce, uint256 privateKey)
