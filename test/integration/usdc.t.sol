@@ -12,7 +12,20 @@ contract USDCForkTest is PaymentEscrowForkBase {
 
         _fundWithUSDC(payerEOA, amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = createPaymentInfo(payerEOA, amount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+            operator: operator,
+            payer: payerEOA,
+            receiver: receiver,
+            token: address(usdc),
+            maxAmount: amount,
+            preApprovalExpiry: type(uint48).max,
+            authorizationExpiry: type(uint48).max,
+            refundExpiry: type(uint48).max,
+            minFeeBps: 0,
+            maxFeeBps: 0,
+            feeReceiver: address(0),
+            salt: 0
+        });
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
@@ -33,7 +46,20 @@ contract USDCForkTest is PaymentEscrowForkBase {
 
         _fundWithUSDC(address(smartWalletDeployed), amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = createPaymentInfo(address(smartWalletDeployed), amount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+            operator: operator,
+            payer: address(smartWalletDeployed),
+            receiver: receiver,
+            token: address(usdc),
+            maxAmount: amount,
+            preApprovalExpiry: type(uint48).max,
+            authorizationExpiry: type(uint48).max,
+            refundExpiry: type(uint48).max,
+            minFeeBps: 0,
+            maxFeeBps: 0,
+            feeReceiver: address(0),
+            salt: 0
+        });
 
         bytes memory signature = _signSmartWalletERC3009(paymentInfo, DEPLOYED_WALLET_OWNER_PK, 0);
 
@@ -58,7 +84,21 @@ contract USDCForkTest is PaymentEscrowForkBase {
 
         _fundWithUSDC(address(smartWalletDeployed), amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = createPaymentInfo(address(smartWalletDeployed), amount);
+        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+            operator: operator,
+            payer: address(smartWalletDeployed),
+            receiver: receiver,
+            token: address(usdc),
+            maxAmount: amount,
+            preApprovalExpiry: type(uint48).max,
+            authorizationExpiry: type(uint48).max,
+            refundExpiry: type(uint48).max,
+            minFeeBps: 0,
+            maxFeeBps: 0,
+            feeReceiver: address(0),
+            salt: 0
+        });
+
         SpendPermissionManager.SpendPermission memory spendPermission = _createSpendPermission(paymentInfo);
 
         bytes memory signature = _signSpendPermission(spendPermission, DEPLOYED_WALLET_OWNER_PK, 0);

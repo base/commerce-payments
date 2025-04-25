@@ -23,6 +23,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     address public counterfactualWalletOwner;
     address public smartWalletCounterfactual; // The counterfactual address
     CoinbaseSmartWallet public smartWalletDeployed; // Helper instance for using smart wallet functions
+    address public deployedWalletOwner;
     uint256 internal constant COUNTERFACTUAL_WALLET_OWNER_PK = 0x5678; // Different from payer_PK
     uint256 internal constant DEPLOYED_WALLET_OWNER_PK = 0x1111;
 
@@ -34,7 +35,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         smartWalletFactory = new CoinbaseSmartWalletFactory(smartWalletImplementation);
 
         // Create and initialize deployed wallet through factory
-        address deployedWalletOwner = vm.addr(DEPLOYED_WALLET_OWNER_PK);
+        deployedWalletOwner = vm.addr(DEPLOYED_WALLET_OWNER_PK);
         bytes[] memory deployedWalletOwners = new bytes[](1);
         deployedWalletOwners[0] = abi.encode(deployedWalletOwner);
         smartWalletDeployed = CoinbaseSmartWallet(payable(smartWalletFactory.createAccount(deployedWalletOwners, 0)));
