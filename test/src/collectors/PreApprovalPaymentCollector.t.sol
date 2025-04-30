@@ -58,6 +58,22 @@ contract PreApprovalPaymentCollectorTest is PaymentEscrowBase {
         PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
     }
 
+    function test_preApprove_reverts_ifAfterPreApprovalExpiry(uint120 amount) public {
+        vm.assume(amount > 0);
+
+        // Create payment info with a pre-approval expiry in the past
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        paymentInfo.preApprovalExpiry = uint48(block.timestamp - 1);
+
+        vm.prank(payerEOA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PaymentEscrow.AfterPreApprovalExpiry.selector, uint48(block.timestamp), paymentInfo.preApprovalExpiry
+            )
+        );
+        PreApprovalPaymentCollector(address(preApprovalPaymentCollector)).preApprove(paymentInfo);
+    }
+
     function test_preApprove_emitsExpectedEvents(uint120 amount) public {
         vm.assume(amount > 0);
 
