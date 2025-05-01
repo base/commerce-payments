@@ -356,6 +356,19 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, amount);
     }
 
+    /// @notice Disburse fees from a fee receiver's token store
+    /// @param feeReceiver The fee receiver to disburse fees for
+    /// @param token The token to disburse
+    function disburseFees(address feeReceiver, address token) external {
+        address feeStore = getFeeStore(feeReceiver);
+        if (feeStore.code.length == 0) return;
+
+        uint256 amount = IERC20(token).balanceOf(feeStore);
+        if (amount == 0) return;
+
+        TokenStore(feeStore).sendTokens(token, feeReceiver, amount);
+    }
+
     /// @notice Get hash of PaymentInfo struct
     /// @dev Includes chainId and verifyingContract in hash for cross-chain and cross-contract uniqueness
     /// @param paymentInfo PaymentInfo struct
@@ -372,6 +385,19 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         return LibClone.predictDeterministicAddress({
             implementation: tokenStoreImplementation,
             salt: bytes32(bytes20(operator)),
+            deployer: address(this)
+        });
+    }
+
+    /// @notice Get the fee store address for a fee receiver
+    /// @param feeReceiver The fee receiver to get the store for
+    /// @return The fee receiver's fee store address
+    function getFeeStore(address feeReceiver) public view returns (address) {
+        // Use a special salt prefix to differentiate from operator token stores
+        bytes32 salt = keccak256(abi.encodePacked("fee", bytes20(feeReceiver)));
+        return LibClone.predictDeterministicAddress({
+            implementation: tokenStoreImplementation,
+            salt: salt,
             deployer: address(this)
         });
     }
@@ -442,7 +468,29 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         uint256 feeAmount = amount * feeBps / _MAX_FEE_BPS;
 
         // Send fee portion if non-zero
-        if (feeAmount > 0) _sendTokens(msg.sender, token, feeReceiver, feeAmount);
+        if (feeAmount > 0) {
+            // Try to send fees directly first
+            address tokenStore = getTokenStore(msg.sender);
+            bytes memory callData =
+                abi.encodeWithSelector(TokenStore.sendTokens.selector, token, feeReceiver, feeAmount);
+            (bool success, bytes memory returnData) = tokenStore.call(callData);
+
+            if (!success) {
+                // If direct transfer fails, store fees in fee store
+                address feeStore = getFeeStore(feeReceiver);
+                if (feeStore.code.length == 0) {
+                    // Deploy fee store if it doesn't exist
+                    bytes32 salt = keccak256(abi.encodePacked("fee", bytes20(feeReceiver)));
+                    feeStore = LibClone.cloneDeterministic({
+                        implementation: tokenStoreImplementation,
+                        salt: salt,
+                        deployer: address(this)
+                    });
+                    emit TokenStoreCreated(feeReceiver, feeStore);
+                }
+                SafeERC20.safeTransfer(IERC20(token), feeStore, feeAmount);
+            }
+        }
 
         // Send remaining amount to receiver
         if (amount > feeAmount) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
