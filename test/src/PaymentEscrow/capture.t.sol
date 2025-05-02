@@ -7,6 +7,7 @@ import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
 import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.sol";
 import {MockFailOnTransferToken} from "../../mocks/MockFailOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {MockBlocklistToken} from "../../mocks/MockBlocklistToken.sol";
 
 contract CaptureTest is PaymentEscrowBase {
     function test_reverts_whenNotOperator(uint120 authorizedAmount, address sender) public {
@@ -409,5 +410,41 @@ contract CaptureTest is PaymentEscrowBase {
         uint256 feeAmount = (uint256(authorizedAmount) * uint256(captureFeeBps)) / 10_000;
         assertEq(mockERC3009Token.balanceOf(newFeeRecipient), feeAmount);
         assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - feeAmount);
+    }
+
+    function test_succeeds_whenFeeReceiverBlocked(uint120 authorizedAmount) public {
+        vm.assume(authorizedAmount > 0);
+
+        // Create payment info with blocklist token
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo({payer: payerEOA, maxAmount: authorizedAmount, token: address(mockBlocklistToken)});
+
+        // Mint tokens to payer
+        mockBlocklistToken.mint(payerEOA, authorizedAmount);
+
+        // Authorize payment
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+        vm.prank(operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        // Block the fee receiver
+        mockBlocklistToken.block(feeReceiver);
+
+        // Calculate expected fee amount
+        uint256 feeAmount = (uint256(authorizedAmount) * uint256(FEE_BPS)) / 10_000;
+        uint256 receiverAmount = uint256(authorizedAmount) - feeAmount;
+
+        // Capture payment - fee transfer should fail but be stored in fee store
+        vm.prank(operator);
+        paymentEscrow.capture(paymentInfo, authorizedAmount, FEE_BPS, feeReceiver);
+
+        // Get fee store address and verify it's different from fee receiver
+        address feeStore = paymentEscrow.getFeeStore(feeReceiver);
+        assertTrue(feeStore != feeReceiver, "Fee store should be a different address from fee receiver");
+
+        // Verify balances
+        assertEq(mockBlocklistToken.balanceOf(receiver), receiverAmount);
+        assertEq(mockBlocklistToken.balanceOf(feeReceiver), 0);
+        assertEq(mockBlocklistToken.balanceOf(feeStore), feeAmount);
     }
 }

@@ -15,6 +15,7 @@ import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {MockERC3009Token} from "../mocks/MockERC3009Token.sol";
 import {DeployPermit2} from "permit2/../test/utils/DeployPermit2.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
+import {MockBlocklistToken} from "../mocks/MockBlocklistToken.sol";
 
 import {ERC3009PaymentCollector} from "../../src/collectors/ERC3009PaymentCollector.sol";
 import {PreApprovalPaymentCollector} from "../../src/collectors/PreApprovalPaymentCollector.sol";
@@ -29,6 +30,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     PaymentEscrow public paymentEscrow;
     MockERC3009Token public mockERC3009Token;
     MockERC20 public mockERC20Token;
+    MockBlocklistToken public mockBlocklistToken;
     address public multicall3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
     address public permit2;
     SpendPermissionManager public spendPermissionManager;
@@ -71,6 +73,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         // deploy token and permit2
         mockERC3009Token = new MockERC3009Token("Mock USDC", "mUSDC", 6);
         mockERC20Token = new MockERC20("Mock USDC", "mUSDC", 6);
+        mockBlocklistToken = new MockBlocklistToken("Mock Blocklist USDC", "mBLT", 6);
         permit2 = address(deployPermit2());
         publicERC6592Validator = new PublicERC6492Validator();
 

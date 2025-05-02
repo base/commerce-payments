@@ -299,7 +299,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         emit PaymentVoided(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from token store
-        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount, false);
     }
 
     /// @notice Returns any escrowed funds to payer
@@ -321,7 +321,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         emit PaymentReclaimed(paymentInfoHash, authorizedAmount);
 
         // Transfer tokens to payer from token store
-        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, authorizedAmount, false);
     }
 
     /// @notice Return previously-captured tokens to payer
@@ -353,7 +353,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
 
         // Transfer tokens into escrow and forward to payer
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Refund);
-        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, amount);
+        _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, amount, false);
     }
 
     /// @notice Disburse fees from a fee receiver's token store
@@ -427,18 +427,38 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
+    /// @notice Helper function to make a low-level call to sendTokens
+    /// @param tokenStore The token store to call
+    /// @param token The token to send
+    /// @param recipient The recipient of the tokens
+    /// @param amount The amount to send
+    /// @return success Whether the call succeeded
+    /// @return returnData The return data from the call
+    function _trySendTokens(address tokenStore, address token, address recipient, uint256 amount)
+        internal
+        returns (bool success, bytes memory returnData)
+    {
+        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
+        return tokenStore.call(callData);
+    }
+
     /// @notice Send tokens from an operator's token store
     /// @param operator The operator whose token store to use
     /// @param token The token to send
     /// @param recipient Address to receive the tokens
     /// @param amount Amount of tokens to send
-    function _sendTokens(address operator, address token, address recipient, uint256 amount) internal {
+    /// @param swallowRevert Whether to swallow the revert and return false instead
+    /// @return success Whether the transfer was successful
+    function _sendTokens(address operator, address token, address recipient, uint256 amount, bool swallowRevert)
+        internal
+        returns (bool)
+    {
         // Attempt to transfer tokens
         address tokenStore = getTokenStore(operator);
-        bytes memory callData = abi.encodeWithSelector(TokenStore.sendTokens.selector, token, recipient, amount);
-        (bool success, bytes memory returnData) = tokenStore.call(callData);
+        (bool success, bytes memory returnData) = _trySendTokens(tokenStore, token, recipient, amount);
+
         if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
-            return;
+            return true;
         } else if (tokenStore.code.length == 0) {
             // Call failed from undeployed TokenStore, deploy and try again
             tokenStore = LibClone.cloneDeterministic({
@@ -446,14 +466,26 @@ contract PaymentEscrow is ReentrancyGuardTransient {
                 salt: bytes32(bytes20(operator))
             });
             emit TokenStoreCreated(operator, tokenStore);
-            TokenStore(tokenStore).sendTokens(token, recipient, amount);
-        } else {
-            // Call failed from revert, bubble up data
+
+            // Try the low-level call again on the newly deployed store
+            (success, returnData) = _trySendTokens(tokenStore, token, recipient, amount);
+            if (success && returnData.length == 32 && abi.decode(returnData, (bool))) {
+                return true;
+            }
+        }
+
+        // Call failed from revert
+        if (swallowRevert) {
+            return false;
+        }
+        // If not swallowing, bubble up revert data
+        if (returnData.length > 0) {
             assembly ("memory-safe") {
                 let returnDataSize := mload(returnData)
                 revert(add(32, returnData), returnDataSize)
             }
         }
+        revert("Token transfer failed");
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
@@ -470,30 +502,36 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Send fee portion if non-zero
         if (feeAmount > 0) {
             // Try to send fees directly first
-            address tokenStore = getTokenStore(msg.sender);
-            bytes memory callData =
-                abi.encodeWithSelector(TokenStore.sendTokens.selector, token, feeReceiver, feeAmount);
-            (bool success, bytes memory returnData) = tokenStore.call(callData);
+            emit PaymentEscrow.DebugLog("Attempting direct fee transfer", feeAmount, feeReceiver);
+            bool feeTransferSucceeded = _sendTokens(msg.sender, token, feeReceiver, feeAmount, true);
 
-            if (!success) {
+            if (!feeTransferSucceeded) {
+                emit PaymentEscrow.DebugLog("Direct fee transfer failed, trying fee store", feeAmount, feeReceiver);
                 // If direct transfer fails, store fees in fee store
                 address feeStore = getFeeStore(feeReceiver);
+                emit PaymentEscrow.DebugLog("Got fee store address", 0, feeStore);
+
                 if (feeStore.code.length == 0) {
+                    emit PaymentEscrow.DebugLog("Deploying new fee store", 0, feeStore);
                     // Deploy fee store if it doesn't exist
                     bytes32 salt = keccak256(abi.encodePacked("fee", bytes20(feeReceiver)));
-                    feeStore = LibClone.cloneDeterministic({
-                        implementation: tokenStoreImplementation,
-                        salt: salt,
-                        deployer: address(this)
-                    });
+                    feeStore = LibClone.cloneDeterministic({implementation: tokenStoreImplementation, salt: salt});
                     emit TokenStoreCreated(feeReceiver, feeStore);
                 }
-                SafeERC20.safeTransfer(IERC20(token), feeStore, feeAmount);
+
+                emit PaymentEscrow.DebugLog("Sending to fee store", feeAmount, feeStore);
+                bool feeStoreTransferSucceeded = _sendTokens(msg.sender, token, feeStore, feeAmount, true);
+                emit PaymentEscrow.DebugLog("Fee store transfer result", feeStoreTransferSucceeded ? 1 : 0, feeStore);
+            } else {
+                emit PaymentEscrow.DebugLog("Direct fee transfer succeeded", feeAmount, feeReceiver);
             }
         }
 
         // Send remaining amount to receiver
-        if (amount > feeAmount) _sendTokens(msg.sender, token, receiver, amount - feeAmount);
+        if (amount > feeAmount) {
+            emit PaymentEscrow.DebugLog("Sending to receiver", amount - feeAmount, receiver);
+            _sendTokens(msg.sender, token, receiver, amount - feeAmount, false);
+        }
     }
 
     /// @notice Validates required properties of a payment
@@ -546,4 +584,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
     }
+
+    /// @notice Debug event for tracking token distribution
+    event DebugLog(string message, uint256 amount, address addr);
 }
