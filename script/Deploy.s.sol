@@ -25,14 +25,14 @@ contract Deploy is Script {
         vm.startBroadcast();
 
         // Deploy AuthCaptureEscrow with known dependencies
-        AuthCaptureEscrow paymentEscrow = new AuthCaptureEscrow();
-        ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(paymentEscrow), MULTICALL3);
+        AuthCaptureEscrow authCaptureEscrow = new AuthCaptureEscrow();
+        ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(authCaptureEscrow), MULTICALL3);
 
         vm.stopBroadcast();
 
         // Log deployed addresses
         console2.log("Deployed addresses:");
-        console2.log("AuthCaptureEscrow:", address(paymentEscrow));
+        console2.log("AuthCaptureEscrow:", address(authCaptureEscrow));
         console2.log("ERC3009PaymentCollector:", address(erc3009Collector));
 
         // Log known addresses used
