@@ -498,4 +498,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
     }
+
+    /// @dev Override to use transient reentrancy guard on all chains
+    function _useTransientReentrancyGuardOnlyOnMainnet() internal view virtual override returns (bool) {
+        return false;
+    }
 }

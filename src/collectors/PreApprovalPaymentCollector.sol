@@ -40,6 +40,11 @@ contract PreApprovalPaymentCollector is TokenCollector {
         // Check sender is buyer
         if (msg.sender != paymentInfo.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
+        // Check pre-approval expiry has not passed
+        if (block.timestamp >= paymentInfo.preApprovalExpiry) {
+            revert PaymentEscrow.AfterPreApprovalExpiry(uint48(block.timestamp), paymentInfo.preApprovalExpiry);
+        }
+
         // Check has not already pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
@@ -63,8 +68,8 @@ contract PreApprovalPaymentCollector is TokenCollector {
     ) internal override {
         // Check payment pre-approved
         bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        // Skip resetting pre-approval to save gas as the `PaymentEscrow` enforces unique, single-lifecycle payments
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
-
         // Transfer tokens from payer directly to token store
         SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.payer, tokenStore, amount);
     }

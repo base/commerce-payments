@@ -1,5 +1,4 @@
 @openzeppelin/contracts/=lib/spend-permissions/lib/openzeppelin-contracts/contracts/
-@openzeppelin/contracts/security/=lib/spend-permissions/lib/magicspend/lib/openzeppelin-contracts/contracts/utils/
 FreshCryptoLib/=lib/spend-permissions/lib/webauthn-sol/lib/FreshCryptoLib/solidity/src/
 account-abstraction/=lib/spend-permissions/lib/account-abstraction/contracts/
 ds-test/=lib/spend-permissions/lib/webauthn-sol/lib/forge-std/lib/ds-test/src/

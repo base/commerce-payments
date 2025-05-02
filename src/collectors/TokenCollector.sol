@@ -57,13 +57,13 @@ abstract contract TokenCollector {
     ) internal virtual;
 
     /// @notice Get hash for PaymentInfo with null payer address
-    /// @dev Proactively setting payer back to original value covers accidental bugs of memory location being used elsewhere
     /// @param paymentInfo PaymentInfo struct with non-null payer address
     /// @return hash Hash of PaymentInfo with payer replaced with zero address
     function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
         address payer = paymentInfo.payer;
         paymentInfo.payer = address(0);
         bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
+        // Proactively setting payer back to original value covers accidental bugs if memory location is then used elsewhere
         paymentInfo.payer = payer;
         return hashPayerAgnostic;
     }
