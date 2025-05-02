@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
+import {ReentrancyGuardTransient} from "solady/utils/ReentrancyGuardTransient.sol";
 import {LibClone} from "solady/utils/LibClone.sol";
 
 import {TokenStore} from "./TokenStore.sol";
@@ -16,7 +16,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
-contract PaymentEscrow is ReentrancyGuard {
+contract PaymentEscrow is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Payment info, contains all information required to authorize and capture a unique payment
@@ -497,5 +497,10 @@ contract PaymentEscrow is ReentrancyGuard {
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
+    }
+
+    /// @dev Override to use transient reentrancy guard on all chains
+    function _useTransientReentrancyGuardOnlyOnMainnet() internal view virtual override returns (bool) {
+        return false;
     }
 }
