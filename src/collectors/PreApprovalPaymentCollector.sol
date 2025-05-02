@@ -39,6 +39,8 @@ contract PreApprovalPaymentCollector is TokenCollector {
     function preApprove(PaymentEscrow.PaymentInfo calldata paymentInfo) external {
         // Check sender is buyer
         if (msg.sender != paymentInfo.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentInfo.payer);
+
+        // Check pre-approval expiry has not passed
         if (block.timestamp >= paymentInfo.preApprovalExpiry) {
             revert PaymentEscrow.AfterPreApprovalExpiry(uint48(block.timestamp), paymentInfo.preApprovalExpiry);
         }
