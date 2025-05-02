@@ -9,14 +9,14 @@ import {LibClone} from "solady/utils/LibClone.sol";
 import {TokenStore} from "./TokenStore.sol";
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 
-/// @title PaymentEscrow
+/// @title AuthCaptureEscrow
 /// @notice Facilitate payments through an escrow.
 /// @dev By escrowing payment, this contract can mimic the 2-step payment pattern of "authorization" and "capture".
 /// @dev Authorization is defined as placing a hold on a payer's funds temporarily.
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
 /// @author Coinbase
-contract PaymentEscrow is ReentrancyGuardTransient {
+contract AuthCaptureEscrow is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Payment info, contains all information required to authorize and capture a unique payment

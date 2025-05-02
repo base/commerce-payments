@@ -1,8 +1,8 @@
-# Payment Escrow Protocol
+# Commerce Payments Protocol
 
 ## Overview
 
-The Payment Escrow Protocol is a modular smart contract system designed to facilitate secure commerce payment flows onchain. In traditional payment systems, merchants rely on payment processors to handle the complex flow of funds between buyers and sellers. The Payment Escrow Protocol brings these familiar payment patterns onchain through a secure escrow-based system.
+The Commerce Payments Protocol facilitates onchain payments. Specifically designed for authorization and capture patterns, payments are initially collected into an escrow contract to guarantee payment for merchants at a later time. Operators drive token movement through the protocol and can customize their operations with modular smart contracts. No top-level controls exist on the protocol, keeping it permissionless, immutable, inviting of any operators.
 
 The protocol's core functionality revolves around two key concepts:
 
@@ -42,7 +42,7 @@ This model allows commerce platforms to maintain their business logic and paymen
 
 The protocol consists of two main components:
 
-1. **`PaymentEscrow` Contract**: Core contract managing the escrow of funds and payment lifecycle
+1. **`AuthCaptureEscrow` Contract**: Core contract managing the escrow of funds and payment lifecycle
 2. **Token Collectors**: Modular contracts handling different methods of token collection
 
 ### Token Collectors
@@ -67,7 +67,7 @@ This modular collector system allows the protocol to support various token autho
 
 ## Protocol Invariants
 
-The Payment Escrow Protocol maintains several critical invariants that ensure secure payment flows:
+The Commerce Payments Protocol maintains several critical invariants that ensure secure payment flows:
 
 ### Payment Flow Sequencing
 - Authorization can only be performed before the expiration of the payer's pre-approval

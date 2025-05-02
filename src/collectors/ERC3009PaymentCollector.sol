@@ -5,7 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IERC3009} from "../interfaces/IERC3009.sol";
-import {PaymentEscrow} from "../PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 import {TokenCollector} from "./TokenCollector.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 
@@ -17,16 +17,16 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
     /// @notice Constructor
-    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
+    /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
-    constructor(address paymentEscrow_, address multicall3_)
-        TokenCollector(paymentEscrow_)
+    constructor(address authCaptureEscrow_, address multicall3_)
+        TokenCollector(authCaptureEscrow_)
         ERC6492SignatureHandler(multicall3_)
     {}
 
     /// @inheritdoc TokenCollector
     function _collectTokens(
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
         address tokenStore,
         uint256 amount,
         bytes calldata collectorData

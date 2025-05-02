@@ -4,20 +4,20 @@ pragma solidity ^0.8.28;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {console} from "forge-std/console.sol";
 
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../../src/AuthCaptureEscrow.sol";
 import {PreApprovalPaymentCollector} from "../../../src/collectors/PreApprovalPaymentCollector.sol";
 
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+import {AuthCaptureEscrowSmartWalletBase} from "../../base/AuthCaptureEscrowSmartWalletBase.sol";
 import {ReentrantTokenCollector} from "../../../test/mocks/ReentrantTokenCollector.sol";
 
-contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
+contract ReentrancyApproveTest is AuthCaptureEscrowSmartWalletBase {
     ReentrantTokenCollector reentrantTokenCollector;
     address attacker;
     uint256 attackerPrivateKey;
 
     function setUp() public override {
         super.setUp();
-        reentrantTokenCollector = new ReentrantTokenCollector(address(paymentEscrow));
+        reentrantTokenCollector = new ReentrantTokenCollector(address(authCaptureEscrow));
         attackerPrivateKey = 0x123;
         attacker = vm.addr(attackerPrivateKey);
         // label the attacker and evil collector as evil
@@ -27,9 +27,9 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
     function test_reentrancy() public {
         uint120 amount = 10 ether;
-        mockERC3009Token.mint(address(paymentEscrow), amount); // give escrow liquidity
+        mockERC3009Token.mint(address(authCaptureEscrow), amount); // give escrow liquidity
         mockERC3009Token.mint(address(reentrantTokenCollector), amount); // give evil collector enough liquidity for attack
-        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = AuthCaptureEscrow.PaymentInfo({
             operator: attacker,
             payer: attacker,
             receiver: attacker,
@@ -49,10 +49,10 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
         // Use low-level call to detect revert
         bytes memory callData = abi.encodeWithSelector(
-            PaymentEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), ""
+            AuthCaptureEscrow.authorize.selector, paymentInfo, 10 ether, address(reentrantTokenCollector), ""
         );
 
-        (bool success, bytes memory returnData) = address(paymentEscrow).call(callData);
+        (bool success, bytes memory returnData) = address(authCaptureEscrow).call(callData);
         assertFalse(success, "Reentrancy attack should fail");
 
         if (!success) {
@@ -62,13 +62,13 @@ contract ReentrancyApproveTest is PaymentEscrowSmartWalletBase {
 
         console.log("After authorize attempt");
         vm.expectRevert(); // expect revert because authorize never happened
-        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         paymentInfo.salt += 1; // set up the second unique paymentInfo
         vm.expectRevert(); // expect revert because we've fixed the reentrancy
-        paymentEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
         console.log("After attack Attacker Balance:", mockERC3009Token.balanceOf(attacker));
-        console.log("Final Escrow Balance:       ", mockERC3009Token.balanceOf(address(paymentEscrow)));
+        console.log("Final Escrow Balance:       ", mockERC3009Token.balanceOf(address(authCaptureEscrow)));
     }
 }

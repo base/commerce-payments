@@ -5,32 +5,34 @@ import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MockERC20} from "solady/../test/utils/mocks/MockERC20.sol";
 
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../../src/AuthCaptureEscrow.sol";
 
 import {ERC20UnsafeTransferTokenCollector} from "../../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+import {AuthCaptureEscrowSmartWalletBase} from "../../base/AuthCaptureEscrowSmartWalletBase.sol";
 
-contract AuthorizeTest is PaymentEscrowSmartWalletBase {
+contract AuthorizeTest is AuthCaptureEscrowSmartWalletBase {
     function test_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-        paymentEscrow.authorize(paymentInfo, 0, address(erc3009PaymentCollector), signature);
+        vm.expectRevert(AuthCaptureEscrow.ZeroAmount.selector);
+        authCaptureEscrow.authorize(paymentInfo, 0, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1});
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.authorize(paymentInfo, overflowValue, address(erc3009PaymentCollector), signature);
+        vm.expectRevert(
+            abi.encodeWithSelector(AuthCaptureEscrow.AmountOverflow.selector, overflowValue, type(uint120).max)
+        );
+        authCaptureEscrow.authorize(paymentInfo, overflowValue, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenCallerIsNotOperator(address invalidSender, uint120 amount) public {
@@ -38,16 +40,16 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(invalidSender != address(0));
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(invalidSender);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, invalidSender, paymentInfo.operator)
+            abi.encodeWithSelector(AuthCaptureEscrow.InvalidSender.selector, invalidSender, paymentInfo.operator)
         );
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenValueExceedsAuthorized(uint120 authorizedAmount) public {
@@ -56,15 +58,15 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
         uint256 confirmAmount = authorizedAmount + 1; // Always exceeds authorized
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.ExceedsMaxAmount.selector, confirmAmount, authorizedAmount)
+            abi.encodeWithSelector(AuthCaptureEscrow.ExceedsMaxAmount.selector, confirmAmount, authorizedAmount)
         );
-        paymentEscrow.authorize(paymentInfo, confirmAmount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, confirmAmount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_exactlyAtPreApprovalExpiry(uint120 amount) public {
@@ -72,7 +74,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
         paymentInfo.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
@@ -82,9 +84,11 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry, preApprovalExpiry)
+            abi.encodeWithSelector(
+                AuthCaptureEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry, preApprovalExpiry
+            )
         );
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_afterPreApprovalExpiry(uint120 amount) public {
@@ -92,7 +96,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         uint48 preApprovalExpiry = uint48(block.timestamp + 1 days);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
         paymentInfo.preApprovalExpiry = preApprovalExpiry;
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
@@ -103,10 +107,10 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PaymentEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry + 1, preApprovalExpiry
+                AuthCaptureEscrow.AfterPreApprovalExpiry.selector, preApprovalExpiry + 1, preApprovalExpiry
             )
         );
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenPreApprovalExpiryAfterAuthorizationExpiry(
@@ -120,7 +124,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(preApprovalExpiry > authorizationExpiry);
         vm.assume(authorizationExpiry <= refundExpiry);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // Set authorize deadline after capture deadline
         paymentInfo.preApprovalExpiry = preApprovalExpiry;
@@ -133,10 +137,10 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
+                AuthCaptureEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
             )
         );
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenAuthorizationExpiryAfterRefundExpiry(
@@ -150,7 +154,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(preApprovalExpiry <= authorizationExpiry);
         vm.assume(authorizationExpiry > refundExpiry);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // Set authorize deadline after capture deadline
         paymentInfo.preApprovalExpiry = preApprovalExpiry;
@@ -163,16 +167,16 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.prank(operator);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PaymentEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
+                AuthCaptureEscrow.InvalidExpiries.selector, preApprovalExpiry, authorizationExpiry, refundExpiry
             )
         );
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenFeeBpsTooHigh(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // Set fee bps > 100%
         paymentInfo.maxFeeBps = 10_001;
@@ -180,8 +184,8 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.FeeBpsOverflow.selector, 10_001));
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.FeeBpsOverflow.selector, 10_001));
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenFeeBpsRangeInvalid(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps) public {
@@ -190,35 +194,35 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(minFeeBps <= 10_000);
         vm.assume(minFeeBps > maxFeeBps);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
         paymentInfo.minFeeBps = minFeeBps;
         paymentInfo.maxFeeBps = maxFeeBps;
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidFeeBpsRange.selector, minFeeBps, maxFeeBps));
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.InvalidFeeBpsRange.selector, minFeeBps, maxFeeBps));
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenAlreadyAuthorized(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First authorization
         mockERC3009Token.mint(payerEOA, amount);
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
 
         // Try to authorize again with same payment info
         mockERC3009Token.mint(payerEOA, amount);
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.PaymentAlreadyCollected.selector, paymentInfoHash));
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.PaymentAlreadyCollected.selector, paymentInfoHash));
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
     }
 
     function test_reverts_whenUsingIncorrectTokenCollectorForOperation(uint120 amount) public {
@@ -226,19 +230,19 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         vm.assume(amount > 0 && amount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.InvalidCollectorForOperation.selector));
-        paymentEscrow.authorize(paymentInfo, amount, address(operatorRefundCollector), signature);
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.InvalidCollectorForOperation.selector));
+        authCaptureEscrow.authorize(paymentInfo, amount, address(operatorRefundCollector), signature);
     }
 
     function test_reverts_ifHookDoesNotTransferCorrectAmount(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC20Token));
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount, address(mockERC20Token));
 
         // approve hook to transfer tokens
         vm.prank(payerEOA);
@@ -253,8 +257,8 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         // Try to authorize - should fail on token transfer
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenCollectionFailed.selector));
-        paymentEscrow.authorize(paymentInfo, amount, address(erc20UnsafeTransferPaymentCollector), "");
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.TokenCollectionFailed.selector));
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc20UnsafeTransferPaymentCollector), "");
     }
 
     function test_succeeds_whenValueEqualsAuthorized(uint120 amount) public {
@@ -262,16 +266,16 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         vm.assume(amount > 0 && amount <= payerBalance);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
 
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount);
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
     }
@@ -290,7 +294,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         // Mint enough tokens to the payer
         plainToken.mint(payerEOA, amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(plainToken)});
 
         // Generate Permit2 signature using the same deadline as paymentInfo
@@ -304,10 +308,10 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         // Should succeed via Permit2 authorization
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(permit2PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(permit2PaymentCollector), signature);
 
         // Verify the transfer worked
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
         assertEq(plainToken.balanceOf(operatorTokenStore), amount);
         assertEq(plainToken.balanceOf(payerEOA), 0);
     }
@@ -316,7 +320,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         // Assume reasonable values
         vm.assume(maxAmount >= amount && amount > 0);
         mockERC3009Token.mint(address(smartWalletDeployed), amount);
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
             payer: address(smartWalletDeployed),
             maxAmount: maxAmount,
             token: address(mockERC3009Token)
@@ -336,12 +340,12 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(
+        authCaptureEscrow.authorize(
             paymentInfo, amount, address(spendPermissionPaymentCollector), abi.encode(signature, "")
         ); // Empty collectorData for regular spend
 
         // Get token store address after creation
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         // Verify balances
         assertEq(
@@ -360,7 +364,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         mockERC3009Token.mint(address(magicSpend), amount);
 
         // Create payment info with SpendPermissionWithMagicSpend auth type
-        PaymentEscrow.PaymentInfo memory paymentInfo =
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo(address(smartWalletDeployed), amount, address(mockERC3009Token));
 
         // Create the spend permission
@@ -379,7 +383,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         // Submit authorization
         vm.prank(operator);
-        paymentEscrow.authorize(
+        authCaptureEscrow.authorize(
             paymentInfo,
             amount,
             address(spendPermissionPaymentCollector),
@@ -387,7 +391,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         );
 
         // Get token store address after creation
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         // Verify balances - funds should move from MagicSpend to escrow
         assertEq(
@@ -408,15 +412,15 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
         vm.assume(confirmAmount > 0 && confirmAmount < authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, confirmAmount, address(erc3009PaymentCollector), signature);
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        authCaptureEscrow.authorize(paymentInfo, confirmAmount, address(erc3009PaymentCollector), signature);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
         assertEq(mockERC3009Token.balanceOf(operatorTokenStore), confirmAmount);
         assertEq(
             mockERC3009Token.balanceOf(payerEOA),
@@ -427,7 +431,7 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
     function test_succeeds_whenFeeRecipientZeroAndFeeBpsZero(uint120 amount) public {
         vm.assume(amount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: amount});
 
         // Set both fee recipient and fee bps to zero - this should be valid
         paymentInfo.feeReceiver = address(0);
@@ -441,10 +445,10 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
         uint256 payerBalanceBefore = mockERC3009Token.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
 
         // Verify balances - full amount should go to escrow since fees are 0
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         assertEq(mockERC3009Token.balanceOf(payerEOA), payerBalanceBefore - amount);
         assertEq(mockERC3009Token.balanceOf(operatorTokenStore), amount);
@@ -456,20 +460,20 @@ contract AuthorizeTest is PaymentEscrowSmartWalletBase {
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // Record expected event
         vm.expectEmit(true, false, false, true);
-        emit PaymentEscrow.PaymentAuthorized(
+        emit AuthCaptureEscrow.PaymentAuthorized(
             paymentInfoHash, paymentInfo, valueToConfirm, address(erc3009PaymentCollector)
         );
 
         // Execute confirmation
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, valueToConfirm, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, valueToConfirm, address(erc3009PaymentCollector), signature);
     }
 }

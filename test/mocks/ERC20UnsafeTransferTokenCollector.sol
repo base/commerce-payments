@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../src/AuthCaptureEscrow.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Mock token collector that does not transfer sufficient tokens
@@ -16,7 +16,7 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
 
     mapping(bytes32 => bool) public isPreApproved;
 
-    constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
+    constructor(address _escrow) TokenCollector(_escrow) {}
 
     /// @inheritdoc TokenCollector
     function collectorType() external pure override returns (TokenCollector.CollectorType) {
@@ -26,13 +26,13 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment info
     /// @param paymentInfo PaymentInfo struct
-    function preApprove(PaymentEscrow.PaymentInfo calldata paymentInfo) external {
+    function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
         // check sender is buyer
         if (msg.sender != paymentInfo.payer) revert InvalidSender(msg.sender, paymentInfo.payer);
 
         // check status is not authorized or already pre-approved
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
+        (bool hasCollectedPayment,,) = authCaptureEscrow.paymentState(paymentInfoHash);
         if (hasCollectedPayment) {
             revert PaymentAlreadyCollected(paymentInfoHash);
         }
@@ -41,11 +41,13 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         emit PaymentPreApproved(paymentInfoHash);
     }
 
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, address tokenStore, uint256, bytes calldata)
-        internal
-        override
-    {
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+    function _collectTokens(
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
+        uint256,
+        bytes calldata
+    ) internal override {
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
         if (!isPreApproved[paymentInfoHash]) {
             revert PaymentNotPreApproved(paymentInfoHash);
         }

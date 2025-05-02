@@ -5,12 +5,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../src/AuthCaptureEscrow.sol";
 import {IERC3009} from "../../src/interfaces/IERC3009.sol";
 import {SpendPermissionPaymentCollector} from "../../src/collectors/SpendPermissionPaymentCollector.sol";
-import {PaymentEscrowSmartWalletBase} from "../base/PaymentEscrowSmartWalletBase.sol";
+import {AuthCaptureEscrowSmartWalletBase} from "../base/AuthCaptureEscrowSmartWalletBase.sol";
 
-contract PaymentEscrowForkBase is PaymentEscrowSmartWalletBase {
+contract AuthCaptureEscrowForkBase is AuthCaptureEscrowSmartWalletBase {
     // Base mainnet USDC address
     address constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address constant USDC_WHALE = 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A; // Binance
@@ -47,7 +47,7 @@ contract PaymentEscrowForkBase is PaymentEscrowSmartWalletBase {
         // Override spend permission values to use deployed spend permission manager
         spendPermissionManager = SpendPermissionManager(SPEND_PERMISSION_MANAGER);
         spendPermissionPaymentCollector =
-            new SpendPermissionPaymentCollector(address(paymentEscrow), address(spendPermissionManager));
+            new SpendPermissionPaymentCollector(address(authCaptureEscrow), address(spendPermissionManager));
         // Add deployed spend permission manager as owner of (deployed) smart wallet
         vm.prank(deployedWalletOwner);
         smartWalletDeployed.addOwnerAddress(address(spendPermissionManager));

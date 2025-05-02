@@ -2,17 +2,17 @@
 pragma solidity ^0.8.28;
 
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
-import {PaymentEscrowForkBase} from "../base/PaymentEscrowForkBase.sol";
+import {AuthCaptureEscrow} from "../../src/AuthCaptureEscrow.sol";
+import {AuthCaptureEscrowForkBase} from "../base/AuthCaptureEscrowForkBase.sol";
 
-contract USDCForkTest is PaymentEscrowForkBase {
+contract USDCForkTest is AuthCaptureEscrowForkBase {
     function test_pay_withEOA_ERC3009(uint120 amount) public {
         vm.assume(amount > 0);
         vm.assume(amount <= MAX_AMOUNT);
 
         _fundWithUSDC(payerEOA, amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = AuthCaptureEscrow.PaymentInfo({
             operator: operator,
             payer: payerEOA,
             receiver: receiver,
@@ -32,9 +32,9 @@ contract USDCForkTest is PaymentEscrowForkBase {
         uint256 payerBalanceBefore = usdc.balanceOf(payerEOA);
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
 
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         assertEq(usdc.balanceOf(payerEOA), payerBalanceBefore - amount, "Payer balance should decrease by amount");
         assertEq(usdc.balanceOf(operatorTokenStore), amount, "Token store balance should increase by amount");
@@ -46,7 +46,7 @@ contract USDCForkTest is PaymentEscrowForkBase {
 
         _fundWithUSDC(address(smartWalletDeployed), amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = AuthCaptureEscrow.PaymentInfo({
             operator: operator,
             payer: address(smartWalletDeployed),
             receiver: receiver,
@@ -66,9 +66,9 @@ contract USDCForkTest is PaymentEscrowForkBase {
         uint256 payerBalanceBefore = usdc.balanceOf(address(smartWalletDeployed));
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(erc3009PaymentCollector), signature);
 
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         assertEq(
             usdc.balanceOf(address(smartWalletDeployed)),
@@ -84,7 +84,7 @@ contract USDCForkTest is PaymentEscrowForkBase {
 
         _fundWithUSDC(address(smartWalletDeployed), amount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = PaymentEscrow.PaymentInfo({
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = AuthCaptureEscrow.PaymentInfo({
             operator: operator,
             payer: address(smartWalletDeployed),
             receiver: receiver,
@@ -109,9 +109,9 @@ contract USDCForkTest is PaymentEscrowForkBase {
         bytes memory collectorData = abi.encode(signature, "");
 
         vm.prank(operator);
-        paymentEscrow.authorize(paymentInfo, amount, address(spendPermissionPaymentCollector), collectorData);
+        authCaptureEscrow.authorize(paymentInfo, amount, address(spendPermissionPaymentCollector), collectorData);
 
-        address operatorTokenStore = paymentEscrow.getTokenStore(operator);
+        address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
 
         assertEq(
             usdc.balanceOf(address(smartWalletDeployed)),
