@@ -8,7 +8,6 @@ import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.s
 import {MockFailOnTransferToken} from "../../mocks/MockFailOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
-import {MockEmptyRevertDataToken} from "../../mocks/MockEmptyRevertDataToken.sol";
 
 contract CaptureTest is PaymentEscrowBase {
     function test_reverts_whenNotOperator(uint120 authorizedAmount, address sender) public {
@@ -337,8 +336,49 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, invalidFeeReceiver);
     }
 
-    function test_reverts_ifSendTokensReverts(uint120 authorizedAmount, bytes calldata revertData) public {
+    function test_reverts_ifSendTokensReverts_undeployedTokenStore(uint120 authorizedAmount, bytes calldata revertData)
+        public
+    {
         vm.assume(authorizedAmount > 0);
+        address revertingToken =
+            address(new MockRevertOnTransferToken(address(preApprovalPaymentCollector), revertData));
+        MockRevertOnTransferToken(revertingToken).mint(payerEOA, authorizedAmount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.token = revertingToken;
+
+        vm.prank(payerEOA);
+        MockRevertOnTransferToken(revertingToken).approve(address(preApprovalPaymentCollector), authorizedAmount);
+        vm.prank(payerEOA);
+        preApprovalPaymentCollector.preApprove(paymentInfo);
+
+        vm.startPrank(paymentInfo.operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
+
+        vm.expectRevert(abi.encodeWithSelector(MockRevertOnTransferToken.CustomRevert.selector, revertData));
+        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        vm.stopPrank();
+    }
+
+    function test_reverts_ifSendTokensReverts_deployedTokenStore(uint120 authorizedAmount, bytes calldata revertData)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        // process a payment first to make sure the token store is deployed
+        PaymentEscrow.PaymentInfo memory initialPaymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        bytes memory initialSignature = _signERC3009ReceiveWithAuthorizationStruct(initialPaymentInfo, payer_EOA_PK);
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+        vm.prank(initialPaymentInfo.operator);
+        paymentEscrow.charge(
+            initialPaymentInfo,
+            authorizedAmount,
+            address(erc3009PaymentCollector),
+            initialSignature,
+            initialPaymentInfo.minFeeBps,
+            initialPaymentInfo.feeReceiver
+        );
+
+        // create a new token that reverts on transfer
         address revertingToken =
             address(new MockRevertOnTransferToken(address(preApprovalPaymentCollector), revertData));
         MockRevertOnTransferToken(revertingToken).mint(payerEOA, authorizedAmount);
@@ -376,28 +416,6 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
         vm.expectRevert(abi.encodeWithSelector(SafeERC20.SafeERC20FailedOperation.selector, revertingToken));
-        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
-        vm.stopPrank();
-    }
-
-    function test_reverts_whenTokenRevertsWithNoData(uint120 authorizedAmount) public {
-        vm.assume(authorizedAmount > 0);
-        // Create a mock token that returns invalid data
-        address invalidDataToken = address(new MockEmptyRevertDataToken(address(preApprovalPaymentCollector)));
-        MockEmptyRevertDataToken(invalidDataToken).mint(payerEOA, authorizedAmount);
-
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
-        paymentInfo.token = invalidDataToken;
-
-        vm.prank(payerEOA);
-        MockEmptyRevertDataToken(invalidDataToken).approve(address(preApprovalPaymentCollector), authorizedAmount);
-        vm.prank(payerEOA);
-        preApprovalPaymentCollector.preApprove(paymentInfo);
-
-        vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
-
-        vm.expectRevert();
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
     }
