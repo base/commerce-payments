@@ -356,10 +356,10 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         _sendTokens(paymentInfo.operator, paymentInfo.token, paymentInfo.payer, amount, false);
     }
 
-    /// @notice Disburse fees from a fee receiver's token store
+    /// @notice Disburse fees from a fee receiver's token store to the fee receiver
     /// @param feeReceiver The fee receiver to disburse fees for
     /// @param token The token to disburse
-    function disburseFees(address feeReceiver, address token) external {
+    function disburseFeesToFeeReceiver(address feeReceiver, address token) external {
         address feeStore = getFeeStore(feeReceiver);
         if (feeStore.code.length == 0) return;
 
@@ -367,6 +367,21 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (amount == 0) return;
 
         TokenStore(feeStore).sendTokens(token, feeReceiver, amount);
+    }
+
+    /// @notice Disburse fees from a fee receiver's token store to a recipient
+    /// @dev Can only be called by the fee receiver
+    /// @param feeReceiver The fee receiver to disburse fees for
+    /// @param token The token to disburse
+    /// @param recipient The recipient to disburse fees to
+    function disburseFees(address feeReceiver, address token, address recipient) external onlySender(feeReceiver) {
+        address feeStore = getFeeStore(feeReceiver);
+        if (feeStore.code.length == 0) return;
+
+        uint256 amount = IERC20(token).balanceOf(feeStore);
+        if (amount == 0) return;
+
+        TokenStore(feeStore).sendTokens(token, recipient, amount);
     }
 
     /// @notice Get hash of PaymentInfo struct
@@ -514,8 +529,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
                     feeStore = LibClone.cloneDeterministic({implementation: tokenStoreImplementation, salt: salt});
                     emit TokenStoreCreated(feeReceiver, feeStore);
                 }
-
-                bool feeStoreTransferSucceeded = _sendTokens(msg.sender, token, feeStore, feeAmount, true);
+                _sendTokens(msg.sender, token, feeStore, feeAmount, true);
             }
         }
 
