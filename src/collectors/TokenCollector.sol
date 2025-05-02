@@ -63,7 +63,7 @@ abstract contract TokenCollector {
         address payer = paymentInfo.payer;
         paymentInfo.payer = address(0);
         bytes32 hashPayerAgnostic = paymentEscrow.getHash(paymentInfo);
-        /// Proactively setting payer back to original value covers accidental bugs if memory location is then used elsewhere
+        // Proactively setting payer back to original value covers accidental bugs if memory location is then used elsewhere
         paymentInfo.payer = payer;
         return hashPayerAgnostic;
     }
