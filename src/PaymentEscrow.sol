@@ -502,34 +502,25 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         // Send fee portion if non-zero
         if (feeAmount > 0) {
             // Try to send fees directly first
-            emit PaymentEscrow.DebugLog("Attempting direct fee transfer", feeAmount, feeReceiver);
             bool feeTransferSucceeded = _sendTokens(msg.sender, token, feeReceiver, feeAmount, true);
 
             if (!feeTransferSucceeded) {
-                emit PaymentEscrow.DebugLog("Direct fee transfer failed, trying fee store", feeAmount, feeReceiver);
                 // If direct transfer fails, store fees in fee store
                 address feeStore = getFeeStore(feeReceiver);
-                emit PaymentEscrow.DebugLog("Got fee store address", 0, feeStore);
 
                 if (feeStore.code.length == 0) {
-                    emit PaymentEscrow.DebugLog("Deploying new fee store", 0, feeStore);
                     // Deploy fee store if it doesn't exist
                     bytes32 salt = keccak256(abi.encodePacked("fee", bytes20(feeReceiver)));
                     feeStore = LibClone.cloneDeterministic({implementation: tokenStoreImplementation, salt: salt});
                     emit TokenStoreCreated(feeReceiver, feeStore);
                 }
 
-                emit PaymentEscrow.DebugLog("Sending to fee store", feeAmount, feeStore);
                 bool feeStoreTransferSucceeded = _sendTokens(msg.sender, token, feeStore, feeAmount, true);
-                emit PaymentEscrow.DebugLog("Fee store transfer result", feeStoreTransferSucceeded ? 1 : 0, feeStore);
-            } else {
-                emit PaymentEscrow.DebugLog("Direct fee transfer succeeded", feeAmount, feeReceiver);
             }
         }
 
         // Send remaining amount to receiver
         if (amount > feeAmount) {
-            emit PaymentEscrow.DebugLog("Sending to receiver", amount - feeAmount, receiver);
             _sendTokens(msg.sender, token, receiver, amount - feeAmount, false);
         }
     }
@@ -584,7 +575,4 @@ contract PaymentEscrow is ReentrancyGuardTransient {
             revert InvalidFeeReceiver(feeReceiver, configuredFeeReceiver);
         }
     }
-
-    /// @notice Debug event for tracking token distribution
-    event DebugLog(string message, uint256 amount, address addr);
 }

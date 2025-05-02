@@ -412,12 +412,22 @@ contract CaptureTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - feeAmount);
     }
 
-    function test_succeeds_whenFeeReceiverBlocked(uint120 authorizedAmount) public {
+    function test_succeeds_whenFeeReceiverBlocked(uint120 authorizedAmount, uint16 feeBps, address feeReceiver)
+        public
+    {
         vm.assume(authorizedAmount > 0);
+        vm.assume(feeBps > 0 && feeBps <= 10_000);
+        vm.assume(feeReceiver != address(0));
+        vm.assume(feeReceiver != operator);
+        vm.assume(feeReceiver != receiver);
+        vm.assume(feeReceiver != payerEOA);
 
         // Create payment info with blocklist token
         PaymentEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo({payer: payerEOA, maxAmount: authorizedAmount, token: address(mockBlocklistToken)});
+        paymentInfo.minFeeBps = feeBps;
+        paymentInfo.maxFeeBps = feeBps;
+        paymentInfo.feeReceiver = feeReceiver;
 
         // Mint tokens to payer
         mockBlocklistToken.mint(payerEOA, authorizedAmount);
@@ -431,12 +441,12 @@ contract CaptureTest is PaymentEscrowBase {
         mockBlocklistToken.block(feeReceiver);
 
         // Calculate expected fee amount
-        uint256 feeAmount = (uint256(authorizedAmount) * uint256(FEE_BPS)) / 10_000;
+        uint256 feeAmount = (uint256(authorizedAmount) * uint256(feeBps)) / 10_000;
         uint256 receiverAmount = uint256(authorizedAmount) - feeAmount;
 
         // Capture payment - fee transfer should fail but be stored in fee store
         vm.prank(operator);
-        paymentEscrow.capture(paymentInfo, authorizedAmount, FEE_BPS, feeReceiver);
+        paymentEscrow.capture(paymentInfo, authorizedAmount, feeBps, feeReceiver);
 
         // Get fee store address and verify it's different from fee receiver
         address feeStore = paymentEscrow.getFeeStore(feeReceiver);
