@@ -139,6 +139,9 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @notice Token pull failed
     error TokenCollectionFailed();
 
+    /// @notice Token transfer failed without revert data
+    error TokenTransferFailed();
+
     /// @notice Charge or authorize attempted on a payment has already been collected
     error PaymentAlreadyCollected(bytes32 paymentInfoHash);
 
@@ -500,7 +503,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
                 revert(add(32, returnData), returnDataSize)
             }
         }
-        revert("Token transfer failed");
+        revert TokenTransferFailed();
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver

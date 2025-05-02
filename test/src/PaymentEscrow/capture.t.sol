@@ -8,6 +8,8 @@ import {MockRevertOnTransferToken} from "../../mocks/MockRevertOnTransferToken.s
 import {MockFailOnTransferToken} from "../../mocks/MockFailOnTransferToken.sol";
 import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
 import {MockBlocklistToken} from "../../mocks/MockBlocklistToken.sol";
+import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
+import {MockEmptyRevertDataToken} from "../../mocks/MockEmptyRevertDataToken.sol";
 
 contract CaptureTest is PaymentEscrowBase {
     function test_reverts_whenNotOperator(uint120 authorizedAmount, address sender) public {
@@ -375,6 +377,28 @@ contract CaptureTest is PaymentEscrowBase {
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
         vm.expectRevert(abi.encodeWithSelector(SafeERC20.SafeERC20FailedOperation.selector, revertingToken));
+        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        vm.stopPrank();
+    }
+
+    function test_reverts_whenTokenRevertsWithNoData(uint120 authorizedAmount) public {
+        vm.assume(authorizedAmount > 0);
+        // Create a mock token that returns invalid data
+        address invalidDataToken = address(new MockEmptyRevertDataToken(address(preApprovalPaymentCollector)));
+        MockEmptyRevertDataToken(invalidDataToken).mint(payerEOA, authorizedAmount);
+
+        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.token = invalidDataToken;
+
+        vm.prank(payerEOA);
+        MockEmptyRevertDataToken(invalidDataToken).approve(address(preApprovalPaymentCollector), authorizedAmount);
+        vm.prank(payerEOA);
+        preApprovalPaymentCollector.preApprove(paymentInfo);
+
+        vm.startPrank(operator);
+        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
+
+        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.TokenTransferFailed.selector));
         paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
     }
