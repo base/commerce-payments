@@ -5,19 +5,19 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 
 /// @title TokenStore
 /// @notice Holds funds for a single operator's payments
-/// @dev Deployed on demand by PaymentEscrow via CREATE2 clones
+/// @dev Deployed on demand by AuthCaptureEscrow via CREATE2 clones
 /// @author Coinbase
 contract TokenStore {
-    /// @notice PaymentEscrow singleton that created this token store
-    address public immutable paymentEscrow;
+    /// @notice AuthCaptureEscrow singleton that created this token store
+    address public immutable authCaptureEscrow;
 
-    /// @notice Call sender is not PaymentEscrow
-    error OnlyPaymentEscrow();
+    /// @notice Call sender is not AuthCaptureEscrow
+    error OnlyAuthCaptureEscrow();
 
     /// @notice Constructor
-    /// @param paymentEscrow_ PaymentEscrow singleton that created this token store
-    constructor(address paymentEscrow_) {
-        paymentEscrow = paymentEscrow_;
+    /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that created this token store
+    constructor(address authCaptureEscrow_) {
+        authCaptureEscrow = authCaptureEscrow_;
     }
 
     /// @notice Send tokens to a recipient, called by escrow during capture/refund
@@ -26,7 +26,7 @@ contract TokenStore {
     /// @param amount Amount of tokens to receive
     /// @return success True if the transfer was successful
     function sendTokens(address token, address recipient, uint256 amount) external returns (bool) {
-        if (msg.sender != paymentEscrow) revert OnlyPaymentEscrow();
+        if (msg.sender != authCaptureEscrow) revert OnlyAuthCaptureEscrow();
         SafeERC20.safeTransfer(IERC20(token), recipient, amount);
         return true;
     }

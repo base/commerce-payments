@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrowBase} from "./PaymentEscrowBase.sol";
+import {AuthCaptureEscrowBase} from "./AuthCaptureEscrowBase.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {CoinbaseSmartWallet} from "smart-wallet/CoinbaseSmartWallet.sol";
 import {CoinbaseSmartWalletFactory} from "smart-wallet/CoinbaseSmartWalletFactory.sol";
-import {PaymentEscrow} from "src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "src/AuthCaptureEscrow.sol";
 import {SpendPermissionManager} from "spend-permissions/SpendPermissionManager.sol";
 import {MagicSpend} from "magicspend/MagicSpend.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 import {IPermit2} from "permit2/interfaces/IPermit2.sol";
 
-contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
+contract AuthCaptureEscrowSmartWalletBase is AuthCaptureEscrowBase {
     // Constants for EIP-6492 support
     bytes32 constant EIP6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
     bytes32 constant CBSW_MESSAGE_TYPEHASH = keccak256("CoinbaseSmartWalletMessage(bytes32 hash)");
@@ -56,14 +56,14 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
         return abi.encodePacked(r, s, v);
     }
 
-    function _signSmartWalletERC3009(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 ownerPk, uint256 ownerIndex)
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _signSmartWalletERC3009(
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo,
+        uint256 ownerPk,
+        uint256 ownerIndex
+    ) internal view returns (bytes memory) {
         address payer = paymentInfo.payer;
         paymentInfo.payer = address(0);
-        bytes32 nonce = paymentEscrow.getHash(paymentInfo);
+        bytes32 nonce = authCaptureEscrow.getHash(paymentInfo);
         paymentInfo.payer = payer;
 
         // This is what needs to be signed by the smart wallet
@@ -96,7 +96,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     }
 
     function _signSmartWalletERC3009WithERC6492(
-        PaymentEscrow.PaymentInfo memory paymentInfo,
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo,
         uint256 ownerPk,
         uint256 ownerIndex
     ) internal view returns (bytes memory) {
@@ -105,7 +105,7 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     }
 
     /// @notice Helper to create a SpendPermission struct with test defaults
-    function _createSpendPermission(PaymentEscrow.PaymentInfo memory paymentInfo)
+    function _createSpendPermission(AuthCaptureEscrow.PaymentInfo memory paymentInfo)
         internal
         view
         returns (SpendPermissionManager.SpendPermission memory)
@@ -190,11 +190,11 @@ contract PaymentEscrowSmartWalletBase is PaymentEscrowBase {
     }
 
     // Only add the ERC6492 wrapping for Permit2
-    function _signPermit2WithERC6492(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 ownerPk, uint256 ownerIndex)
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _signPermit2WithERC6492(
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo,
+        uint256 ownerPk,
+        uint256 ownerIndex
+    ) internal view returns (bytes memory) {
         ISignatureTransfer.PermitTransferFrom memory permit = ISignatureTransfer.PermitTransferFrom({
             permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),
             nonce: uint256(_getHashPayerAgnostic(paymentInfo)),

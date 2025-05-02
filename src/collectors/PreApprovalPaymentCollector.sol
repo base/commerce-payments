@@ -5,7 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
-import {PaymentEscrow} from "../PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title PreApprovalPaymentCollector
 /// @notice Collect payments using pre-approval calls and ERC-20 allowances
@@ -30,27 +30,27 @@ contract PreApprovalPaymentCollector is TokenCollector {
     mapping(bytes32 paymentInfoHash => bool approved) public isPreApproved;
 
     /// @notice Constructor
-    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
-    constructor(address paymentEscrow_) TokenCollector(paymentEscrow_) {}
+    /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
+    constructor(address authCaptureEscrow_) TokenCollector(authCaptureEscrow_) {}
 
     /// @notice Registers buyer's token approval for a specific payment
     /// @dev Must be called by the buyer specified in the payment info
     /// @param paymentInfo PaymentInfo struct
-    function preApprove(PaymentEscrow.PaymentInfo calldata paymentInfo) external {
+    function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
         // Check sender is buyer
-        if (msg.sender != paymentInfo.payer) revert PaymentEscrow.InvalidSender(msg.sender, paymentInfo.payer);
+        if (msg.sender != paymentInfo.payer) revert AuthCaptureEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
         // Check pre-approval expiry has not passed
         if (block.timestamp >= paymentInfo.preApprovalExpiry) {
-            revert PaymentEscrow.AfterPreApprovalExpiry(uint48(block.timestamp), paymentInfo.preApprovalExpiry);
+            revert AuthCaptureEscrow.AfterPreApprovalExpiry(uint48(block.timestamp), paymentInfo.preApprovalExpiry);
         }
 
         // Check has not already pre-approved
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
         if (isPreApproved[paymentInfoHash]) revert PaymentAlreadyPreApproved(paymentInfoHash);
 
         // Check has not already collected
-        (bool hasCollectedPayment,,) = paymentEscrow.paymentState(paymentInfoHash);
+        (bool hasCollectedPayment,,) = authCaptureEscrow.paymentState(paymentInfoHash);
         if (hasCollectedPayment) revert PaymentAlreadyCollected(paymentInfoHash);
 
         // Set payment as pre-approved
@@ -61,14 +61,14 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
     function _collectTokens(
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
         address tokenStore,
         uint256 amount,
         bytes calldata
     ) internal override {
         // Check payment pre-approved
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
-        // Skip resetting pre-approval to save gas as the `PaymentEscrow` enforces unique, single-lifecycle payments
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
+        // Skip resetting pre-approval to save gas as the `AuthCaptureEscrow` enforces unique, single-lifecycle payments
         if (!isPreApproved[paymentInfoHash]) revert PaymentNotPreApproved(paymentInfoHash);
         // Transfer tokens from payer directly to token store
         SafeERC20.safeTransferFrom(IERC20(paymentInfo.token), paymentInfo.payer, tokenStore, amount);

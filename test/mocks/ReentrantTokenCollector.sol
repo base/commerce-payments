@@ -5,23 +5,25 @@ import {TokenCollector} from "../../src/collectors/TokenCollector.sol";
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../src/AuthCaptureEscrow.sol";
 
 contract ReentrantTokenCollector is Test, TokenCollector {
-    constructor(address _paymentEscrow) TokenCollector(_paymentEscrow) {}
+    constructor(address _escrow) TokenCollector(_escrow) {}
 
     bool called = false;
 
-    function _collectTokens(PaymentEscrow.PaymentInfo calldata paymentInfo, address tokenStore, uint256, bytes calldata)
-        internal
-        override
-    {
+    function _collectTokens(
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
+        address tokenStore,
+        uint256,
+        bytes calldata
+    ) internal override {
         if (!called) {
             called = true;
-            PaymentEscrow.PaymentInfo memory paymentInfo2 = paymentInfo; // calldata is read-only
+            AuthCaptureEscrow.PaymentInfo memory paymentInfo2 = paymentInfo; // calldata is read-only
             paymentInfo2.salt += 1; // avoid hash repeat
             vm.startPrank(address(paymentInfo.operator));
-            paymentEscrow.authorize(paymentInfo2, 10 ether, address(this), "");
+            authCaptureEscrow.authorize(paymentInfo2, 10 ether, address(this), "");
             vm.stopPrank();
         } else {
             called = false;

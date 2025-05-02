@@ -5,7 +5,7 @@ import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
-import {PaymentEscrow} from "../PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title Permit2PaymentCollector
 /// @notice Collect payments using Permit2 signatures
@@ -18,11 +18,11 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     ISignatureTransfer public immutable permit2;
 
     /// @notice Constructor
-    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
+    /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param permit2_ Permit2 singleton
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
-    constructor(address paymentEscrow_, address permit2_, address multicall3_)
-        TokenCollector(paymentEscrow_)
+    constructor(address authCaptureEscrow_, address permit2_, address multicall3_)
+        TokenCollector(authCaptureEscrow_)
         ERC6492SignatureHandler(multicall3_)
     {
         permit2 = ISignatureTransfer(permit2_);
@@ -31,7 +31,7 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     /// @dev Use Permit2 signature transfer to collect any ERC-20 from payers
     function _collectTokens(
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
         address tokenStore,
         uint256 amount,
         bytes calldata collectorData

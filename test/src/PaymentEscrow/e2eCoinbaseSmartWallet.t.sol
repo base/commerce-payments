@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../../src/AuthCaptureEscrow.sol";
 
-import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+import {AuthCaptureEscrowBase} from "../../base/AuthCaptureEscrowBase.sol";
+import {AuthCaptureEscrowSmartWalletBase} from "../../base/AuthCaptureEscrowSmartWalletBase.sol";
 
-contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
+contract AuthCaptureEscrowSmartWalletE2ETest is AuthCaptureEscrowSmartWalletBase {
     function test_charge_succeeds_withDeployedSmartWallet(uint120 amount) public {
         // Assume reasonable values
         vm.assume(amount > 0);
         mockERC3009Token.mint(address(smartWalletDeployed), amount);
 
         // Create payment info
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(address(smartWalletDeployed), amount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(address(smartWalletDeployed), amount);
 
         // Create signature
         bytes memory signature = _signSmartWalletERC3009(paymentInfo, DEPLOYED_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);
-        paymentEscrow.charge(
+        authCaptureEscrow.charge(
             paymentInfo,
             amount,
             address(erc3009PaymentCollector),
@@ -44,14 +44,15 @@ contract PaymentEscrowSmartWalletE2ETest is PaymentEscrowSmartWalletBase {
         assertEq(wallet.code.length, 0, "Smart wallet should not be deployed yet");
 
         // Create payment details
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(address(smartWalletCounterfactual), amount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo(address(smartWalletCounterfactual), amount);
 
         // Create signature
         bytes memory signature = _signSmartWalletERC3009WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
         // Submit charge
         vm.prank(operator);
-        paymentEscrow.charge(
+        authCaptureEscrow.charge(
             paymentInfo,
             amount,
             address(erc3009PaymentCollector),
