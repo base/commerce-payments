@@ -448,9 +448,14 @@ contract CaptureTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.capture(paymentInfo, authorizedAmount, feeBps, feeReceiver);
 
-        // Get fee store address and verify it's different from fee receiver
+        // Get fee store address and verify it's different from all important addresses
         address feeStore = paymentEscrow.getFeeStore(feeReceiver);
-        assertTrue(feeStore != feeReceiver, "Fee store should be a different address from fee receiver");
+        assertTrue(feeStore != feeReceiver, "Fee store should be different from fee receiver");
+        assertTrue(feeStore != operator, "Fee store should be different from operator");
+        assertTrue(
+            feeStore != paymentEscrow.getTokenStore(operator),
+            "Fee store should be different from operator's token store"
+        );
 
         // Verify balances
         assertEq(mockBlocklistToken.balanceOf(receiver), receiverAmount);

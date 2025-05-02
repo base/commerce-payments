@@ -468,4 +468,49 @@ contract ChargeTest is PaymentEscrowBase {
         assertEq(mockERC3009Token.balanceOf(newFeeRecipient), feeAmount);
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
     }
+
+    function test_succeeds_whenFeeReceiverBlocked(uint120 amount, uint16 feeBps, address feeReceiver) public {
+        vm.assume(amount > 0);
+        vm.assume(feeBps > 0 && feeBps <= 10_000);
+        vm.assume(feeReceiver != address(0));
+        vm.assume(feeReceiver != operator);
+        vm.assume(feeReceiver != receiver);
+        vm.assume(feeReceiver != payerEOA);
+
+        // Create payment info with blocklist token
+        PaymentEscrow.PaymentInfo memory paymentInfo =
+            _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockBlocklistToken)});
+        paymentInfo.minFeeBps = feeBps;
+        paymentInfo.maxFeeBps = feeBps;
+        paymentInfo.feeReceiver = feeReceiver;
+
+        // Mint tokens to payer
+        mockBlocklistToken.mint(payerEOA, amount);
+
+        // Block the fee receiver
+        mockBlocklistToken.block(feeReceiver);
+
+        // Calculate expected fee amount
+        uint256 feeAmount = (uint256(amount) * uint256(feeBps)) / 10_000;
+        uint256 receiverAmount = uint256(amount) - feeAmount;
+
+        // Charge payment - fee transfer should fail but be stored in fee store
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+        vm.prank(operator);
+        paymentEscrow.charge(paymentInfo, amount, address(erc3009PaymentCollector), signature, feeBps, feeReceiver);
+
+        // Get fee store address and verify it's different from all important addresses
+        address feeStore = paymentEscrow.getFeeStore(feeReceiver);
+        assertTrue(feeStore != feeReceiver, "Fee store should be different from fee receiver");
+        assertTrue(feeStore != operator, "Fee store should be different from operator");
+        assertTrue(
+            feeStore != paymentEscrow.getTokenStore(operator),
+            "Fee store should be different from operator's token store"
+        );
+
+        // Verify balances
+        assertEq(mockBlocklistToken.balanceOf(receiver), receiverAmount);
+        assertEq(mockBlocklistToken.balanceOf(feeReceiver), 0);
+        assertEq(mockBlocklistToken.balanceOf(feeStore), feeAmount);
+    }
 }

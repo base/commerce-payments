@@ -442,7 +442,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         if (tokenStoreBalanceAfter != tokenStoreBalanceBefore + amount) revert TokenCollectionFailed();
     }
 
-    /// @notice Helper function to make a low-level call to sendTokens
+    /// @notice Helper function to make a low-level call to TokenStore.sendTokens
     /// @param tokenStore The token store to call
     /// @param token The token to send
     /// @param recipient The recipient of the tokens
@@ -462,7 +462,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     /// @param token The token to send
     /// @param recipient Address to receive the tokens
     /// @param amount Amount of tokens to send
-    /// @param swallowRevert Whether to swallow the revert and return false instead
+    /// @param swallowRevert Whether to swallow a revert and return false instead
     /// @return success Whether the transfer was successful
     function _sendTokens(address operator, address token, address recipient, uint256 amount, bool swallowRevert)
         internal
@@ -504,6 +504,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
+    /// @dev If the fee transfer fails, the fee will be stored in a TokenStore specific to the fee receiver
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
     /// @param amount Total amount to split between payment and fees
@@ -534,9 +535,7 @@ contract PaymentEscrow is ReentrancyGuardTransient {
         }
 
         // Send remaining amount to receiver
-        if (amount > feeAmount) {
-            _sendTokens(msg.sender, token, receiver, amount - feeAmount, false);
-        }
+        if (amount > feeAmount) _sendTokens(msg.sender, token, receiver, amount - feeAmount, false);
     }
 
     /// @notice Validates required properties of a payment

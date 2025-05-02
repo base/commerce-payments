@@ -23,10 +23,8 @@ contract DisburseFeesToFeeReceiverTest is PaymentEscrowBase {
         paymentInfo.maxFeeBps = feeBps;
         paymentInfo.feeReceiver = feeReceiver;
 
-        // Mint tokens to payer
         mockBlocklistToken.mint(payerEOA, authorizedAmount);
 
-        // Authorize payment
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
         vm.prank(operator);
         paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
@@ -42,9 +40,7 @@ contract DisburseFeesToFeeReceiverTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.capture(paymentInfo, authorizedAmount, feeBps, feeReceiver);
 
-        // Get fee store address and verify it's different from fee receiver
         address feeStore = paymentEscrow.getFeeStore(feeReceiver);
-        assertTrue(feeStore != feeReceiver, "Fee store should be a different address from fee receiver");
 
         // Verify balances before disbursement
         assertEq(mockBlocklistToken.balanceOf(receiver), receiverAmount);
@@ -95,9 +91,7 @@ contract DisburseFeesToFeeReceiverTest is PaymentEscrowBase {
         vm.prank(operator);
         paymentEscrow.capture(paymentInfo, authorizedAmount, feeBps, feeReceiver);
 
-        // Get fee store address and verify it's different from fee receiver
         address feeStore = paymentEscrow.getFeeStore(feeReceiver);
-        assertTrue(feeStore != feeReceiver, "Fee store should be a different address from fee receiver");
 
         // Verify balances before disbursement
         assertEq(mockBlocklistToken.balanceOf(receiver), receiverAmount);
