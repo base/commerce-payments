@@ -7,11 +7,13 @@ import {console2} from "forge-std/console2.sol";
 import {AuthCaptureEscrow} from "../src/AuthCaptureEscrow.sol";
 import {ERC3009PaymentCollector} from "../src/collectors/ERC3009PaymentCollector.sol";
 
+import {BuyerRewards} from "../src/rewards/BuyerRewards.sol";
+import {MerchantRewards} from "../src/rewards/MerchantRewards.sol";
+
 /**
  * @notice Deploy the AuthCaptureEscrow contract.
  *
- * forge script Deploy --account dev --sender $SENDER --rpc-url $BASE_SEPOLIA_RPC --broadcast -vvvv
- * --verify --verifier-url $SEPOLIA_BASESCAN_API --etherscan-api-key $BASESCAN_API_KEY
+ * forge script Deploy --account dev --sender $SENDER --rpc-url $BASE_SEPOLIA_RPC --broadcast -vvvv --verify --verifier-url $SEPOLIA_BASESCAN_API --etherscan-api-key $BASESCAN_API_KEY
  */
 contract Deploy is Script {
     // Known addresses
@@ -28,12 +30,20 @@ contract Deploy is Script {
         AuthCaptureEscrow authCaptureEscrow = new AuthCaptureEscrow();
         ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(authCaptureEscrow), MULTICALL3);
 
+        address operator = 0x2B654aB28f82a2a4E4F6DB8e20791E5AcF4125c6;
+        uint16 rewardBps = 100;
+        BuyerRewards buyerRewards = new BuyerRewards(address(authCaptureEscrow), operator, rewardBps);
+        MerchantRewards merchantRewards = new MerchantRewards(address(authCaptureEscrow), operator, rewardBps);
+
         vm.stopBroadcast();
 
         // Log deployed addresses
         console2.log("Deployed addresses:");
         console2.log("AuthCaptureEscrow:", address(authCaptureEscrow));
         console2.log("ERC3009PaymentCollector:", address(erc3009Collector));
+
+        console2.log("BuyerRewards:", address(buyerRewards));
+        console2.log("MerchantRewards:", address(merchantRewards));
 
         // Log known addresses used
         console2.log("\nKnown addresses used:");
