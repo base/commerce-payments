@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../../src/AuthCaptureEscrow.sol";
 import {TokenCollector} from "../../../src/collectors/TokenCollector.sol";
 
 import {MockERC3009Token} from "../../mocks/MockERC3009Token.sol";
-import {PaymentEscrowSmartWalletBase} from "../../base/PaymentEscrowSmartWalletBase.sol";
+import {AuthCaptureEscrowSmartWalletBase} from "../../base/AuthCaptureEscrowSmartWalletBase.sol";
 
-contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
+contract Permit2PaymentCollectorTest is AuthCaptureEscrowSmartWalletBase {
     function setUp() public override {
         super.setUp();
         vm.prank(address(smartWalletDeployed));
@@ -16,19 +16,19 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
         mockERC20Token.approve(address(permit2), type(uint256).max);
     }
 
-    function test_collectTokens_reverts_whenCalledByNonPaymentEscrow(uint120 amount) public {
+    function test_collectTokens_reverts_whenCalledByNonAuthCaptureEscrow(uint120 amount) public {
         vm.assume(amount > 0);
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
-        vm.expectRevert(abi.encodeWithSelector(TokenCollector.OnlyPaymentEscrow.selector));
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
+        vm.expectRevert(abi.encodeWithSelector(TokenCollector.OnlyAuthCaptureEscrow.selector));
         permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, "");
     }
 
-    function test_collectTokens_succeeds_whenCalledByPaymentEscrow(uint120 amount) public {
+    function test_collectTokens_succeeds_whenCalledByAuthCaptureEscrow(uint120 amount) public {
         vm.assume(amount > 0);
         MockERC3009Token(address(mockERC3009Token)).mint(payerEOA, amount);
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
         bytes memory signature = _signPermit2Transfer({
             token: address(mockERC3009Token),
             amount: amount,
@@ -36,7 +36,7 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
             nonce: uint256(_getHashPayerAgnostic(paymentInfo)),
             privateKey: payer_EOA_PK
         });
-        vm.prank(address(paymentEscrow));
+        vm.prank(address(authCaptureEscrow));
         permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
     }
 
@@ -47,17 +47,17 @@ contract Permit2PaymentCollectorTest is PaymentEscrowSmartWalletBase {
 
         assertEq(smartWalletCounterfactual.code.length, 0, "Smart wallet should not be deployed yet");
 
-        PaymentEscrow.PaymentInfo memory paymentInfo =
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo(smartWalletCounterfactual, amount, address(mockERC20Token));
-        address tokenStore = paymentEscrow.getTokenStore(paymentInfo.operator);
+        address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
 
         bytes memory signature = _signPermit2WithERC6492(paymentInfo, COUNTERFACTUAL_WALLET_OWNER_PK, 0);
 
-        vm.prank(address(paymentEscrow));
+        vm.prank(address(authCaptureEscrow));
         permit2PaymentCollector.collectTokens(paymentInfo, tokenStore, amount, signature);
 
         assertEq(
-            mockERC20Token.balanceOf(paymentEscrow.getTokenStore(paymentInfo.operator)),
+            mockERC20Token.balanceOf(authCaptureEscrow.getTokenStore(paymentInfo.operator)),
             amount,
             "Token store balance did not increase by correct amount"
         );

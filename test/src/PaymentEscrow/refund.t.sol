@@ -1,41 +1,43 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.28;
 
-import {PaymentEscrow} from "../../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../../src/AuthCaptureEscrow.sol";
 
-import {PaymentEscrowBase} from "../../base/PaymentEscrowBase.sol";
+import {AuthCaptureEscrowBase} from "../../base/AuthCaptureEscrowBase.sol";
 
-contract RefundTest is PaymentEscrowBase {
+contract RefundTest is AuthCaptureEscrowBase {
     function test_reverts_whenValueIsZero() public {
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1}); // Any non-zero value
 
         vm.prank(operator);
-        vm.expectRevert(PaymentEscrow.ZeroAmount.selector);
-        paymentEscrow.refund(paymentInfo, 0, address(0), hex"");
+        vm.expectRevert(AuthCaptureEscrow.ZeroAmount.selector);
+        authCaptureEscrow.refund(paymentInfo, 0, address(0), hex"");
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
         vm.assume(overflowValue > type(uint120).max);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1});
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({payer: payerEOA, maxAmount: 1});
 
         vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(PaymentEscrow.AmountOverflow.selector, overflowValue, type(uint120).max));
-        paymentEscrow.refund(paymentInfo, overflowValue, address(0), hex"");
+        vm.expectRevert(
+            abi.encodeWithSelector(AuthCaptureEscrow.AmountOverflow.selector, overflowValue, type(uint120).max)
+        );
+        authCaptureEscrow.refund(paymentInfo, overflowValue, address(0), hex"");
     }
 
     function test_reverts_whenSenderNotOperator(uint120 authorizedAmount, uint120 refundAmount) public {
         vm.assume(authorizedAmount > 0);
         vm.assume(refundAmount > 0);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         address randomAddress = makeAddr("randomAddress");
         vm.prank(randomAddress);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.InvalidSender.selector, randomAddress, paymentInfo.operator)
+            abi.encodeWithSelector(AuthCaptureEscrow.InvalidSender.selector, randomAddress, paymentInfo.operator)
         );
-        paymentEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
+        authCaptureEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
     }
 
     function test_reverts_afterRefundExpiry(uint120 authorizedAmount, uint120 refundAmount, uint48 refundExpiry)
@@ -45,14 +47,14 @@ contract RefundTest is PaymentEscrowBase {
         vm.assume(refundAmount > 0);
         vm.assume(refundExpiry < uint48(block.timestamp));
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
         paymentInfo.refundExpiry = refundExpiry;
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.AfterRefundExpiry.selector, uint48(block.timestamp), refundExpiry)
+            abi.encodeWithSelector(AuthCaptureEscrow.AfterRefundExpiry.selector, uint48(block.timestamp), refundExpiry)
         );
-        paymentEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
+        authCaptureEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
     }
 
     function test_reverts_whenRefundExceedsCaptured(uint120 authorizedAmount) public {
@@ -62,27 +64,27 @@ contract RefundTest is PaymentEscrowBase {
         uint256 captureAmount = authorizedAmount / 2; // Charge only half
         uint256 refundAmount = authorizedAmount; // Try to refund full amount
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm and capture partial amount
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
-        paymentEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
         // Fund operator for refund
         mockERC3009Token.mint(operator, refundAmount);
         vm.prank(operator);
-        mockERC3009Token.approve(address(paymentEscrow), refundAmount);
+        mockERC3009Token.approve(address(authCaptureEscrow), refundAmount);
 
         // Try to refund more than charged
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(PaymentEscrow.RefundExceedsCapture.selector, refundAmount, captureAmount)
+            abi.encodeWithSelector(AuthCaptureEscrow.RefundExceedsCapture.selector, refundAmount, captureAmount)
         );
-        paymentEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
+        authCaptureEscrow.refund(paymentInfo, refundAmount, address(0), hex"");
     }
 
     function test_succeeds_whenCalledByOperator(uint120 authorizedAmount, uint120 refundAmount) public {
@@ -91,14 +93,14 @@ contract RefundTest is PaymentEscrowBase {
         vm.assume(authorizedAmount > 0 && authorizedAmount <= payerBalance);
         vm.assume(refundAmount > 0 && refundAmount <= authorizedAmount);
 
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
-        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
         // Fund the operator for refund
@@ -113,7 +115,7 @@ contract RefundTest is PaymentEscrowBase {
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), hex"");
+        authCaptureEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), hex"");
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(operator), operatorBalanceBefore - refundAmount);
@@ -125,16 +127,16 @@ contract RefundTest is PaymentEscrowBase {
         vm.assume(refundAmount > 0 && refundAmount <= authorizedAmount);
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
-        PaymentEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
 
-        bytes32 paymentInfoHash = paymentEscrow.getHash(paymentInfo);
+        bytes32 paymentInfoHash = authCaptureEscrow.getHash(paymentInfo);
 
         bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
 
         // First confirm and capture the payment
         vm.startPrank(operator);
-        paymentEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
-        paymentEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
         vm.stopPrank();
 
         // Fund operator for refund
@@ -144,10 +146,10 @@ contract RefundTest is PaymentEscrowBase {
 
         // Record expected event
         vm.expectEmit(true, true, false, true);
-        emit PaymentEscrow.PaymentRefunded(paymentInfoHash, refundAmount, address(operatorRefundCollector));
+        emit AuthCaptureEscrow.PaymentRefunded(paymentInfoHash, refundAmount, address(operatorRefundCollector));
 
         // Execute refund
         vm.prank(operator);
-        paymentEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), hex"");
+        authCaptureEscrow.refund(paymentInfo, refundAmount, address(operatorRefundCollector), hex"");
     }
 }

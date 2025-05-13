@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 
-import {PaymentEscrow} from "../../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../../src/AuthCaptureEscrow.sol";
 import {IERC3009} from "../../src/interfaces/IERC3009.sol";
 import {IMulticall3} from "../../src/interfaces/IMulticall3.sol";
 import {ISignatureTransfer} from "permit2/interfaces/ISignatureTransfer.sol";
@@ -23,10 +23,10 @@ import {SpendPermissionPaymentCollector} from "../../src/collectors/SpendPermiss
 import {OperatorRefundCollector} from "../../src/collectors/OperatorRefundCollector.sol";
 import {ERC20UnsafeTransferTokenCollector} from "../../test/mocks/ERC20UnsafeTransferTokenCollector.sol";
 
-contract PaymentEscrowBase is Test, DeployPermit2 {
+contract AuthCaptureEscrowBase is Test, DeployPermit2 {
     using PermitHash for ISignatureTransfer.PermitTransferFrom;
 
-    PaymentEscrow public paymentEscrow;
+    AuthCaptureEscrow public authCaptureEscrow;
     MockERC3009Token public mockERC3009Token;
     MockERC20 public mockERC20Token;
     address public multicall3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
@@ -78,17 +78,17 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         magicSpend = new MagicSpend(magicSpendOwner, 1); // (owner, maxWithdrawDenominator)
         spendPermissionManager = new SpendPermissionManager(publicERC6592Validator, address(magicSpend));
 
-        // Deploy PaymentEscrow
-        paymentEscrow = new PaymentEscrow();
+        // Deploy AuthCaptureEscrow
+        authCaptureEscrow = new AuthCaptureEscrow();
 
         // Deploy token collector contracts
-        erc3009PaymentCollector = new ERC3009PaymentCollector(address(paymentEscrow), multicall3);
-        preApprovalPaymentCollector = new PreApprovalPaymentCollector(address(paymentEscrow));
-        permit2PaymentCollector = new Permit2PaymentCollector(address(paymentEscrow), permit2, multicall3);
+        erc3009PaymentCollector = new ERC3009PaymentCollector(address(authCaptureEscrow), multicall3);
+        preApprovalPaymentCollector = new PreApprovalPaymentCollector(address(authCaptureEscrow));
+        permit2PaymentCollector = new Permit2PaymentCollector(address(authCaptureEscrow), permit2, multicall3);
         spendPermissionPaymentCollector =
-            new SpendPermissionPaymentCollector(address(paymentEscrow), address(spendPermissionManager));
-        operatorRefundCollector = new OperatorRefundCollector(address(paymentEscrow));
-        erc20UnsafeTransferPaymentCollector = new ERC20UnsafeTransferTokenCollector(address(paymentEscrow));
+            new SpendPermissionPaymentCollector(address(authCaptureEscrow), address(spendPermissionManager));
+        operatorRefundCollector = new OperatorRefundCollector(address(authCaptureEscrow));
+        erc20UnsafeTransferPaymentCollector = new ERC20UnsafeTransferTokenCollector(address(authCaptureEscrow));
 
         // Setup roles
         operator = vm.addr(1);
@@ -106,7 +106,7 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentInfo(address payer, uint120 maxAmount)
         internal
         view
-        returns (PaymentEscrow.PaymentInfo memory)
+        returns (AuthCaptureEscrow.PaymentInfo memory)
     {
         return _createPaymentInfo(payer, maxAmount, address(mockERC3009Token));
     }
@@ -114,9 +114,9 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
     function _createPaymentInfo(address payer, uint120 maxAmount, address token)
         internal
         view
-        returns (PaymentEscrow.PaymentInfo memory)
+        returns (AuthCaptureEscrow.PaymentInfo memory)
     {
-        return PaymentEscrow.PaymentInfo({
+        return AuthCaptureEscrow.PaymentInfo({
             operator: operator,
             payer: payer,
             receiver: receiver,
@@ -132,12 +132,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         });
     }
 
-    function _signERC3009ReceiveWithAuthorizationStruct(PaymentEscrow.PaymentInfo memory paymentInfo, uint256 signerPk)
-        internal
-        view
-        virtual
-        returns (bytes memory)
-    {
+    function _signERC3009ReceiveWithAuthorizationStruct(
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo,
+        uint256 signerPk
+    ) internal view virtual returns (bytes memory) {
         bytes32 nonce = _getHashPayerAgnostic(paymentInfo);
 
         bytes32 digest = _getERC3009Digest(
@@ -198,10 +196,10 @@ contract PaymentEscrowBase is Test, DeployPermit2 {
         return abi.encodePacked(r, s, v);
     }
 
-    function _getHashPayerAgnostic(PaymentEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
+    function _getHashPayerAgnostic(AuthCaptureEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
         address payer = paymentInfo.payer;
         paymentInfo.payer = address(0);
-        bytes32 hash = paymentEscrow.getHash(paymentInfo);
+        bytes32 hash = authCaptureEscrow.getHash(paymentInfo);
         paymentInfo.payer = payer;
         return hash;
     }

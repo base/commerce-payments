@@ -4,11 +4,11 @@ pragma solidity ^0.8.28;
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {PaymentEscrow} from "../src/PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../src/AuthCaptureEscrow.sol";
 import {ERC3009PaymentCollector} from "../src/collectors/ERC3009PaymentCollector.sol";
 
 /**
- * @notice Deploy the PaymentEscrow contract.
+ * @notice Deploy the AuthCaptureEscrow contract.
  *
  * forge script Deploy --account dev --sender $SENDER --rpc-url $BASE_SEPOLIA_RPC --broadcast -vvvv
  * --verify --verifier-url $SEPOLIA_BASESCAN_API --etherscan-api-key $BASESCAN_API_KEY
@@ -24,15 +24,15 @@ contract Deploy is Script {
     function run() public {
         vm.startBroadcast();
 
-        // Deploy PaymentEscrow with known dependencies
-        PaymentEscrow paymentEscrow = new PaymentEscrow();
-        ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(paymentEscrow), MULTICALL3);
+        // Deploy AuthCaptureEscrow with known dependencies
+        AuthCaptureEscrow authCaptureEscrow = new AuthCaptureEscrow();
+        ERC3009PaymentCollector erc3009Collector = new ERC3009PaymentCollector(address(authCaptureEscrow), MULTICALL3);
 
         vm.stopBroadcast();
 
         // Log deployed addresses
         console2.log("Deployed addresses:");
-        console2.log("PaymentEscrow:", address(paymentEscrow));
+        console2.log("AuthCaptureEscrow:", address(authCaptureEscrow));
         console2.log("ERC3009PaymentCollector:", address(erc3009Collector));
 
         // Log known addresses used

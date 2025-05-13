@@ -1,8 +1,8 @@
-# Payment Escrow Protocol
+# Commerce Payments Protocol
 
 ## Overview
 
-The Payment Escrow Protocol is a modular smart contract system designed to facilitate secure commerce payment flows onchain. In traditional payment systems, merchants rely on payment processors to handle the complex flow of funds between buyers and sellers. The Payment Escrow Protocol brings these familiar payment patterns onchain through a secure escrow-based system.
+The Commerce Payments Protocol facilitates onchain payments. Specifically designed for authorization and capture patterns, payments are initially collected into an escrow contract to guarantee payment for merchants at a later time. Operators drive token movement through the protocol and can customize their operations with modular smart contracts. No top-level controls exist on the protocol, keeping it permissionless, immutable, inviting of any operators.
 
 The protocol's core functionality revolves around two key concepts:
 
@@ -42,7 +42,7 @@ This model allows commerce platforms to maintain their business logic and paymen
 
 The protocol consists of two main components:
 
-1. **`PaymentEscrow` Contract**: Core contract managing the escrow of funds and payment lifecycle
+1. **`AuthCaptureEscrow` Contract**: Core contract managing the escrow of funds and payment lifecycle
 2. **Token Collectors**: Modular contracts handling different methods of token collection
 
 ### Token Collectors
@@ -67,7 +67,7 @@ This modular collector system allows the protocol to support various token autho
 
 ## Protocol Invariants
 
-The Payment Escrow Protocol maintains several critical invariants that ensure secure payment flows:
+The Commerce Payments Protocol maintains several critical invariants that ensure secure payment flows:
 
 ### Payment Flow Sequencing
 - Authorization can only be performed before the expiration of the payer's pre-approval
@@ -79,3 +79,18 @@ The Payment Escrow Protocol maintains several critical invariants that ensure se
   - A previous successful capture or immediate charge
   - Refund amount cannot exceed previously captured amount
 
+## Risks
+
+### Operator compromise
+
+The protocol is designed to limit the scope of damage that can occur in the case that an operator for existing payments is compromised by a malicious actor. Operators cannot steal funds from the protocol. Malicious or inactive operators can censor payments by failing to move a payment through its lifecycle or by prematurely voiding payments. Operators may also have some jurisdiction over how fees behave, depending on how they were configured in the original `PaymentInfo` definition. Operators can apply fees up to the `maxFeeBps` specified in the `PaymentInfo`, and, if the `feeReceiver` was set as `address(0)` in the `PaymentInfo` then this value is dynamically configurable at call time. Therefore in the worst case, an operator could siphon the maximum configurable fee rate to an address of their choosing.
+
+### Denial of service due to denylists
+
+Some tokens, such as USDC, implement denylists that prohibit the movement of funds to or from a blocked address. Due to the atomic nature of transactions onchain, 
+if any of the transfers involved in the movement of a payment's funds fail, that step in the payment's lifecycle can't be completed. This is of particular concern for payments
+that may have already been authorized, kicking off the fulfillment of a purchase, and cannot later be captured due to a blocked recipient or `feeReceiver`.
+
+Capturing fees may be considered of lesser importance to a given operator than maintaining liveness in the protocol and fulfilling pending payments, making a denylisted `feeReceiver` an unacceptable reason for failing to fulfill payments. We explored design options for mitigating this risk in the core protocol, such as holding failed fee funds in custody for later retrieval, but the complexity of this mechanism wasn't justified by the magnitude of this edge case.
+
+The `feeReceiver` can be a dynamic argument if the `feeReceiver` specified in the `PaymentInfo` is `address(0)`. For operators that care to prioritize liveness of payments over the risk of fees lost due to operator compromise, setting the value of `feeReceiver` to `address(0)` in the initial `PaymentInfo` is a way to mitigate the risk of being permanently unable to fulfill a given payment due to denylists; the operator can simply supply an alternate `feeReceiver` to the `capture` call (for any number of necessary attempts). 

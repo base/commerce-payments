@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {TokenCollector} from "./TokenCollector.sol";
-import {PaymentEscrow} from "../PaymentEscrow.sol";
+import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title SpendPermissionPaymentCollector
 /// @notice Collect payments using Spend Permissions
@@ -23,16 +23,16 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     error SpendPermissionApprovalFailed();
 
     /// @notice Constructor
-    /// @param paymentEscrow_ PaymentEscrow singleton that calls to collect tokens
+    /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param spendPermissionManager_ SpendPermissionManager singleton
-    constructor(address paymentEscrow_, address spendPermissionManager_) TokenCollector(paymentEscrow_) {
+    constructor(address authCaptureEscrow_, address spendPermissionManager_) TokenCollector(authCaptureEscrow_) {
         spendPermissionManager = SpendPermissionManager(payable(spendPermissionManager_));
     }
 
     /// @inheritdoc TokenCollector
     /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function _collectTokens(
-        PaymentEscrow.PaymentInfo calldata paymentInfo,
+        AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
         address tokenStore,
         uint256 amount,
         bytes calldata collectorData
