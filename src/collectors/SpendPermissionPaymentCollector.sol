@@ -10,7 +10,9 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title SpendPermissionPaymentCollector
+///
 /// @notice Collect payments using Spend Permissions
+///
 /// @author Coinbase, Shopify
 contract SpendPermissionPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
@@ -23,6 +25,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     error SpendPermissionApprovalFailed();
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param spendPermissionManager_ SpendPermissionManager singleton
     constructor(address authCaptureEscrow_, address spendPermissionManager_) TokenCollector(authCaptureEscrow_) {
@@ -30,6 +33,7 @@ contract SpendPermissionPaymentCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
+    ///
     /// @dev Supports Spend Permission approval signatures and MagicSpend WithdrawRequests (both optional)
     function _collectTokens(
         AuthCaptureEscrow.PaymentInfo calldata paymentInfo,

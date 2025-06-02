@@ -4,10 +4,13 @@ pragma solidity ^0.8.28;
 import {IMulticall3} from "../interfaces/IMulticall3.sol";
 
 /// @title ERC6492SignatureHandler
+///
 /// @notice Base contract for handling ERC-6492 signatures
+///
 /// @dev This contract does not perform standard ERC-6492 signature handling flow because it does not itself
 ///      validate the signature. It simply calls any ERC-6492 factory/prepare data if present since
 ///      signature validators may not implement ERC-6492 handling.
+///
 /// @author Coinbase, Shopify
 abstract contract ERC6492SignatureHandler {
     bytes32 internal constant _ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
@@ -16,13 +19,16 @@ abstract contract ERC6492SignatureHandler {
     IMulticall3 public immutable multicall3;
 
     /// @notice Constructor
+    ///
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
     constructor(address multicall3_) {
         multicall3 = IMulticall3(multicall3_);
     }
 
     /// @notice Parse and process ERC-6492 signatures
+    ///
     /// @param signature User-provided signature
+    ///
     /// @return innerSignature Remaining signature after ERC-6492 parsing
     function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
         // Early return if signature less than 32 bytes

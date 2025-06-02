@@ -4,7 +4,9 @@ pragma solidity ^0.8.28;
 import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title TokenCollector
+///
 /// @notice Abstract contract for shared token collector utilities
+///
 /// @author Coinbase, Shopify
 abstract contract TokenCollector {
     /// @notice Type differentiation between payment and refund collection flows
@@ -20,12 +22,14 @@ abstract contract TokenCollector {
     error OnlyAuthCaptureEscrow();
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     constructor(address authCaptureEscrow_) {
         authCaptureEscrow = AuthCaptureEscrow(authCaptureEscrow_);
     }
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
+    ///
     /// @param paymentInfo Payment info struct
     /// @param tokenStore Address to collect tokens into
     /// @param amount Amount of tokens to pull
@@ -41,10 +45,12 @@ abstract contract TokenCollector {
     }
 
     /// @notice Get the type of token collector
+    ///
     /// @return CollectorType Type of token collector
     function collectorType() external view virtual returns (CollectorType);
 
     /// @notice Pull tokens from payer to escrow using token collector-specific authorization logic
+    ///
     /// @param paymentInfo Payment info struct
     /// @param tokenStore Address to collect tokens into
     /// @param amount Amount of tokens to pull
@@ -57,7 +63,9 @@ abstract contract TokenCollector {
     ) internal virtual;
 
     /// @notice Get hash for PaymentInfo with null payer address
+    ///
     /// @param paymentInfo PaymentInfo struct with non-null payer address
+    ///
     /// @return hash Hash of PaymentInfo with payer replaced with zero address
     function _getHashPayerAgnostic(AuthCaptureEscrow.PaymentInfo memory paymentInfo) internal view returns (bytes32) {
         address payer = paymentInfo.payer;

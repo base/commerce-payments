@@ -10,13 +10,16 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 
 /// @title ERC3009PaymentCollector
+///
 /// @notice Collect payments using ERC-3009 ReceiveWithAuthorization signatures
+///
 /// @author Coinbase, Shopify
 contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
     constructor(address authCaptureEscrow_, address multicall3_)

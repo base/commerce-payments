@@ -8,7 +8,9 @@ import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title Permit2PaymentCollector
+///
 /// @notice Collect payments using Permit2 signatures
+///
 /// @author Coinbase, Shopify
 contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
@@ -18,6 +20,7 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     ISignatureTransfer public immutable permit2;
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param permit2_ Permit2 singleton
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
@@ -29,6 +32,7 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     }
 
     /// @inheritdoc TokenCollector
+    ///
     /// @dev Use Permit2 signature transfer to collect any ERC-20 from payers
     function _collectTokens(
         AuthCaptureEscrow.PaymentInfo calldata paymentInfo,

@@ -8,7 +8,9 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title PreApprovalPaymentCollector
+///
 /// @notice Collect payments using pre-approval calls and ERC-20 allowances
+///
 /// @author Coinbase, Shopify
 contract PreApprovalPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
@@ -30,11 +32,14 @@ contract PreApprovalPaymentCollector is TokenCollector {
     mapping(bytes32 paymentInfoHash => bool approved) public isPreApproved;
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     constructor(address authCaptureEscrow_) TokenCollector(authCaptureEscrow_) {}
 
     /// @notice Registers buyer's token approval for a specific payment
+    ///
     /// @dev Must be called by the buyer specified in the payment info
+    ///
     /// @param paymentInfo PaymentInfo struct
     function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
         // Check sender is buyer
@@ -59,6 +64,7 @@ contract PreApprovalPaymentCollector is TokenCollector {
     }
 
     /// @inheritdoc TokenCollector
+    ///
     /// @dev Requires pre-approval for a specific payment and an ERC-20 allowance to this collector
     function _collectTokens(
         AuthCaptureEscrow.PaymentInfo calldata paymentInfo,
