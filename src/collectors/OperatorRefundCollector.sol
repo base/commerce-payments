@@ -11,7 +11,8 @@ import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 ///
 /// @notice Collect refunds using ERC-20 allowances from operators
 ///
-/// @author Coinbase, Shopify
+/// @author Coinbase (https://github.com/base/commerce-payments)
+/// @author Shopify
 contract OperatorRefundCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Refund;

@@ -11,7 +11,8 @@ import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 ///
 /// @notice Collect payments using Permit2 signatures
 ///
-/// @author Coinbase, Shopify
+/// @author Coinbase (https://github.com/base/commerce-payments)
+/// @author Shopify
 contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
