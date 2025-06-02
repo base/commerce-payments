@@ -11,7 +11,7 @@ import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title SpendPermissionPaymentCollector
 /// @notice Collect payments using Spend Permissions
-/// @author Coinbase
+/// @author Coinbase, Shopify
 contract SpendPermissionPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;

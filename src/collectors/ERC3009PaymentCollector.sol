@@ -11,7 +11,7 @@ import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 
 /// @title ERC3009PaymentCollector
 /// @notice Collect payments using ERC-3009 ReceiveWithAuthorization signatures
-/// @author Coinbase
+/// @author Coinbase, Shopify
 contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;

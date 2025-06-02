@@ -9,7 +9,7 @@ import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title PreApprovalPaymentCollector
 /// @notice Collect payments using pre-approval calls and ERC-20 allowances
-/// @author Coinbase
+/// @author Coinbase, Shopify
 contract PreApprovalPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;

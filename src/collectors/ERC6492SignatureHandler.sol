@@ -8,7 +8,7 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 /// @dev This contract does not perform standard ERC-6492 signature handling flow because it does not itself
 ///      validate the signature. It simply calls any ERC-6492 factory/prepare data if present since
 ///      signature validators may not implement ERC-6492 handling.
-/// @author Coinbase
+/// @author Coinbase, Shopify
 abstract contract ERC6492SignatureHandler {
     bytes32 internal constant _ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 

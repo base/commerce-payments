@@ -15,7 +15,7 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev Authorization is defined as placing a hold on a payer's funds temporarily.
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
-/// @author Coinbase
+/// @author Coinbase, Shopify
 contract AuthCaptureEscrow is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 

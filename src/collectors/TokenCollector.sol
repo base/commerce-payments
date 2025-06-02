@@ -5,7 +5,7 @@ import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title TokenCollector
 /// @notice Abstract contract for shared token collector utilities
-/// @author Coinbase
+/// @author Coinbase, Shopify
 abstract contract TokenCollector {
     /// @notice Type differentiation between payment and refund collection flows
     enum CollectorType {
