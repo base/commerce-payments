@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -8,17 +8,22 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {AuthCaptureEscrow} from "../AuthCaptureEscrow.sol";
 
 /// @title OperatorRefundCollector
+///
 /// @notice Collect refunds using ERC-20 allowances from operators
-/// @author Coinbase
+///
+/// @author Coinbase (https://github.com/base/commerce-payments)
+/// @author Shopify
 contract OperatorRefundCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Refund;
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     constructor(address authCaptureEscrow_) TokenCollector(authCaptureEscrow_) {}
 
     /// @inheritdoc TokenCollector
+    ///
     /// @dev Transfers from operator directly to token store, requiring previous ERC-20 allowance set by operator on this token collector
     /// @dev Only operator can initate token collection so authentication is inherited from Escrow
     function _collectTokens(

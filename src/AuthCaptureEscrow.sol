@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,12 +10,16 @@ import {TokenStore} from "./TokenStore.sol";
 import {TokenCollector} from "./collectors/TokenCollector.sol";
 
 /// @title AuthCaptureEscrow
+///
 /// @notice Facilitate payments through an escrow.
+///
 /// @dev By escrowing payment, this contract can mimic the 2-step payment pattern of "authorization" and "capture".
 /// @dev Authorization is defined as placing a hold on a payer's funds temporarily.
 /// @dev Capture is defined as distributing payment to the end recipient.
 /// @dev A trusted Operator plays the primary role of moving payments between both parties.
-/// @author Coinbase
+///
+/// @author Coinbase (https://github.com/base/commerce-payments)
+/// @author Shopify
 contract AuthCaptureEscrow is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -161,6 +165,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     error RefundExceedsCapture(uint256 refund, uint256 captured);
 
     /// @notice Check call sender is specified address
+    ///
     /// @param sender Address to enforce is the call sender
     modifier onlySender(address sender) {
         if (msg.sender != sender) revert InvalidSender(msg.sender, sender);
@@ -168,6 +173,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Ensures amount is non-zero and does not overflow storage
+    ///
     /// @param amount Quantity of tokens being requested for a given operation
     modifier validAmount(uint256 amount) {
         if (amount == 0) revert ZeroAmount();
@@ -181,8 +187,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Transfers funds from payer to receiver in one step
+    ///
     /// @dev If amount is less than the authorized amount, only amount is taken from payer
     /// @dev Reverts if the authorization has been voided or expired
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to charge and capture
     /// @param tokenCollector Address of the token collector
@@ -220,6 +228,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Transfers funds from payer to escrow
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to authorize
     /// @param tokenCollector Address of the token collector
@@ -247,8 +256,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Transfer previously-escrowed funds to receiver
+    ///
     /// @dev Can be called multiple times up to cumulative authorized amount
     /// @dev Can only be called by the operator
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to capture
     /// @param feeBps Fee percentage to apply (must be within min/max range)
@@ -285,8 +296,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Permanently voids a payment authorization
+    ///
     /// @dev Returns any escrowed funds to payer
     /// @dev Can only be called by the operator
+    ///
     /// @param paymentInfo PaymentInfo struct
     function void(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.operator) {
         // Check authorization non-zero
@@ -303,7 +316,9 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Returns any escrowed funds to payer
+    ///
     /// @dev Can only be called by the payer and only after the authorization expiry
+    ///
     /// @param paymentInfo PaymentInfo struct
     function reclaim(PaymentInfo calldata paymentInfo) external nonReentrant onlySender(paymentInfo.payer) {
         // Check not before authorization expiry
@@ -325,8 +340,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Return previously-captured tokens to payer
+    ///
     /// @dev Can be called by operator
     /// @dev Funds are transferred from the caller or from the escrow if token collector retrieves external liquidity
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to refund
     /// @param tokenCollector Address of the token collector
@@ -357,8 +374,11 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Get hash of PaymentInfo struct
+    ///
     /// @dev Includes chainId and verifyingContract in hash for cross-chain and cross-contract uniqueness
+    ///
     /// @param paymentInfo PaymentInfo struct
+    ///
     /// @return Hash of payment info for the current chain and contract address
     function getHash(PaymentInfo calldata paymentInfo) public view returns (bytes32) {
         bytes32 paymentInfoHash = keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo));
@@ -366,7 +386,9 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Get the token store address for an operator
+    ///
     /// @param operator The operator to get the token store for
+    ///
     /// @return The operator's token store address
     function getTokenStore(address operator) public view returns (address) {
         return LibClone.predictDeterministicAddress({
@@ -377,6 +399,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Transfer tokens into this contract
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount of tokens to collect
     /// @param tokenCollector Address of the token collector
@@ -402,6 +425,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Send tokens from an operator's token store
+    ///
     /// @param operator The operator whose token store to use
     /// @param token The token to send
     /// @param recipient Address to receive the tokens
@@ -431,6 +455,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Sends tokens to receiver and/or feeReceiver
+    ///
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
     /// @param amount Total amount to split between payment and fees
@@ -449,6 +474,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Validates required properties of a payment
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Token amount to validate against
     function _validatePayment(PaymentInfo calldata paymentInfo, uint256 amount) internal view {
@@ -479,6 +505,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     }
 
     /// @notice Validates attempted fee adheres to constraints set by payment info
+    ///
     /// @param paymentInfo PaymentInfo struct
     /// @param feeBps Fee percentage in basis points
     /// @param feeReceiver Address to receive fees

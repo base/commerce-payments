@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -10,13 +10,17 @@ import {TokenCollector} from "./TokenCollector.sol";
 import {ERC6492SignatureHandler} from "./ERC6492SignatureHandler.sol";
 
 /// @title ERC3009PaymentCollector
+///
 /// @notice Collect payments using ERC-3009 ReceiveWithAuthorization signatures
-/// @author Coinbase
+///
+/// @author Coinbase (https://github.com/base/commerce-payments)
+/// @author Shopify
 contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
     /// @notice Constructor
+    ///
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     /// @param multicall3_ Public Multicall3 singleton for safe ERC-6492 external calls
     constructor(address authCaptureEscrow_, address multicall3_)
