@@ -46,7 +46,7 @@ The protocol consists of two main components:
 2. **Token Collectors**: Modular contracts handling different methods of token collection
 
 ### Token Collectors
-The protocol supports multiple and extensible token collection strategies through specialized collector contracts for both payments and refunds.
+The protocol supports multiple and extensible token collection strategies through modular collector contracts for both payments and refunds.
 
  There are two types of collectors:
 - Payment collectors handle the initial transfer of funds from buyer to escrow. 
