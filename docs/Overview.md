@@ -56,7 +56,8 @@ The main escrow contract that manages funds and payment lifecycle:
 - Ensures atomic operations with reentrancy protection
 
 ### 2. Token Collectors
-Pluggable payment modules that handle different authorization methods. See the complete [Token Collectors Guide](TokenCollectors.md) for detailed information on each collector type:
+Pluggable payment modules that handle different authorization methods.
+See [Token Collectors](TokenCollectors.md) for complete documentation.
 - **ERC3009PaymentCollector**: Uses ERC-3009 `receiveWithAuthorization` signatures
 - **Permit2PaymentCollector**: Uses Permit2 signature-based transfers
 - **PreApprovalPaymentCollector**: Uses traditional ERC-20 allowances with pre-approval
@@ -64,11 +65,12 @@ Pluggable payment modules that handle different authorization methods. See the c
 - **OperatorRefundCollector**: Handles refunds from operator funds
 
 ### 3. TokenStore
-Per-operator token vaults that hold escrowed funds:
+Per-operator token vaults that hold escrowed funds.
+See [Liquidity Segmentation](Security.md#liquidity-segmentation-in-operator-tokenstores) for complete documentation.
+
 - Deployed deterministically using CREATE2
 - Isolated storage per operator for security
 - Minimal proxy pattern for gas efficiency
-
 
 
 

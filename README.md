@@ -32,9 +32,9 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 ## Documentation
 
 - **[Protocol Overview](docs/Overview.md)** - Architecture, components, and payment lifecycle
+- **[Security Analysis](docs/Security.md)** - Security features, risk assessment, and mitigation strategies
 - **[Token Collectors Guide](docs/TokenCollectors.md)** - Modular payment authorization methods
 - **[Fee System](docs/Fees.md)** - Comprehensive fee mechanics and examples
-- **[Security Analysis](docs/Security.md)** - Security features, risk assessment, and mitigation strategies
 - **Core Functions:**
   - [Authorize](docs/Authorize.md) - Reserve funds for future capture
   - [Capture](docs/Capture.md) - Transfer authorized funds to merchants  
