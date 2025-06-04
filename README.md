@@ -63,3 +63,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Support
 
 - **GitHub Issues**: [commerce-payments repository](https://github.com/base/commerce-payments)
+
+## Security Audits
+
+Audited by [Spearbit](https://spearbit.com/).
+
+| Audit | Date | Report |
+|--------|---------|---------|
+| First private audit | 04/01/2025 | [Report](audits/Cantina-Report-04-01-2025.pdf) |
+| Second private audit | 04/22/2025 | [Report](audits/Cantina-Report-04-22-2025.pdf) |
