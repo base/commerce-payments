@@ -94,3 +94,12 @@ that may have already been authorized, kicking off the fulfillment of a purchase
 Capturing fees may be considered of lesser importance to a given operator than maintaining liveness in the protocol and fulfilling pending payments, making a denylisted `feeReceiver` an unacceptable reason for failing to fulfill payments. We explored design options for mitigating this risk in the core protocol, such as holding failed fee funds in custody for later retrieval, but the complexity of this mechanism wasn't justified by the magnitude of this edge case.
 
 The `feeReceiver` can be a dynamic argument if the `feeReceiver` specified in the `PaymentInfo` is `address(0)`. For operators that care to prioritize liveness of payments over the risk of fees lost due to operator compromise, setting the value of `feeReceiver` to `address(0)` in the initial `PaymentInfo` is a way to mitigate the risk of being permanently unable to fulfill a given payment due to denylists; the operator can simply supply an alternate `feeReceiver` to the `capture` call (for any number of necessary attempts). 
+
+## Security
+
+Audited by [Spearbit](https://spearbit.com/).
+
+| Audit | Date | Report |
+|--------|---------|---------|
+| First private audit | 04/01/2025 | [Report](audits/Cantina-Report-04-01-2025.pdf) |
+| Second private audit | 04/22/2025 | [Report](audits/Cantina-Report-04-22-2025.pdf) |
