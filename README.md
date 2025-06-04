@@ -1,6 +1,6 @@
 # Commerce Payments Protocol
 
-A permissionless protocol for onchain payments that mimics traditional "authorize and capture" payment flows. Built for Base blockchain in collaboration with Shopify to enable onchain express checkout.
+A permissionless protocol for onchain payments that mimics traditional "authorize and capture" payment flows.
 
 ## Quick Start
 
@@ -10,7 +10,7 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 
 ## Key Features
 
-- **Two-Phase Payments**: Separate authorization and capture for guaranteed merchant payments
+- **Two-Phase Payments**: Separate authorization and capture for guaranteed merchant payments and management of real-world complexity
 - **Flexible Fee Structure**: Configurable fee rates and recipients within predefined ranges  
 - **Modular Token Collection**: Support for multiple authorization methods (ERC-3009, Permit2, allowances, spend permissions)
 - **Built-in Protections**: Time-based expiries, amount limits, and reclaim mechanisms
@@ -34,6 +34,7 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 - **[Protocol Overview](docs/Overview.md)** - Architecture, components, and payment lifecycle
 - **[Token Collectors Guide](docs/TokenCollectors.md)** - Modular payment authorization methods
 - **[Fee System](docs/Fees.md)** - Comprehensive fee mechanics and examples
+- **[Security Analysis](docs/Security.md)** - Security features, risk assessment, and mitigation strategies
 - **Core Functions:**
   - [Authorize](docs/Authorize.md) - Reserve funds for future capture
   - [Capture](docs/Capture.md) - Transfer authorized funds to merchants  

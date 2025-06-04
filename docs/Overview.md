@@ -43,6 +43,11 @@ The protocol provides six main functions that handle the complete payment lifecy
 
 ## Contract Architecture
 
+<div align="center">
+  <img src="assets/ContractsArchitecture.png" alt="Contracts Architecture Diagram" width="80%">
+  <p><em>Smart contract architecture</em></p>
+</div>
+
 ### 1. `AuthCaptureEscrow`
 The main escrow contract that manages funds and payment lifecycle:
 - Validates payment parameters and timing constraints
@@ -73,18 +78,18 @@ Every payment is defined by a `PaymentInfo` struct containing immutable terms. A
 
 ```solidity
 struct PaymentInfo {
-    address operator;          // Entity managing the payment flow
-    address payer;             // Buyer's wallet address
-    address receiver;          // Merchant's receiving address
-    address token;             // Payment token contract
-    uint120 maxAmount;         // Maximum amount that can be authorized
-    uint48 preApprovalExpiry;  // When buyer's willingness to authorize the payment expires
+    address operator;           // Entity managing the payment flow
+    address payer;              // Buyer's wallet address
+    address receiver;           // Merchant's receiving address
+    address token;              // Payment token contract
+    uint120 maxAmount;          // Maximum amount that can be authorized
+    uint48 preApprovalExpiry;   // When buyer's willingness to authorize the payment expires
     uint48 authorizationExpiry; // When an authorized payment can no longer be captured and can now be reclaimed
-    uint48 refundExpiry;       // When refunds are no longer allowed
-    uint16 minFeeBps;          // Minimum fee in basis points
-    uint16 maxFeeBps;          // Maximum fee in basis points
-    address feeReceiver;       // Fee recipient (0 = operator sets at capture)
-    uint256 salt;              // Entropy for unique payment identification
+    uint48 refundExpiry;        // When refunds are no longer allowed
+    uint16 minFeeBps;           // Minimum fee in basis points
+    uint16 maxFeeBps;           // Maximum fee in basis points
+    address feeReceiver;        // Fee recipient (0 = operator sets at capture)
+    uint256 salt;               // Entropy for unique payment identification
 }
 ```
 
