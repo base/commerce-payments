@@ -45,7 +45,7 @@ The protocol provides six main functions that handle the complete payment lifecy
 
 <div align="center">
   <img src="assets/ContractsArchitecture.png" alt="Contracts Architecture Diagram" width="80%">
-  <p><em>Smart contract architecture</em></p>
+  <p><em>Commerce Payments Protocol smart contract architecture</em></p>
 </div>
 
 ### 1. `AuthCaptureEscrow`

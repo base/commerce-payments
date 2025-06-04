@@ -1,14 +1,16 @@
 # Refund
 
-The `refund` function allows operators to return previously captured funds to buyers. This provides a mechanism for reversing completed payments while maintaining proper accounting and using modular refund collectors for liquidity sourcing.
+The `refund` function allows operators to return previously captured funds to buyers. This provides a mechanism for reversing completed payments while maintaining proper accounting. Refunds are limited to the originally captured amount, prevent over-refunding.
+
+
+Similarly to token collection for payments, modular token collectors are used to source the liquidity for refunds. This enables the implementation of any source of liquidity for refunds. For example, refund liquidity could be held and dispensed directly by the operator, or could be held by the merchant who received the payment and provided to the protocol via a signature-based authorization from that merchant for the specific purpose of refunding a specific payment.
 
 ## Purpose
 
 Refund enables payment reversal by:
 - **Returning captured funds**: Reverses previously completed payments
-- **Maintaining buyer protection**: Provides recourse for unsatisfactory purchases
-- **Flexible liquidity sourcing**: Uses refund collectors to source funds from various sources
 - **Preserving payment history**: Maintains records of refund transactions
+- **Flexible liquidity sourcing**: Uses refund collectors to securely source funds from arbitrary sources
 
 ## How It Works
 
@@ -66,7 +68,7 @@ PaymentState {
 
 ## Refund Collectors
 
-Modular refund collectors are used to source the liquidity for refunds. The implemented `OperatorRefundCollector` is aa simple example of this, relying on basic ERC-20 approval and sourcing refund liquidity from the operator's balance. Other refund collectors can be implemented that use any payment authorization mechanism to source refund liquidity. For example, an ERC-3009 or Permit2 refund collector could be designed to redeem authorizations from merchants and source liquidity directly from them for the purpose of refunds. 
+Modular refund collectors are used to source the liquidity for refunds. The implemented `OperatorRefundCollector` is a simple example of this, relying on basic ERC-20 approval and sourcing refund liquidity from the operator's balance. Other refund collectors can be implemented that use any payment authorization mechanism to source refund liquidity. For example, an ERC-3009 or Permit2 refund collector could be designed to redeem authorizations from merchants and source liquidity directly from them for the purpose of refunds. 
 
 
 ## Events

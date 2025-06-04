@@ -35,7 +35,7 @@ function void(PaymentInfo calldata paymentInfo)
 
 - **Operator Only**: Only `paymentInfo.operator` can call this function
 - **Authorization Required**: Payment must have non-zero `capturableAmount`
-- **No Time Restrictions**: Can be called any time before authorization expiry
+- **No Time Restrictions**: Can be called at any time
 
 ## State Changes
 

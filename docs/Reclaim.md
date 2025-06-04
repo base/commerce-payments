@@ -32,7 +32,7 @@ function reclaim(PaymentInfo calldata paymentInfo)
 ## Access Control
 
 - **Payer Only**: Only `paymentInfo.payer` can call this function
-- **Authorization Required**: Payment must have non-zero `capturableAmount`
+- **Requires Liquidity**: Payment must have non-zero `capturableAmount`, but can be partially captured
 - **Time Restricted**: Can only be called after `authorizationExpiry`
 
 ## State Changes

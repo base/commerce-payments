@@ -39,9 +39,9 @@ function authorize(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `paymentInfo` | `PaymentInfo` | Complete payment configuration (operator, payer, receiver, etc.) |
-| `amount` | `uint256` | Amount to authorize (must be ≤ maxAmount) |
+| `amount` | `uint256` | Amount to authorize (must be ≤ paymentInfo.maxAmount) |
 | `tokenCollector` | `address` | Contract that will pull tokens from buyer |
-| `collectorData` | `bytes` | Data passed to token collector (e.g., signature, nonce) |
+| `collectorData` | `bytes` | Data passed to token collector (e.g., signature) |
 
 ## Access Control
 
@@ -91,6 +91,9 @@ Track authorizations using the `paymentInfoHash` which uniquely identifies each 
 | `AmountOverflow` | Amount exceeds uint120 maximum |
 | `ExceedsMaxAmount` | Amount exceeds paymentInfo.maxAmount |
 | `AfterPreApprovalExpiry` | Called after signature expiry |
+| `InvalidExpiries` | Expiry timestamps are improperly ordered |
+| `FeeBpsOverFlow` | maxFeeBps exceeds maximum value |
+| `InvalidFeeBpsRange` | minFeeBps exceeds maxFeeBps |
 | `PaymentAlreadyCollected` | Payment already authorized or charged |
-| `InvalidCollectorForOperation` | Wrong collector type used |
+| `InvalidCollectorForOperation` | Wrong collector type specified |
 | `TokenCollectionFailed` | Token transfer didn't match expected amount |

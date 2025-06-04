@@ -9,7 +9,7 @@ Capture finalizes the payment by:
 - **Processing fees**: Automatically calculates and distributes fees to the specified recipient
 - **Updating payment state**: Converts capturable amount to refundable amount
 - **Enabling partial settlement**: Allows capturing authorized funds in multiple increments
-- **Maintaining merchant guarantees**: Ensures authorized funds are always available for capture
+- **Maintaining merchant guarantees**: Ensures authorized funds are available for capture until expiry
 
 ## How It Works
 
@@ -23,10 +23,10 @@ function capture(
 ```
 
 ### Process Flow
-1. **Fee Validation**: Ensures fee parameters are within allowed ranges and recipient is valid
+1. **Fee Validation**: Ensures fee parameters are within allowed ranges and recipient is valid (see [Fees](Fees.md))
 2. **Timing Check**: Verifies capture occurs before authorization expiry
 3. **Availability Check**: Confirms sufficient authorized funds are available
-4. **State Update**: Converts `capturableAmount` to `refundableAmount`
+4. **State Update**: Reduces `capturableAmount` and increases `refundableAmount` by captured `amount`
 5. **Fee Calculation**: Calculates fee amount based on basis points
 6. **Token Distribution**: Transfers fee to recipient and remaining amount to merchant
 7. **Event Emission**: Emits `PaymentCaptured` for tracking
@@ -34,7 +34,7 @@ function capture(
 ### Key Validations
 - Must be called before `paymentInfo.authorizationExpiry`
 - `amount` cannot exceed available `capturableAmount`
-- `feeBps` must be within `[minFeeBps, maxFeeBps]` range
+- `feeBps` must be within `[paymentInfo.minFeeBps, paymentInfo.maxFeeBps]` range
 - `feeReceiver` must match `paymentInfo.feeReceiver` if specified
 
 ## Parameters
@@ -72,31 +72,6 @@ PaymentState {
 }
 ```
 
-## Fee Structure
-
-Fees are calculated as: `feeAmount = amount * feeBps / 10000`
-
-### Fee Distribution
-1. **Fee Portion**: `feeAmount` → `feeReceiver`
-2. **Merchant Portion**: `amount - feeAmount` → `paymentInfo.receiver`
-
-### Fee Examples
-- **2.5% fee**: `feeBps = 250` → $100 payment = $2.50 fee + $97.50 to merchant
-- **Zero fee**: `feeBps = 0` → $100 payment = $0 fee + $100 to merchant
-- **5% fee**: `feeBps = 500` → $100 payment = $5.00 fee + $95.00 to merchant
-
-### Variable Fee Capture
-```solidity
-// Different fee rates for different capture scenarios
-if (isPromotionalMerchant) {
-    // Reduced fee for promotional partners
-    escrow.capture(paymentInfo, amount, 100, feeReceiver); // 1% fee
-} else {
-    // Standard processing fee
-    escrow.capture(paymentInfo, amount, 250, feeReceiver); // 2.5% fee
-}
-```
-
 ## Events
 
 ```solidity
@@ -117,8 +92,9 @@ Track captures to monitor payment settlement and fee distribution.
 | `InvalidSender` | Caller is not the designated operator |
 | `ZeroAmount` | Attempting to capture zero amount |
 | `AmountOverflow` | Amount exceeds uint120 maximum |
-| `AfterAuthorizationExpiry` | Called after authorization expired |
-| `InsufficientAuthorization` | Amount exceeds available capturable balance |
 | `FeeBpsOutOfRange` | Fee outside min/max range |
 | `ZeroFeeReceiver` | Fee recipient is zero address with non-zero fee |
 | `InvalidFeeReceiver` | Fee recipient doesn't match payment configuration |
+| `AfterAuthorizationExpiry` | Called after authorization expired |
+| `InsufficientAuthorization` | Amount exceeds available capturable balance |
+

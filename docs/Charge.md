@@ -26,7 +26,7 @@ function charge(
 
 ### Process Flow
 1. **Payment Validation**: Ensures payment info is valid and timing constraints are met
-2. **Fee Validation**: Confirms fee parameters are within allowed ranges
+2. **Fee Validation**: Confirms fee parameters are within allowed ranges (see [Fees](Fees.md))
 3. **Uniqueness Check**: Verifies this payment hasn't already been collected
 4. **State Update**: Records payment as collected with `refundableAmount`
 5. **Token Collection**: Uses token collector to pull funds from buyer
@@ -90,13 +90,16 @@ The `PaymentCharged` event includes more details than `PaymentCaptured` since it
 | Error | Cause |
 |-------|--------|
 | `InvalidSender` | Caller is not the designated operator |
-| `ZeroAmount` | Attempting to charge zero amount |
+| `ZeroAmount` | Attempting to authorize zero amount |
 | `AmountOverflow` | Amount exceeds uint120 maximum |
 | `ExceedsMaxAmount` | Amount exceeds paymentInfo.maxAmount |
 | `AfterPreApprovalExpiry` | Called after signature expiry |
-| `PaymentAlreadyCollected` | Payment already authorized or charged |
+| `InvalidExpiries` | Expiry timestamps are improperly ordered |
+| `FeeBpsOverFlow` | maxFeeBps exceeds maximum value |
+| `InvalidFeeBpsRange` | minFeeBps exceeds maxFeeBps |
 | `FeeBpsOutOfRange` | Fee outside min/max range |
 | `ZeroFeeReceiver` | Fee recipient is zero address with non-zero fee |
 | `InvalidFeeReceiver` | Fee recipient doesn't match payment configuration |
+| `PaymentAlreadyCollected` | Payment already authorized or charged |
 | `InvalidCollectorForOperation` | Wrong collector type used |
 | `TokenCollectionFailed` | Token transfer didn't match expected amount |
