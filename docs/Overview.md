@@ -64,7 +64,7 @@ See [Token Collectors](TokenCollectors.md) for complete documentation.
 - **SpendPermissionPaymentCollector**: Uses Coinbase's Spend Permission system
 - **OperatorRefundCollector**: Handles refunds from operator funds
 
-### 3. TokenStore
+### 3. Token Stores
 Per-operator token vaults that hold escrowed funds.
 See [Liquidity Segmentation](Security.md#liquidity-segmentation-in-operator-tokenstores) for complete documentation.
 
