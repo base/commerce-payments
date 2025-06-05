@@ -50,7 +50,7 @@ contract AuthCaptureEscrowBase is Test, DeployPermit2 {
     address public payerEOA;
     address public feeReceiver;
     uint16 constant FEE_BPS = 100; // 1%
-    uint256 internal constant payer_EOA_PK = 0x1234;
+    uint256 internal constant payer_EOA_PK = 0x0C0DE;
 
     bytes32 constant _RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
         0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
