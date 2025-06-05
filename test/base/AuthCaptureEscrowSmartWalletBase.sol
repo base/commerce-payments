@@ -24,8 +24,8 @@ contract AuthCaptureEscrowSmartWalletBase is AuthCaptureEscrowBase {
     address public smartWalletCounterfactual; // The counterfactual address
     CoinbaseSmartWallet public smartWalletDeployed; // Helper instance for using smart wallet functions
     address public deployedWalletOwner;
-    uint256 internal constant COUNTERFACTUAL_WALLET_OWNER_PK = 0x5678; // Different from payer_PK
-    uint256 internal constant DEPLOYED_WALLET_OWNER_PK = 0x1111;
+    uint256 internal constant COUNTERFACTUAL_WALLET_OWNER_PK = 0x0C0DE2; // Different from payer_PK
+    uint256 internal constant DEPLOYED_WALLET_OWNER_PK = 0x0C0DE3;
 
     function setUp() public virtual override {
         super.setUp();
