@@ -1,6 +1,6 @@
 # Security Analysis
 
-## Security Posture
+## Trust Minimization
 
 The Commerce Payments Protocol aims to minimize the trust required among protocol participants and the damage any given participant can inflict. Rather than asking participants to trust each other, the protocol tightly defines how, where and when funds are able to move. Operators are parties that can facilitate the lifecycle of a payment, but are at no point trusted with control of buyer or merchant funds. They have significant operational power — they can move payments through their lifecycle, collect fees within predetermined ranges, and even cancel transactions — but they operate within constraints that prevent them from stealing funds or violating the authorized behavior set by buyers. At worst, operators can become inactive or censor payments, and the protocol includes timelocked fund retrieval mechanisms to protect payers in this case.
 

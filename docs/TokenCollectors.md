@@ -55,33 +55,33 @@ This utility function addresses a common pattern in offchain payment constructio
 
 
 ## Implemented Collectors
-### `ERC3009PaymentCollector`
+### [`ERC3009PaymentCollector`](../src/collectors/ERC3009PaymentCollector.sol)
 **Use case**: Tokens supporting ERC-3009 (including USDC)
 - Uses `receiveWithAuthorization` for gasless, signature-based transfers
 - Supports ERC-6492 for smart contract wallet signatures
 - Simple single-signature UX for tokens that implement, including USDC, but not widely implemented by most ERC-20s
 
-### `Permit2PaymentCollector`
+### [`Permit2PaymentCollector`](../src/collectors/Permit2PaymentCollector.sol)
 **Use case**: Any ERC-20 token via Permit2
 - Universal token compatibility through Permit2's signature-based transfers
 - Requires users to first approve Permit2 contract per-token
 - Good fallback option for tokens without native signature support
 - Supports ERC-6492 for smart contract wallet signatures
 
-### `PreApprovalPaymentCollector`
+### [`PreApprovalPaymentCollector`](../src/collectors/PreApprovalPaymentCollector.sol)
 **Use case**: Traditional ERC-20 tokens with pre-approval flow
 - Requires explicit pre-approval step by payer before authorization
 - Uses standard `transferFrom` after approval
 - Compatible with all tokens but requires two transactions
 
-### `SpendPermissionPaymentCollector`
+### [`SpendPermissionPaymentCollector`](../src/collectors/SpendPermissionPaymentCollector.sol)
 **Use case**: Best UX for Coinbase Smart Wallet users, can cover subscription payment schedules
 - Single-signature UX for buyer
 - Supports ERC-6492 for smart contract wallet signatures via native support in `SpendPermissionManager`
 - Only compatible with Coinbase Smart Wallet users
 - Enables subscription-like recurring payments
 
-### `OperatorRefundCollector`
+### [`OperatorRefundCollector`](../src/collectors/OperatorRefundCollector.sol)
 **Use case**: Operator-funded refunds
 - Pulls refund funds from operator's balance
 - Basic implementation example of modularizing the source of refund liquidity

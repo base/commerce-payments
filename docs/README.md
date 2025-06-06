@@ -25,20 +25,20 @@ The protocol provides six main functions that handle the complete payment lifecy
 </div>
 
 ### Payment Initiation
-- **[Authorize](Authorize.md)** - Reserve buyer funds in escrow for future capture. Enables delayed settlement while guaranteeing merchant payment upon successful authorization.
+- **[Authorize](operations/Authorize.md)** - Reserve buyer funds in escrow for future capture. Enables delayed settlement while guaranteeing merchant payment upon successful authorization.
 
-- **[Charge](Charge.md)** - Combine authorization and capture into a single transaction for immediate payment settlement.
+- **[Charge](operations/Charge.md)** - Combine authorization and capture into a single transaction for immediate payment settlement.
 
 ### Payment Settlement  
-- **[Capture](Capture.md)** - Transfer previously authorized funds from escrow to merchants. Supports partial captures and flexible fee distribution.
+- **[Capture](operations/Capture.md)** - Transfer previously authorized funds from escrow to merchants. Supports partial captures and flexible fee distribution.
 
 ### Payment Cancellation
-- **[Void](Void.md)** - Cancel payment authorizations and return escrowed funds to buyers. Only callable by the operator, but can be used to cancel a payment at any time.
+- **[Void](operations/Void.md)** - Cancel payment authorizations and return escrowed funds to buyers. Only callable by the operator, but can be used to cancel a payment at any time.
 
-- **[Reclaim](Reclaim.md)** - Allow buyers to recover funds from expired authorizations. Buyer-initiated safety mechanism callable only after authorization expiry.
+- **[Reclaim](operations/Reclaim.md)** - Allow buyers to recover funds from expired authorizations. Buyer-initiated safety mechanism callable only after authorization expiry.
 
 ### Payment Reversal
-- **[Refund](Refund.md)** - Return previously captured funds to buyers using modular refund collectors. Supports partial refunds and flexible liquidity sourcing.
+- **[Refund](operations/Refund.md)** - Return previously captured funds to buyers using modular refund collectors. Supports partial refunds and flexible liquidity sourcing.
 
 
 ## Contract Architecture

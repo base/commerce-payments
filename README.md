@@ -6,7 +6,7 @@ A permissionless protocol for onchain payments that mimics traditional "authoriz
 
 The Commerce Payments Protocol facilitates secure escrow-based payments with flexible authorization and capture patterns. Operators drive payment flows using modular token collectors while the protocol ensures buyer and merchant protections.
 
-**📖 [Read the Full Documentation](docs/Overview.md)**
+**📖 [Read the Full Documentation](docs/README.md)**
 
 ## Key Features
 
@@ -31,17 +31,17 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 
 ## Documentation
 
-- **[Protocol Overview](docs/Overview.md)** - Architecture, components, and payment lifecycle
+- **[Protocol Overview](docs/README.md)** - Architecture, components, and payment lifecycle
 - **[Security Analysis](docs/Security.md)** - Security features, risk assessment, and mitigation strategies
 - **[Token Collectors Guide](docs/TokenCollectors.md)** - Modular payment authorization methods
 - **[Fee System](docs/Fees.md)** - Comprehensive fee mechanics and examples
-- **Core Functions:**
-  - [Authorize](docs/Authorize.md) - Reserve funds for future capture
-  - [Capture](docs/Capture.md) - Transfer authorized funds to merchants  
-  - [Charge](docs/Charge.md) - Immediate authorization and capture
-  - [Void](docs/Void.md) - Cancel authorizations (operator)
-  - [Reclaim](docs/Reclaim.md) - Recover expired authorizations (buyer)
-  - [Refund](docs/Refund.md) - Return captured funds to buyers
+- **Core Operations:**
+  - [Authorize](docs/operations/Authorize.md) - Reserve funds for future capture
+  - [Capture](docs/operations/Capture.md) - Transfer authorized funds to merchants  
+  - [Charge](docs/operations/Charge.md) - Immediate authorization and capture
+  - [Void](docs/operations/Void.md) - Cancel authorizations (operator)
+  - [Reclaim](docs/operations/Reclaim.md) - Recover expired authorizations (buyer)
+  - [Refund](docs/operations/Refund.md) - Return captured funds to buyers
 
 ## Development
 
@@ -60,9 +60,6 @@ forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Support
-
-- **GitHub Issues**: [commerce-payments repository](https://github.com/base/commerce-payments)
 
 ## Security Audits
 

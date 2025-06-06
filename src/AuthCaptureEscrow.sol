@@ -16,7 +16,8 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 /// @dev By escrowing payment, this contract can mimic the 2-step payment pattern of "authorization" and "capture".
 /// @dev Authorization is defined as placing a hold on a payer's funds temporarily.
 /// @dev Capture is defined as distributing payment to the end recipient.
-/// @dev A trusted Operator plays the primary role of moving payments between both parties.
+/// @dev An Operator plays the role of facilitating state transitions associated with a payment, constrained by cryptographic authorization
+///      from a payer and confirmation signals from the merchant.
 ///
 /// @author Coinbase (https://github.com/base/commerce-payments)
 /// @author Shopify
