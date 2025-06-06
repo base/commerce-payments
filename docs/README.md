@@ -20,7 +20,7 @@ This pattern ensures that successful authorization always leads to successful ca
 The protocol provides six main functions that handle the complete payment lifecycle: `authorize`, `capture`, `charge`, `void`, `reclaim` and `refund`.
 
 <div align="center">
-  <img src="assets/PaymentLifecycleDiagram.png" alt="Payment Lifecycle Diagram" width="80%">
+  <img src="diagrams/PaymentLifecycleDiagram.png" alt="Payment Lifecycle Diagram" width="80%">
   <p><em>Possible payment flows</em></p>
 </div>
 
@@ -44,7 +44,7 @@ The protocol provides six main functions that handle the complete payment lifecy
 ## Contract Architecture
 
 <div align="center">
-  <img src="assets/ContractsArchitecture.png" alt="Contracts Architecture Diagram" width="80%">
+  <img src="diagrams/ContractsArchitecture.png" alt="Contracts Architecture Diagram" width="80%">
   <p><em>Commerce Payments Protocol smart contract architecture</em></p>
 </div>
 

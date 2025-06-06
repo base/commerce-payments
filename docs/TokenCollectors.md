@@ -7,7 +7,7 @@ During a payment authorization or direct charge, the `AuthCaptureEscrow` contrac
 
 
 <div align="center">
-  <img src="assets/TokenCollectorsDiagram.png" alt="Token Collectors Architecture Diagram" width="80%">
+  <img src="diagrams/TokenCollectorsDiagram.png" alt="Token Collectors Architecture Diagram" width="80%">
   <p><em>Token collectors can be designed to interface with various spending mechanisms</em></p>
 </div>
 

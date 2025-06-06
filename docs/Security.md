@@ -17,7 +17,7 @@ The `AuthCaptureEscrow` is a singleton designed to be used by many operators. Th
 As a hedge against this worst-case outcome, we introduced per-operator `TokenStore` contracts that serve as simple liquidity vaults for each unique operator. Instead of storing all escrowed funds in the `AuthCaptureEscrow`, escrowed funds for a given operator are stored in a dedicated `TokenStore` contract deployed at an address deterministically derived from the specific operator currently interacting with the protocol. All points of interaction with these TokenStores from the `AuthCaptureEscrow` are mediated by the derivation of the specific operator's `TokenStore` address, reducing the possibility of cross-operator interference with held liquidity. A `TokenStore` is only callable by the `AuthCaptureEscrow`.
 
 <div align="center">
-  <img src="assets/TokenStoreDiagram.png" alt="Operator TokenStore Diagram" width="80%">
+  <img src="diagrams/TokenStoreDiagram.png" alt="Operator TokenStore Diagram" width="80%">
   <p><em>Per-operator TokenStores hold liquidity</em></p>
 </div>
 
