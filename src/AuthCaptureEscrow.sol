@@ -20,7 +20,6 @@ import {TokenCollector} from "./collectors/TokenCollector.sol";
 ///      from a payer and confirmation signals from the merchant.
 ///
 /// @author Coinbase (https://github.com/base/commerce-payments)
-/// @author Shopify
 contract AuthCaptureEscrow is ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
