@@ -12,7 +12,6 @@ import {IMulticall3} from "../interfaces/IMulticall3.sol";
 ///      signature validators may not implement ERC-6492 handling.
 ///
 /// @author Coinbase (https://github.com/base/commerce-payments)
-/// @author Shopify
 abstract contract ERC6492SignatureHandler {
     bytes32 internal constant _ERC6492_MAGIC_VALUE = 0x6492649264926492649264926492649264926492649264926492649264926492;
 

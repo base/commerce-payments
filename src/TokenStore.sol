@@ -10,7 +10,6 @@ import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeE
 /// @dev Deployed on demand by AuthCaptureEscrow via CREATE2 clones
 ///
 /// @author Coinbase (https://github.com/base/commerce-payments)
-/// @author Shopify
 contract TokenStore {
     /// @notice AuthCaptureEscrow singleton that created this token store
     address public immutable authCaptureEscrow;
