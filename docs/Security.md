@@ -10,15 +10,22 @@ Audited by [Spearbit](https://spearbit.com/).
 
 # Security Analysis
 
-## Trust Minimization
+## Protocol Guarantees
 
-The Commerce Payments Protocol aims to minimize the trust required among protocol participants and the damage any given participant can inflict. Rather than asking participants to trust each other, the protocol tightly defines how, where and when funds are able to move. Operators are parties that can facilitate the lifecycle of a payment, but are at no point trusted with control of payer or merchant funds. They have significant operational power — they can move payments through their lifecycle, collect fees within predetermined ranges, and even cancel transactions — but they operate within constraints that prevent them from stealing funds or violating the authorized behavior set by payers. At worst, operators can become inactive or censor payments, and the protocol includes timelocked fund retrieval mechanisms to protect payers in this case.
+### Operator constraints
+To abstract many of the complexities for merchants and payers, we introduce the concept of a protocol “operator”. The primary job of an operator is to facilitate a payment’s transitions through its lifecycle. An operator submits transactions onchain to initiate, complete or cancel payments, covering the gas requirements of those transactions and simplifying the integration process for less technical end users. If an operator were trusted to custody or manage payment liquidity, this entity would become a magnet for attackers and its compromise could lead to catastrophic loss of funds. A core philosophy of the protocol seeks to minimize trust in any single party while maximizing protective guarantees for all participants.
 
-The heart of this security model lies in cryptographic commitment. When payers authorize payments, they're not just giving permission for a simple transfer — they're cryptographically signing a complete set of payment terms that specifies the exact amount, recipient, fee structure, timing constraints, and additional entropy that makes each payment unique. This signature acts like a tamper-evident seal that makes it cryptographically impossible for operators to modify terms or reuse authorizations for different payments.
+To avoid placing centralized trust or control in the hands of an operator, the protocol itself tightly defines how, where, and when funds can move. Operators are responsible for triggering state transitions within the protocol, but the protocol constrains which state transitions are valid and enforces that payer funds can only move in the context of a payment the payer has authorized. When payers authorize payments, they cryptographically sign complete payment terms: exact amounts, recipients, fee structures, timing constraints, funding authorization and, importantly, the specific operator who is allowed to facilitate state changes for the payment. The hashed data of a unique payment’s terms and the payer’s signature across this information enables a cryptographically enforced guarantee by the protocol that makes it impossible for operators to modify terms, reuse payer authorizations for different payments, or trigger state transitions for payments they’re not authorized by. At worst, operators can become inactive or censor payments, and the protocol includes a time-locked fund retrieval mechanism to protect payers even in this case.
 
-Time serves as another crucial guardian in this system. Every payment flows through carefully orchestrated phases, each with its own deadline. Pre-approval signatures expire to prevent stale authorizations from being used months later. Authorization windows close to ensure merchants can't indefinitely delay settlements, allowing payers to reclaim inactive funds. Refund periods end to provide finality for completed transactions.
+The protocol is permissionless and immutable by design; anyone can act as an operator of the protocol. Operators can be payment processors like Shopify, independent service providers, payers or merchants themselves, or even smart contracts that implement custom business logic. Each payment is cryptographically tied to a specific operator, and that operator’s control over funds is tightly constrained by the guarantees of the protocol.
 
-This architecture achieves strong security guarantees while remaining completely permissionless. Anyone can act as an operator, any developer can build new token collectors, and any user can initiate payments—all without requiring centralized approval or ongoing oversight.
+
+### Unique payments
+The protocol uniquely identifies payments via a hash of the [`PaymentInfo`](../src/AuthCaptureEscrow.sol#L26-L52) struct, the chain id, and the contract address calculating the hash, making payments unique per-chain and per-instance of the `AuthCaptureEscrow`. This data structure defines the operator who’s allowed to facilitate the payment’s state transitions, the terms of the token transfer (token, payer, receiver, amount), fee constraints, the various expiration timestamps for the payment’s lifecycle, and an additional source of entropy for achieving uniqueness. Any given payment can only ever be authorized once. The cryptographic hash of this structure identifies the payment and is part of what the payer signs when they authorize a token transfer for the payment.
+
+### Time-Based Protections
+Time serves as a crucial protection mechanism throughout the payment lifecycle, preventing payments (and associated liquidity) from ending up in a stuck state. The protocol uses three distinct time-based safeguards, defined in the `PaymentInfo` structure, that when passed change what’s possible for a payment. The payment’s `preApprovalExpiry` is the point after which a payment can no longer be authorized. This prevents stale authorizations and ensures payers aren't committed indefinitely to an authorization they have signed. The `authorizationExpiry` defines the point at which the authorization period for the payment expires and a payment is no longer capturable. At this point, any authorized funds become reclaimable via reclaim by the payer themselves. Finally, the `refundExpiry` defines the point after which a payment can no longer be refunded in-protocol, providing eventual finality for that payment. The time-based protections work automatically through smart contract logic and create predictable windows where different actions are possible, preventing any party from being stuck indefinitely.
+
 
 ### Liquidity Segmentation in Operator `TokenStore`s
 
@@ -38,8 +45,9 @@ The protocol is designed to limit the scope of damage that can occur in the case
 protocol. Malicious or inactive operators can censor payments by failing to move a payment through its lifecycle or by prematurely voiding payments. Operators may also have some jurisdiction over how fees behave, depending on how they were configured in the original `PaymentInfo` definition. Operators can apply fees up to the `maxFeeBps` specified in the `PaymentInfo`, and, if the `feeReceiver` was set as `address(0)` in the `PaymentInfo` then this value is dynamically configurable at call time. Therefore in the worst case, an operator could siphon the maximum configurable fee rate to an address of their choosing.
 
 ### Malicious Token Collectors
+(See [Token Collectors](./TokenCollectors.md) for complete documentation)
 
-TL;DR The `AuthCaptureEscrow` protects against malicious or incompetent token collectors by:
+The `AuthCaptureEscrow` protects against malicious or incompetent token collectors by:
 - Measuring balance changes to ensure collector compliance
 - Using Solady's `ReentrancyGuard` to protect all public functions from reentrancy
 

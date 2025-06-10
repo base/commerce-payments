@@ -1,9 +1,22 @@
 ## Token Collectors
 
+One of the biggest challenges in building onchain payment infrastructure is the fragmented landscape of token authorization methods. When payers need to authorize spending without directly initiating transactions themselves (enabling gasless, asynchronous, operator-driven experiences) there are multiple competing standards, each with distinct tradeoffs.
 
-The protocol supports arbitrary, extensible token collection strategies through modular collector contracts for both payments and refunds. This allows any existing or new mechanism for delegated spending to be used by the `AuthCaptureEscrow` to move payers' funds. This enables protocol integrations to provide the best available UX for a given combination of wallet and token.
+ERC-3009, implemented by USDC and several major stablecoins, offers elegant single-signature UX with non-sequential nonces, but isn't widely adopted by most ERC-20 tokens. Permit2 provides universal compatibility with any ERC-20 token but requires an initial setup step per token, creating friction on first use. Spend Limits deliver optimal experiences for specific smart wallet implementations like Coinbase Smart Wallet, but with limited compatibility. Traditional ERC-20 approvals work everywhere but require separate transactions and can't be gasless.
 
-During a payment authorization or direct charge, the `AuthCaptureEscrow` contract makes a call to a token collector that is specified, along with its calldata, as an argument by the operator. The `AuthCaptureEscrow` is agnostic to the implementation of the token collector, and simply checks to ensure it has received funding for the payment. All functions on the `AuthCaptureEscrow` are non-reentrant, to protect against maliciously implemented token collectors that could seek to confuse the `AuthCaptureEscrow` about the state of a payment's funding.
+This fragmentation creates a difficult choice: picking one standard imposes an opinion on the protocol and excludes users of incompatible tokens and wallets. Building multiple mechanisms into the protocol is slightly more inclusive but ultimately a fractal of the original problem. Regardless of our implementation choice, the landscape of options will continue evolving as wallet technology matures and new standards emerge.
+
+Rather than make this choice, we designed the protocol to be completely agnostic about token authorization methods. The solution is a modular "token collector" system that abstracts away the specific spending mechanism while maintaining security guarantees.
+
+Token collectors handle the actual movement of funds from payers to escrow, but the `AuthCaptureEscrow` doesn't care how they work, it simply specifies required amounts and verifies through balance checks that funds were received. Operators can choose the optimal collector for each payment based on the payer's wallet and token combination. The collector implements the specific logic for redeeming authorization (whether ERC-3009 signatures, Permit2 calls, or any other method) while the core protocol remains unchanged.
+
+This abstraction makes the system future-proof and universally compatible. As new authorization standards emerge or wallet technology evolves, developers can simply implement new collectors without modifying the core protocol. The result is a payment infrastructure that works with the long tail of tokens and wallets while maintaining trustless security guarantees for all participants.
+
+### Collector implementation
+
+Token collectors are arbitrarily specifiable arguments determined by operators and therefore are not trusted by the protocol. The protocol protects itself against malicious or poorly implemented token collectors through reentrancy protection and balance checks that ensure the collector has delivered the tokens expected by the protocol. Token collectors are, however, trusted by the payers who authorize them to spend funds. When payers authorize payments, they're authorizing a specific token collector to spend their funds, making proper collector implementation crucial. In the same way that all cryptographic signatures are critical operations, payers should not sign authorizations for token collectors that are not properly implemented.
+
+Honestly implemented collectors must derive payment-specific nonces to be included in (and cryptographically tie the complete payment terms to) the actual signature scheme (i.e. ERC-3009, Permit2 etc.) that the payer is actually producing. This ensures each authorization can only be used for its intended payment. Collectors must also restrict access to their collectTokens method to only the AuthCaptureEscrow, which prevents unauthorized movement of funds outside the context of the protocol’s execution.
 
 
 <div align="center">
@@ -55,6 +68,15 @@ This utility function addresses a common pattern in offchain payment constructio
 
 
 ## Implemented Collectors
+
+The protocol launches with implemented collectors supporting the following major authorization patterns:
+
+- [**ERC-3009**](https://eips.ethereum.org/EIPS/eip-3009)
+- [**Permit2**](https://docs.uniswap.org/contracts/permit2/overview)
+- [**ERC-20 pre-approval**](https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20-approve-address-uint256-)
+- [**Spend Limits**](https://docs.base.org/identity/smart-wallet/concepts/features/optional/spend-limits)
+- **Operator-funded refunds**
+
 ### [`ERC3009PaymentCollector`](../src/collectors/ERC3009PaymentCollector.sol)
 **Use case**: Tokens supporting ERC-3009 (including USDC)
 - Uses `receiveWithAuthorization` for gasless, signature-based transfers
@@ -84,4 +106,5 @@ This utility function addresses a common pattern in offchain payment constructio
 ### [`OperatorRefundCollector`](../src/collectors/OperatorRefundCollector.sol)
 **Use case**: Operator-funded refunds
 - Pulls refund funds from operator's balance
+- Uses standard ERC-20 approval from operator to collector
 - Basic implementation example of modularizing the source of refund liquidity
