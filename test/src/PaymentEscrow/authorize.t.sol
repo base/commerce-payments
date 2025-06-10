@@ -252,7 +252,7 @@ contract AuthorizeTest is AuthCaptureEscrowSmartWalletBase {
         vm.prank(payerEOA);
         ERC20UnsafeTransferTokenCollector(address(erc20UnsafeTransferPaymentCollector)).preApprove(paymentInfo);
 
-        // mint tokens to buyer
+        // mint tokens to payer
         mockERC20Token.mint(payerEOA, amount);
 
         // Try to authorize - should fail on token transfer

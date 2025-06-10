@@ -42,7 +42,7 @@ contract PreApprovalPaymentCollector is TokenCollector {
     ///
     /// @param paymentInfo PaymentInfo struct
     function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
-        // Check sender is buyer
+        // Check sender is payer
         if (msg.sender != paymentInfo.payer) revert AuthCaptureEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
         // Check pre-approval expiry has not passed
