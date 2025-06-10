@@ -1,3 +1,13 @@
+# Audits
+
+Audited by [Spearbit](https://spearbit.com/).
+
+| Audit | Date | Report |
+|--------|---------|---------|
+| First private audit | 04/01/2025 | [Report](../audits/Cantina-Report-04-01-2025.pdf) |
+| Second private audit | 04/22/2025 | [Report](../audits/Cantina-Report-04-22-2025.pdf) |
+
+
 # Security Analysis
 
 ## Trust Minimization
