@@ -3,7 +3,7 @@
 
 The Commerce Payments Protocol facilitates onchain payments. Traditional payment flows typically involve a multi-step "authorize and capture" pattern where payments are initially placed on hold to guarantee payment for merchants at a later time. This payment lifecycle helps facilitate the management of race conditions that can occur between checkout completion, payment processing, and actual order fulfillment (for example, inventory selling out, tax burdens changing, gift card balances being spent, etc.). The Commerce Payments Protocol is a permissionless, immutable mechanism designed to securely facilitate the multi-step lifecycle of real-world payments onchain.
 
-Permissionless operators drive token movement through the protocol and can customize their operations with modular smart contracts. No top-level controls exist on the protocol, keeping it permissionless, immutable and usable by any operator. The permissionless nature of the core protocol prevents it from becoming a "walled garden" because anyone can act as an operator of the protocol and provide a layer of technical abstraction between merchants and the blockchain (including merchants themselves). Operators are trust-minimized and functionally restricted by the protocol, which tightly controls the flow of buyer and merchant funds and minimizes the potential for abuse by operators.
+Permissionless operators drive token movement through the protocol and can customize their operations with modular smart contracts. No top-level controls exist on the protocol, keeping it permissionless, immutable and usable by any operator. The permissionless nature of the core protocol prevents it from becoming a "walled garden" because anyone can act as an operator of the protocol and provide a layer of technical abstraction between merchants and the blockchain (including merchants themselves). Operators are trust-minimized and functionally restricted by the protocol, which tightly controls the flow of payer and merchant funds and minimizes the potential for abuse by operators.
 
 
 The protocol's core functionality revolves around two key concepts:
@@ -13,7 +13,7 @@ The protocol's core functionality revolves around two key concepts:
 - **Capture**: Funds are transferred from escrow to merchants after fulfillment or other conditions ar met. Capture is guaranteed to succeed if funds have been authorized, providing merchants with payment certainty.
 
 
-This pattern ensures that successful authorization always leads to successful capture, providing merchants with payment guarantees while maintaining buyer protections.
+This pattern ensures that successful authorization always leads to successful capture, providing merchants with payment guarantees while maintaining payer protections.
 
 ## Payment Lifecycle
 
@@ -25,7 +25,7 @@ The protocol provides six main functions that handle the complete payment lifecy
 </div>
 
 ### Payment Initiation
-- **[Authorize](operations/Authorize.md)** - Reserve buyer funds in escrow for future capture. Enables delayed settlement while guaranteeing merchant payment upon successful authorization.
+- **[Authorize](operations/Authorize.md)** - Reserve payer funds in escrow for future capture. Enables delayed settlement while guaranteeing merchant payment upon successful authorization.
 
 - **[Charge](operations/Charge.md)** - Combine authorization and capture into a single transaction for immediate payment settlement.
 
@@ -33,12 +33,12 @@ The protocol provides six main functions that handle the complete payment lifecy
 - **[Capture](operations/Capture.md)** - Transfer previously authorized funds from escrow to merchants. Supports partial captures and flexible fee distribution.
 
 ### Payment Cancellation
-- **[Void](operations/Void.md)** - Cancel payment authorizations and return escrowed funds to buyers. Only callable by the operator, but can be used to cancel a payment at any time.
+- **[Void](operations/Void.md)** - Cancel payment authorizations and return escrowed funds to payerss. Only callable by the operator, but can be used to cancel a payment at any time.
 
-- **[Reclaim](operations/Reclaim.md)** - Allow buyers to recover funds from expired authorizations. Buyer-initiated safety mechanism callable only after authorization expiry.
+- **[Reclaim](operations/Reclaim.md)** - Allow payers to recover funds from expired authorizations. Payer-initiated safety mechanism callable only after authorization expiry.
 
 ### Payment Reversal
-- **[Refund](operations/Refund.md)** - Return previously captured funds to buyers using modular refund collectors. Supports partial refunds and flexible liquidity sourcing.
+- **[Refund](operations/Refund.md)** - Return previously captured funds to payers using modular refund collectors. Supports partial refunds and flexible liquidity sourcing.
 
 
 ## Contract Architecture
@@ -81,11 +81,11 @@ Every payment is defined by a `PaymentInfo` struct containing immutable terms. A
 ```solidity
 struct PaymentInfo {
     address operator;           // Entity managing the payment flow
-    address payer;              // Buyer's wallet address
+    address payer;              // Payer's wallet address
     address receiver;           // Merchant's receiving address
     address token;              // Payment token contract
     uint120 maxAmount;          // Maximum amount that can be authorized
-    uint48 preApprovalExpiry;   // When buyer's willingness to authorize the payment expires
+    uint48 preApprovalExpiry;   // When payer's willingness to authorize the payment expires
     uint48 authorizationExpiry; // When an authorized payment can no longer be captured and can now be reclaimed
     uint48 refundExpiry;        // When refunds are no longer allowed
     uint16 minFeeBps;           // Minimum fee in basis points

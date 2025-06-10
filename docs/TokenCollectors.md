@@ -13,8 +13,8 @@ During a payment authorization or direct charge, the `AuthCaptureEscrow` contrac
 
 
  There are two types of collectors:
-- Payment collectors handle the initial transfer of funds from buyer to escrow. 
-- Refund collectors facilitate the return of funds to buyers by providing refund liquidity.
+- Payment collectors handle the initial transfer of funds from payer to escrow. 
+- Refund collectors facilitate the return of funds to payers by providing refund liquidity.
 
 **_A separation of payment and refund collectors prevents residual, unspent balances from an original payment authorization granted to a payment collector from being used to cover a refund._**
 
@@ -76,7 +76,7 @@ This utility function addresses a common pattern in offchain payment constructio
 
 ### [`SpendPermissionPaymentCollector`](../src/collectors/SpendPermissionPaymentCollector.sol)
 **Use case**: Best UX for Coinbase Smart Wallet users, can cover subscription payment schedules
-- Single-signature UX for buyer
+- Single-signature UX for payer
 - Supports ERC-6492 for smart contract wallet signatures via native support in `SpendPermissionManager`
 - Only compatible with Coinbase Smart Wallet users
 - Enables subscription-like recurring payments

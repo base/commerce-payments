@@ -1,12 +1,12 @@
 # Void
 
-The `void` function allows operators to permanently cancel a payment authorization and return escrowed funds to the buyer. This provides a mechanism for operators to reverse authorizations when fulfillment cannot be completed.
+The `void` function allows operators to permanently cancel a payment authorization and return escrowed funds to the payer. This provides a mechanism for operators to reverse authorizations when fulfillment cannot be completed.
 
 ## Purpose
 
 Void enables payment cancellation by:
 - **Canceling authorizations**: Permanently voids pending payment authorizations
-- **Returning escrowed funds**: Transfers all capturable funds back to the buyer
+- **Returning escrowed funds**: Transfers all capturable funds back to the payer
 - **Enabling immediate refund**: Void can be called by the payment's operator at any time, even if a payment's authorization has not expired
 - **Updating payment state accounting**: Clears the capturable amount for a payment
 
@@ -20,7 +20,7 @@ function void(PaymentInfo calldata paymentInfo)
 ### Process Flow
 1. **Authorization Check**: Verifies that capturable funds exist for the payment
 2. **State Clearing**: Sets `capturableAmount` to zero permanently
-3. **Fund Return**: Transfers all capturable funds back to the original buyer
+3. **Fund Return**: Transfers all capturable funds back to the original payer
 4. **Event Emission**: Emits `PaymentVoided` for tracking
 5. **Permanent Effect**: Payment can never be captured after voiding
 

@@ -4,7 +4,7 @@ A permissionless protocol for onchain payments that mimics traditional "authoriz
 
 ## Quick Start
 
-The Commerce Payments Protocol facilitates secure escrow-based payments with flexible authorization and capture patterns. Operators drive payment flows using modular token collectors while the protocol ensures buyer and merchant protections.
+The Commerce Payments Protocol facilitates secure escrow-based payments with flexible authorization and capture patterns. Operators drive payment flows using modular token collectors while the protocol ensures payer and merchant protections.
 
 **📖 [Read the Full Documentation](docs/README.md)**
 
@@ -40,8 +40,8 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
   - [Capture](docs/operations/Capture.md) - Transfer authorized funds to merchants  
   - [Charge](docs/operations/Charge.md) - Immediate authorization and capture
   - [Void](docs/operations/Void.md) - Cancel authorizations (operator)
-  - [Reclaim](docs/operations/Reclaim.md) - Recover expired authorizations (buyer)
-  - [Refund](docs/operations/Refund.md) - Return captured funds to buyers
+  - [Reclaim](docs/operations/Reclaim.md) - Recover expired authorizations (payer)
+  - [Refund](docs/operations/Refund.md) - Return captured funds to payers
 
 ## Development
 

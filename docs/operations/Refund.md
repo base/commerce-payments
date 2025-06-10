@@ -1,6 +1,6 @@
 # Refund
 
-The `refund` function allows operators to return previously captured funds to buyers. This provides a mechanism for reversing completed payments while maintaining proper accounting. Refunds are limited to the originally captured amount, prevent over-refunding.
+The `refund` function allows operators to return previously captured funds to payers. This provides a mechanism for reversing completed payments while maintaining proper accounting. Refunds are limited to the originally captured amount, prevent over-refunding.
 
 
 Similarly to token collection for payments, modular token collectors are used to source the liquidity for refunds. This enables the implementation of any source of liquidity for refunds. For example, refund liquidity could be held and dispensed directly by the operator, or could be held by the merchant who received the payment and provided to the protocol via a signature-based authorization from that merchant for the specific purpose of refunding a specific payment.
@@ -28,7 +28,7 @@ function refund(
 2. **Amount Validation**: Confirms refund amount doesn't exceed previously captured funds
 3. **State Update**: Decreases `refundableAmount` by refund amount
 4. **Token Collection**: Uses refund collector to source refund funds
-5. **Fund Transfer**: Transfers refund amount to the original buyer
+5. **Fund Transfer**: Transfers refund amount to the original payer
 6. **Event Emission**: Emits `PaymentRefunded` for tracking
 
 ## Parameters
