@@ -22,12 +22,12 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 
 | Contract | Address |
 |----------|---------|
-| AuthCaptureEscrow | [`0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff`](https://basescan.org/address/0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff#code) |
-| ERC3009PaymentCollector | [`0x0E3dF9510de65469C4518D7843919c0b8C7A7757`](https://basescan.org/address/0x0E3dF9510de65469C4518D7843919c0b8C7A7757#code) |
-| Permit2PaymentCollector | [`0x992476B9Ee81d52a5BdA0622C333938D0Af0aB26`](https://basescan.org/address/0x992476B9Ee81d52a5BdA0622C333938D0Af0aB26#code) |
-| PreApprovalPaymentCollector | [`0x1b77ABd71FCD21fbe2398AE821Aa27D1E6B94bC6`](https://basescan.org/address/0x1b77ABd71FCD21fbe2398AE821Aa27D1E6B94bC6#code) |
-| SpendPermissionPaymentCollector | [`0x8d9F34934dc9619e5DC3Df27D0A40b4A744E7eAa`](https://basescan.org/address/0x8d9F34934dc9619e5DC3Df27D0A40b4A744E7eAa#code) |
-| OperatorRefundCollector | [`0x934907bffd0901b6A21e398B9C53A4A38F02fa5d`](https://basescan.org/address/0x934907bffd0901b6A21e398B9C53A4A38F02fa5d#code) |
+| AuthCaptureEscrow | <a href="https://basescan.org/address/0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff#code" target="_blank">`0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff`</a> |
+| ERC3009PaymentCollector | <a href="https://basescan.org/address/0x0E3dF9510de65469C4518D7843919c0b8C7A7757#code" target="_blank">`0x0E3dF9510de65469C4518D7843919c0b8C7A7757`</a> |
+| Permit2PaymentCollector | <a href="https://basescan.org/address/0x992476B9Ee81d52a5BdA0622C333938D0Af0aB26#code" target="_blank">`0x992476B9Ee81d52a5BdA0622C333938D0Af0aB26`</a> |
+| PreApprovalPaymentCollector | <a href="https://basescan.org/address/0x1b77ABd71FCD21fbe2398AE821Aa27D1E6B94bC6#code" target="_blank">`0x1b77ABd71FCD21fbe2398AE821Aa27D1E6B94bC6`</a> |
+| SpendPermissionPaymentCollector | <a href="https://basescan.org/address/0x8d9F34934dc9619e5DC3Df27D0A40b4A744E7eAa#code" target="_blank">`0x8d9F34934dc9619e5DC3Df27D0A40b4A744E7eAa`</a> |
+| OperatorRefundCollector | <a href="https://basescan.org/address/0x934907bffd0901b6A21e398B9C53A4A38F02fa5d#code" target="_blank">`0x934907bffd0901b6A21e398B9C53A4A38F02fa5d`</a> |
 
 ## Documentation
 
