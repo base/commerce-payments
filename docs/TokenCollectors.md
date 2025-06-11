@@ -8,21 +8,28 @@ This fragmentation creates a difficult choice: picking one standard imposes an o
 
 Rather than make this choice, we designed the protocol to be completely agnostic about token authorization methods. The solution is a modular "token collector" system that abstracts away the specific spending mechanism while maintaining security guarantees.
 
+<div align="center">
+  <img src="diagrams/TokenCollectorsDiagram.png" alt="Token Collectors Architecture Diagram" width="80%">
+  <p><em>Token collectors can be designed to interface with various spending mechanisms</em></p>
+</div>
+
+
 Token collectors handle the actual movement of funds from payers to escrow, but the `AuthCaptureEscrow` doesn't care how they work, it simply specifies required amounts and verifies through balance checks that funds were received. Operators can choose the optimal collector for each payment based on the payer's wallet and token combination. The collector implements the specific logic for redeeming authorization (whether ERC-3009 signatures, Permit2 calls, or any other method) while the core protocol remains unchanged.
 
+<div align="center">
+  <img src="diagrams/TokenCollectionSequence.png" alt="Example authorization flow with ERC3009PaymentCollector" width="80%">
+  <p><em>An example call flow during authorization using the ERC3009PaymentCollector.</em></p>
+</div>
+
+
 This abstraction makes the system future-proof and universally compatible. As new authorization standards emerge or wallet technology evolves, developers can simply implement new collectors without modifying the core protocol. The result is a payment infrastructure that works with the long tail of tokens and wallets while maintaining trustless security guarantees for all participants.
+
 
 ### Collector implementation
 
 Token collectors are arbitrarily specifiable arguments determined by operators and therefore are not trusted by the protocol. The protocol protects itself against malicious or poorly implemented token collectors through reentrancy protection and balance checks that ensure the collector has delivered the tokens expected by the protocol. Token collectors are, however, trusted by the payers who authorize them to spend funds. When payers authorize payments, they're authorizing a specific token collector to spend their funds, making proper collector implementation crucial. In the same way that all cryptographic signatures are critical operations, payers should not sign authorizations for token collectors that are not properly implemented.
 
 Honestly implemented collectors must derive payment-specific nonces to be included in (and cryptographically tie the complete payment terms to) the actual signature scheme (i.e. ERC-3009, Permit2 etc.) that the payer is actually producing. This ensures each authorization can only be used for its intended payment. Collectors must also restrict access to their collectTokens method to only the AuthCaptureEscrow, which prevents unauthorized movement of funds outside the context of the protocol’s execution.
-
-
-<div align="center">
-  <img src="diagrams/TokenCollectorsDiagram.png" alt="Token Collectors Architecture Diagram" width="80%">
-  <p><em>Token collectors can be designed to interface with various spending mechanisms</em></p>
-</div>
 
 
  There are two types of collectors:
