@@ -5,6 +5,11 @@ The `refund` function allows operators to return previously captured funds to pa
 
 Similarly to token collection for payments, modular token collectors are used to source the liquidity for refunds. This enables the implementation of any source of liquidity for refunds. For example, refund liquidity could be held and dispensed directly by the operator, or could be held by the merchant who received the payment and provided to the protocol via a signature-based authorization from that merchant for the specific purpose of refunding a specific payment.
 
+<div align="center">
+  <img src="../diagrams/operations/Refund.png" alt="Refund" width="70%">
+  <p><em>Refund</em></p>
+</div>
+
 ## Purpose
 
 Refund enables payment reversal by:

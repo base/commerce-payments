@@ -2,6 +2,11 @@
 
 The `capture` function transfers previously authorized funds from escrow to the merchant and fee recipient. This completes the "capture" phase of the two-phase payment pattern.
 
+<div align="center">
+  <img src="../diagrams/operations/Capture.png" alt="Capture" width="70%">
+  <p><em>Capture</em></p>
+</div>
+
 ## Purpose
 
 Capture finalizes the payment by:

@@ -2,6 +2,11 @@
 
 The `authorize` function places a hold on payer funds by transferring them into escrow, where they await capture by the operator. This implements the "authorization" phase of the two-phase payment pattern.
 
+<div align="center">
+  <img src="../diagrams/operations/Authorize.png" alt="Authorization" width="70%">
+  <p><em>Authorization</em></p>
+</div>
+
 ## Purpose
 
 Authorization serves as a payment reservation mechanism that:

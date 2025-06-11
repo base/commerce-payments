@@ -2,6 +2,11 @@
 
 The `void` function allows operators to permanently cancel a payment authorization and return escrowed funds to the payer. This provides a mechanism for operators to reverse authorizations when fulfillment cannot be completed.
 
+<div align="center">
+  <img src="../diagrams/operations/Void.png" alt="Void" width="70%">
+  <p><em>Void</em></p>
+</div>
+
 ## Purpose
 
 Void enables payment cancellation by:

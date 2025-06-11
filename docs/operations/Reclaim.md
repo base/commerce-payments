@@ -2,6 +2,11 @@
 
 The `reclaim` function allows payers to recover their funds from escrow after the authorization expiry period has passed. This provides a safety mechanism ensuring payers can always retrieve their funds from abandoned or unfulfilled payments.
 
+<div align="center">
+  <img src="../diagrams/operations/Reclaim.png" alt="Reclaim" width="70%">
+  <p><em>Reclaim</em></p>
+</div>
+
 ## Purpose
 
 Reclaim protects payers by:

@@ -2,6 +2,11 @@
 
 The `charge` function combines authorization and capture into a single atomic operation, immediately transferring funds from payer to merchant. This provides a streamlined payment flow for scenarios where immediate settlement is desired.
 
+<div align="center">
+  <img src="../diagrams/operations/Charge.png" alt="Charge" width="70%">
+  <p><em>Charge</em></p>
+</div>
+
 ## Purpose
 
 Charge enables direct payment by:
