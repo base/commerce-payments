@@ -11,7 +11,7 @@ This introduces an intermediary state of guaranteeing the ability to pay in the 
 
 The Commerce Payments Protocol brings Auth+Capture onchain through an Escrow smart contract. To authorize, funds move from buyer to Escrow, guaranteeing the ability to pay merchants. To capture, funds move from Escrow to merchant, finalizing payment. This simple 2-step process unlocks onchain payments for commerce at scale.
 
-To create a layer of abstraction between the payer and receiver of a given payment necessarily needing to interact directly with the chain, the protocol is designed around the concept of a payment "operator". Operators drive payment movement through the Escrow, absorbing transaction fees and enabling background automations seamlessly.
+To create a layer of abstraction between the payer or receiver of a given payment the need for direct interaction with the chain, the protocol is designed around the concept of a payment "operator". Operators drive payment movement through the Escrow, absorbing transaction fees and enabling background automations seamlessly.
 
  No top-level controls exist on the protocol, keeping it permissionless, immutable and usable by any operator. The permissionless nature of the core protocol prevents it from becoming a "walled garden" because anyone can act as an operator of the protocol and provide a layer of technical abstraction between merchants and the blockchain (including merchants themselves). Operators are trust-minimized and cryptographically constrained by the protocol, which tightly controls the flow of payer and merchant funds and minimizes the potential for abuse by operators.
 
