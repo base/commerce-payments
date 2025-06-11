@@ -23,11 +23,11 @@ contract ERC20UnsafeTransferTokenCollector is TokenCollector {
         return TokenCollector.CollectorType.Payment;
     }
 
-    /// @notice Registers buyer's token approval for a specific payment
-    /// @dev Must be called by the buyer specified in the payment info
+    /// @notice Registers payer's token approval for a specific payment
+    /// @dev Must be called by the payer specified in the payment info
     /// @param paymentInfo PaymentInfo struct
     function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
-        // check sender is buyer
+        // check sender is payer
         if (msg.sender != paymentInfo.payer) revert InvalidSender(msg.sender, paymentInfo.payer);
 
         // check status is not authorized or already pre-approved

@@ -16,16 +16,16 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @inheritdoc TokenCollector
     TokenCollector.CollectorType public constant override collectorType = TokenCollector.CollectorType.Payment;
 
-    /// @notice Payment was pre-approved by buyer
+    /// @notice Payment was pre-approved by payer
     event PaymentPreApproved(bytes32 indexed paymentInfoHash);
 
-    /// @notice Payment not pre-approved by buyer
+    /// @notice Payment not pre-approved by payer
     error PaymentNotPreApproved(bytes32 paymentInfoHash);
 
     /// @notice Payment already collected
     error PaymentAlreadyCollected(bytes32 paymentInfoHash);
 
-    /// @notice Payment already pre-approved by buyer
+    /// @notice Payment already pre-approved by payer
     error PaymentAlreadyPreApproved(bytes32 paymentInfoHash);
 
     /// @notice Track if a payment has been pre-approved
@@ -36,13 +36,13 @@ contract PreApprovalPaymentCollector is TokenCollector {
     /// @param authCaptureEscrow_ AuthCaptureEscrow singleton that calls to collect tokens
     constructor(address authCaptureEscrow_) TokenCollector(authCaptureEscrow_) {}
 
-    /// @notice Registers buyer's token approval for a specific payment
+    /// @notice Registers payer's token approval for a specific payment
     ///
-    /// @dev Must be called by the buyer specified in the payment info
+    /// @dev Must be called by the payer specified in the payment info
     ///
     /// @param paymentInfo PaymentInfo struct
     function preApprove(AuthCaptureEscrow.PaymentInfo calldata paymentInfo) external {
-        // Check sender is buyer
+        // Check sender is payer
         if (msg.sender != paymentInfo.payer) revert AuthCaptureEscrow.InvalidSender(msg.sender, paymentInfo.payer);
 
         // Check pre-approval expiry has not passed

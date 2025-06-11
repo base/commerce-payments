@@ -1,12 +1,17 @@
 # Authorize
 
-The `authorize` function places a hold on buyer funds by transferring them into escrow, where they await capture by the operator. This implements the "authorization" phase of the two-phase payment pattern.
+The `authorize` function places a hold on payer funds by transferring them into escrow, where they await capture by the operator. This implements the "authorization" phase of the two-phase payment pattern.
+
+<div align="center">
+  <img src="../diagrams/operations/Authorize.png" alt="Authorization" width="70%">
+  <p><em>Authorization</em></p>
+</div>
 
 ## Purpose
 
 Authorization serves as a payment reservation mechanism that:
 - **Guarantees merchant payment**: Once authorized, funds are guaranteed to be available for capture
-- **Provides buyer protection**: Funds remain in escrow until explicitly captured or expired
+- **Provides payer protection**: Funds remain in escrow until explicitly captured or expired
 - **Enables delayed settlement**: Merchants can fulfill orders knowing payment is secured
 - **Supports partial captures**: The full authorized amount can be captured in multiple increments
 
@@ -24,7 +29,7 @@ function authorize(
 ### Process Flow
 1. **Validation**: Ensures payment info is valid, amount doesn't exceed limits, and timing constraints are met
 2. **Uniqueness Check**: Verifies this payment hasn't already been collected
-3. **Token Collection**: Uses the specified token collector to pull funds from the buyer
+3. **Token Collection**: Uses the specified token collector to pull funds from the payer
 4. **State Update**: Records the authorized amount as `capturableAmount`
 5. **Event Emission**: Emits `PaymentAuthorized` for tracking
 
@@ -40,7 +45,7 @@ function authorize(
 |-----------|------|-------------|
 | `paymentInfo` | `PaymentInfo` | Complete payment configuration (operator, payer, receiver, etc.) |
 | `amount` | `uint256` | Amount to authorize (must be ≤ paymentInfo.maxAmount) |
-| `tokenCollector` | `address` | Contract that will pull tokens from buyer |
+| `tokenCollector` | `address` | Contract that will pull tokens from payer |
 | `collectorData` | `bytes` | Data passed to token collector (e.g., signature) |
 
 ## Access Control

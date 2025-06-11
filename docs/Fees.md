@@ -57,7 +57,7 @@ When fees are applied:
 2. **Fee Transfer**: If `feeAmount > 0`, transfer to `feeReceiver`
 3. **Remaining Transfer**: Transfer `amount - feeAmount` to the merchant (`receiver`)
 
-## Comprehensive Examples
+## Examples
 
 ### Example 1: Fixed Fee Rate with Fixed Recipient
 

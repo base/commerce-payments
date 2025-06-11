@@ -1,6 +1,11 @@
 # Charge
 
-The `charge` function combines authorization and capture into a single atomic operation, immediately transferring funds from buyer to merchant. This provides a streamlined payment flow for scenarios where immediate settlement is desired.
+The `charge` function combines authorization and capture into a single atomic operation, immediately transferring funds from payer to merchant. This provides a streamlined payment flow for scenarios where immediate settlement is desired.
+
+<div align="center">
+  <img src="../diagrams/operations/Charge.png" alt="Charge" width="70%">
+  <p><em>Charge</em></p>
+</div>
 
 ## Purpose
 
@@ -29,7 +34,7 @@ function charge(
 2. **Fee Validation**: Confirms fee parameters are within allowed ranges (see [Fees](Fees.md))
 3. **Uniqueness Check**: Verifies this payment hasn't already been collected
 4. **State Update**: Records payment as collected with `refundableAmount`
-5. **Token Collection**: Uses token collector to pull funds from buyer
+5. **Token Collection**: Uses token collector to pull funds from payer
 6. **Fee Distribution**: Immediately distributes funds to merchant and fee recipient
 7. **Event Emission**: Emits `PaymentCharged` for tracking
 
@@ -39,7 +44,7 @@ function charge(
 |-----------|------|-------------|
 | `paymentInfo` | `PaymentInfo` | Complete payment configuration |
 | `amount` | `uint256` | Amount to charge (must be ≤ maxAmount) |
-| `tokenCollector` | `address` | Contract that will pull tokens from buyer |
+| `tokenCollector` | `address` | Contract that will pull tokens from payer |
 | `collectorData` | `bytes` | Data passed to token collector |
 | `feeBps` | `uint16` | Fee percentage in basis points |
 | `feeReceiver` | `address` | Address to receive fee portion |

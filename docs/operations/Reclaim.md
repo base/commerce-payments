@@ -1,12 +1,17 @@
 # Reclaim
 
-The `reclaim` function allows buyers to recover their funds from escrow after the authorization expiry period has passed. This provides a safety mechanism ensuring buyers can always retrieve their funds from abandoned or unfulfilled payments.
+The `reclaim` function allows payers to recover their funds from escrow after the authorization expiry period has passed. This provides a safety mechanism ensuring payers can always retrieve their funds from abandoned or unfulfilled payments.
+
+<div align="center">
+  <img src="../diagrams/operations/Reclaim.png" alt="Reclaim" width="70%">
+  <p><em>Reclaim</em></p>
+</div>
 
 ## Purpose
 
-Reclaim protects buyers by:
-- **Buyer-controlled recovery**: Puts fund recovery control in buyer's hands
-- **Preventing permanent fund loss**: Guarantees buyers can recover escrowed funds
+Reclaim protects payers by:
+- **Payer-controlled recovery**: Puts fund recovery control in payer's hands
+- **Preventing permanent fund loss**: Guarantees payers can recover escrowed funds
 - **Handling abandoned payments**: Addresses cases where operators don't capture or void before authorization expiry
 
 ## How It Works
@@ -20,7 +25,7 @@ function reclaim(PaymentInfo calldata paymentInfo)
 1. **Timing Validation**: Ensures current time is after `authorizationExpiry`
 2. **Authorization Check**: Verifies that capturable funds exist for the payment
 3. **State Clearing**: Sets `capturableAmount` to zero permanently
-4. **Fund Return**: Transfers all capturable funds back to the buyer
+4. **Fund Return**: Transfers all capturable funds back to the payer
 5. **Event Emission**: Emits `PaymentReclaimed` for tracking
 
 ## Parameters
