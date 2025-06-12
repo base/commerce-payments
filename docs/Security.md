@@ -1,12 +1,16 @@
 # Audits
 
-Audited by [Spearbit](https://spearbit.com/).
+## Security Audits
+
+Audited by [Spearbit](https://spearbit.com/) and Coinbase Protocol Security.
 
 | Audit | Date | Report |
 |--------|---------|---------|
-| First private audit | 04/01/2025 | [Report](../audits/Cantina-Report-04-01-2025.pdf) |
-| Second private audit | 04/22/2025 | [Report](../audits/Cantina-Report-04-22-2025.pdf) |
-
+| Coinbase Protocol Security audit 1 | 03/19/2025 | [Report](../audits/CommercePaymentsAudit1ProtoSec.pdf) |
+| Coinbase Protocol Security audit 2 | 03/26/2025 | [Report](../audits/CommercePaymentsAudit2ProtoSec.pdf) |
+| Spearbit audit 1 | 04/01/2025 | [Report](../audits/Cantina-Report-04-01-2025.pdf) |
+| Coinbase Protocol Security audit 3 | 04/15/2025 | [Report](../audits/CommercePaymentsAudit3CoinbaseProtoSec.pdf) |
+| Spearbit audit 2 | 04/22/2025 | [Report](../audits/Cantina-Report-04-22-2025.pdf) |
 
 # Security Analysis
 
