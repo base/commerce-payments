@@ -58,7 +58,7 @@ forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE.md) file for details.
 
 
 ## Security Audits
