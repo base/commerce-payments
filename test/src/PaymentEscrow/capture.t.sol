@@ -25,7 +25,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         vm.prank(sender);
         vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.InvalidSender.selector, sender, paymentInfo.operator));
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_reverts_whenValueIsZero() public {
@@ -33,7 +33,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(AuthCaptureEscrow.ZeroAmount.selector);
-        authCaptureEscrow.capture(paymentInfo, 0, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, 0, _feeAmount(1, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_reverts_whenAmountOverflows(uint256 overflowValue) public {
@@ -45,7 +45,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(AuthCaptureEscrow.AmountOverflow.selector, overflowValue, type(uint120).max)
         );
-        authCaptureEscrow.capture(paymentInfo, overflowValue, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, overflowValue, _feeAmount(1, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_reverts_whenAfterAuthorizationExpiry(
@@ -76,7 +76,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
                 AuthCaptureEscrow.AfterAuthorizationExpiry.selector, block.timestamp, authorizationExpiry
             )
         );
-        authCaptureEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, captureAmount, _feeAmount(captureAmount, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_reverts_whenInsufficientAuthorization(uint120 authorizedAmount) public {
@@ -102,7 +102,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
                 AuthCaptureEscrow.InsufficientAuthorization.selector, paymentInfoHash, authorizedAmount, captureAmount
             )
         );
-        authCaptureEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, captureAmount, _feeAmount(captureAmount, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_reverts_receiverSender(uint120 authorizedAmount) public {
@@ -123,7 +123,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(AuthCaptureEscrow.InvalidSender.selector, paymentInfo.receiver, paymentInfo.operator)
         );
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
     }
 
     function test_succeeds_withFullAmount(uint120 authorizedAmount) public {
@@ -144,7 +144,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         // Then capture the full amount
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
 
         // Verify balances
         assertEq(mockERC3009Token.balanceOf(receiver), receiverExpectedBalance);
@@ -171,7 +171,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         // Then capture partial amount
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, captureAmount, _feeAmount(captureAmount, FEE_BPS), paymentInfo.feeReceiver);
 
         // Verify balances and state
         address operatorTokenStore = authCaptureEscrow.getTokenStore(operator);
@@ -197,11 +197,11 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         // First capture
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, firstCaptureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, firstCaptureAmount, _feeAmount(firstCaptureAmount, FEE_BPS), paymentInfo.feeReceiver);
 
         // Second capture
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, secondCaptureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, secondCaptureAmount, _feeAmount(secondCaptureAmount, FEE_BPS), paymentInfo.feeReceiver);
 
         // Calculate fees for each capture separately to match contract behavior
         uint256 firstFeesAmount = firstCaptureAmount * FEE_BPS / 10_000;
@@ -235,25 +235,27 @@ contract CaptureTest is AuthCaptureEscrowBase {
         // Record expected event
         vm.expectEmit(true, false, false, true);
         emit AuthCaptureEscrow.PaymentCaptured(
-            paymentInfoHash, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver
+            paymentInfoHash, captureAmount, _feeAmount(captureAmount, FEE_BPS), paymentInfo.feeReceiver
         );
 
         // Execute capture
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, captureAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, captureAmount, _feeAmount(captureAmount, FEE_BPS), paymentInfo.feeReceiver);
     }
 
-    function test_reverts_whenFeeBpsBelowMin(
+    function test_reverts_whenFeeAmountBelowMin(
         uint120 authorizedAmount,
         uint16 minFeeBps,
-        uint16 maxFeeBps,
-        uint16 captureFeeBps
+        uint16 maxFeeBps
     ) public {
-        // Assume reasonable bounds for fees
         vm.assume(authorizedAmount > 0);
-        vm.assume(minFeeBps > 0 && minFeeBps <= 5000); // Max 50%
+        vm.assume(minFeeBps > 0 && minFeeBps <= 5000);
         vm.assume(maxFeeBps >= minFeeBps && maxFeeBps <= 5000);
-        vm.assume(captureFeeBps < minFeeBps); // Must be below min to trigger revert
+
+        uint256 minFee = _feeAmount(authorizedAmount, minFeeBps);
+        vm.assume(minFee > 0);
+        uint256 captureFeeAmount = minFee - 1;
+        uint256 maxFee = _feeAmount(authorizedAmount, maxFeeBps);
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
@@ -268,23 +270,26 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(AuthCaptureEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
+            abi.encodeWithSelector(
+                AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee
+            )
         );
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeAmount, paymentInfo.feeReceiver);
     }
 
-    function test_reverts_whenFeeBpsAboveMax(
+    function test_reverts_whenFeeAmountAboveMax(
         uint120 authorizedAmount,
         uint16 minFeeBps,
-        uint16 maxFeeBps,
-        uint16 captureFeeBps
+        uint16 maxFeeBps
     ) public {
-        // Assume reasonable bounds for fees
         vm.assume(authorizedAmount > 0);
-        vm.assume(minFeeBps <= 5000); // Max 50%
+        vm.assume(minFeeBps <= 5000);
         vm.assume(maxFeeBps >= minFeeBps && maxFeeBps <= 5000);
-        vm.assume(captureFeeBps > maxFeeBps); // Must be above max to trigger revert
-        vm.assume(captureFeeBps <= 10_000); // But still within uint16 reasonable bounds
+
+        uint256 minFee = _feeAmount(authorizedAmount, minFeeBps);
+        uint256 maxFee = _feeAmount(authorizedAmount, maxFeeBps);
+        vm.assume(maxFee < type(uint256).max);
+        uint256 captureFeeAmount = maxFee + 1;
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
@@ -299,9 +304,11 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(AuthCaptureEscrow.FeeBpsOutOfRange.selector, captureFeeBps, minFeeBps, maxFeeBps)
+            abi.encodeWithSelector(
+                AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee
+            )
         );
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeAmount, paymentInfo.feeReceiver);
     }
 
     function test_reverts_whenFeeReceiverInvalid(
@@ -311,13 +318,14 @@ contract CaptureTest is AuthCaptureEscrowBase {
         uint16 captureFeeBps,
         address invalidFeeReceiver
     ) public {
-        // Assume reasonable bounds for fees
         vm.assume(authorizedAmount > 0);
         vm.assume(minFeeBps > 0);
         vm.assume(maxFeeBps >= minFeeBps && maxFeeBps < 10000);
         vm.assume(captureFeeBps >= minFeeBps && captureFeeBps <= maxFeeBps);
         vm.assume(invalidFeeReceiver != address(0));
         vm.assume(invalidFeeReceiver != feeReceiver);
+
+        uint256 captureFeeAmount = _feeAmount(authorizedAmount, captureFeeBps);
 
         mockERC3009Token.mint(payerEOA, authorizedAmount);
 
@@ -335,7 +343,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         vm.expectRevert(
             abi.encodeWithSelector(AuthCaptureEscrow.InvalidFeeReceiver.selector, invalidFeeReceiver, feeReceiver)
         );
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, invalidFeeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeAmount, invalidFeeReceiver);
     }
 
     function test_reverts_ifSendTokensReverts_undeployedTokenStore(uint120 authorizedAmount, bytes calldata revertData)
@@ -358,7 +366,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
         vm.expectRevert(abi.encodeWithSelector(MockRevertOnTransferToken.CustomRevert.selector, revertData));
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
         vm.stopPrank();
     }
 
@@ -376,7 +384,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
             authorizedAmount,
             address(erc3009PaymentCollector),
             initialSignature,
-            initialPaymentInfo.minFeeBps,
+            _feeAmount(authorizedAmount, FEE_BPS),
             initialPaymentInfo.feeReceiver
         );
 
@@ -397,7 +405,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
         vm.expectRevert(abi.encodeWithSelector(MockRevertOnTransferToken.CustomRevert.selector, revertData));
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
         vm.stopPrank();
     }
 
@@ -418,7 +426,7 @@ contract CaptureTest is AuthCaptureEscrowBase {
         authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(preApprovalPaymentCollector), "");
 
         vm.expectRevert(abi.encodeWithSelector(SafeERC20.SafeERC20FailedOperation.selector, revertingToken));
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, _feeAmount(authorizedAmount, FEE_BPS), paymentInfo.feeReceiver);
         vm.stopPrank();
     }
 
@@ -447,11 +455,35 @@ contract CaptureTest is AuthCaptureEscrowBase {
 
         address newFeeRecipient = address(0xdead);
 
-        vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeBps, newFeeRecipient);
+        uint256 captureFeeAmount = _feeAmount(authorizedAmount, captureFeeBps);
 
-        uint256 feeAmount = (uint256(authorizedAmount) * uint256(captureFeeBps)) / 10_000;
-        assertEq(mockERC3009Token.balanceOf(newFeeRecipient), feeAmount);
-        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - feeAmount);
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, captureFeeAmount, newFeeRecipient);
+
+        assertEq(mockERC3009Token.balanceOf(newFeeRecipient), captureFeeAmount);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - captureFeeAmount);
+    }
+
+    /// @dev Capture $54.23 with 3% + $0.30 flat fee rounded to $1.93 (cent-aligned in 6-decimal USDC)
+    function test_succeeds_withCentAlignedFeeAmount() public {
+        uint120 authorizedAmount = 54_230_000; // $54.23
+        uint256 centAlignedFee = 1_930_000; // $1.93
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = 300; // 3% lower bound
+        paymentInfo.maxFeeBps = 400; // 4% upper bound accommodates 3% + $0.30 flat
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, centAlignedFee, paymentInfo.feeReceiver);
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), centAlignedFee);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - centAlignedFee);
     }
 }

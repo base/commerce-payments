@@ -25,11 +25,11 @@ contract AuthCaptureEscrowSmartWalletE2ETest is AuthCaptureEscrowSmartWalletBase
             amount,
             address(erc3009PaymentCollector),
             signature,
-            paymentInfo.minFeeBps,
+            _feeAmount(amount, paymentInfo.minFeeBps),
             paymentInfo.feeReceiver
         );
 
-        uint256 feeAmount = uint256(amount) * FEE_BPS / 10_000;
+        uint256 feeAmount = _feeAmount(amount, FEE_BPS);
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
     }
@@ -57,11 +57,11 @@ contract AuthCaptureEscrowSmartWalletE2ETest is AuthCaptureEscrowSmartWalletBase
             amount,
             address(erc3009PaymentCollector),
             signature,
-            paymentInfo.minFeeBps,
+            _feeAmount(amount, paymentInfo.minFeeBps),
             paymentInfo.feeReceiver
         );
 
-        uint256 feeAmount = uint256(amount) * FEE_BPS / 10_000;
+        uint256 feeAmount = _feeAmount(amount, FEE_BPS);
         assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
         assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
     }

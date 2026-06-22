@@ -8,6 +8,7 @@ import {AuthCaptureEscrowBase} from "../base/AuthCaptureEscrowBase.sol";
 contract GasBenchmarkBase is AuthCaptureEscrowBase {
     uint120 internal constant BENCHMARK_AMOUNT = 100e6;
     uint16 internal constant BENCHMARK_FEE_BPS = 100; // 1%
+    uint256 internal constant BENCHMARK_FEE_AMOUNT = BENCHMARK_AMOUNT * BENCHMARK_FEE_BPS / 10_000;
 
     AuthCaptureEscrow.PaymentInfo internal paymentInfo;
     bytes internal signature;
@@ -22,7 +23,7 @@ contract GasBenchmarkBase is AuthCaptureEscrowBase {
         mockERC3009Token.mint(payerEOA, 1e6);
         vm.startPrank(operator);
         authCaptureEscrow.authorize(warmupInfo, 1e6, address(erc3009PaymentCollector), warmupSignature);
-        authCaptureEscrow.capture(warmupInfo, 1e6, BENCHMARK_FEE_BPS, feeReceiver); // make sure token store is deployed before subsequent tests
+        authCaptureEscrow.capture(warmupInfo, 1e6, 1e6 * BENCHMARK_FEE_BPS / 10_000, feeReceiver); // make sure token store is deployed before subsequent tests
         vm.stopPrank();
 
         // Create and sign payment info
@@ -45,7 +46,7 @@ contract ChargeGasBenchmark is GasBenchmarkBase {
     function test_charge_benchmark() public {
         vm.prank(operator);
         authCaptureEscrow.charge(
-            paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature, BENCHMARK_FEE_BPS, feeReceiver
+            paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature, BENCHMARK_FEE_AMOUNT, feeReceiver
         );
     }
 }
@@ -61,7 +62,7 @@ contract CaptureGasBenchmark is GasBenchmarkBase {
 
     function test_capture_benchmark() public {
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, BENCHMARK_AMOUNT, BENCHMARK_FEE_BPS, feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, BENCHMARK_AMOUNT, BENCHMARK_FEE_AMOUNT, feeReceiver);
     }
 }
 
@@ -106,7 +107,7 @@ contract RefundGasBenchmark is GasBenchmarkBase {
         vm.prank(operator);
         authCaptureEscrow.authorize(paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature);
         vm.prank(operator);
-        authCaptureEscrow.capture(paymentInfo, BENCHMARK_AMOUNT, BENCHMARK_FEE_BPS, feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, BENCHMARK_AMOUNT, BENCHMARK_FEE_AMOUNT, feeReceiver);
 
         // Give operator tokens for refund and approve collector
         mockERC3009Token.mint(operator, BENCHMARK_AMOUNT);
