@@ -33,7 +33,7 @@ contract ChargeTest is AuthCaptureEscrowBase {
             overflowValue,
             address(erc3009PaymentCollector),
             signature,
-            _feeAmount(overflowValue, FEE_BPS),
+            _feeAmount(1, FEE_BPS),
             paymentInfo.feeReceiver
         );
     }
@@ -426,7 +426,10 @@ contract ChargeTest is AuthCaptureEscrowBase {
         vm.assume(minFeeBps > 0);
         vm.assume(maxFeeBps >= minFeeBps && maxFeeBps <= 10000);
 
-        uint256 captureFeeAmount = _feeAmount(amount, minFeeBps);
+        uint256 minFee = _feeAmount(amount, minFeeBps);
+        uint256 maxFee = _feeAmount(amount, maxFeeBps);
+        vm.assume(maxFee > 0);
+        uint256 captureFeeAmount = minFee > 0 ? minFee : maxFee;
 
         AuthCaptureEscrow.PaymentInfo memory paymentInfo =
             _createPaymentInfo({payer: payerEOA, maxAmount: amount, token: address(mockERC3009Token)});

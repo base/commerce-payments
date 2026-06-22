@@ -8,7 +8,7 @@ import {AuthCaptureEscrowBase} from "../base/AuthCaptureEscrowBase.sol";
 contract GasBenchmarkBase is AuthCaptureEscrowBase {
     uint120 internal constant BENCHMARK_AMOUNT = 100e6;
     uint16 internal constant BENCHMARK_FEE_BPS = 100; // 1%
-    uint256 internal constant BENCHMARK_FEE_AMOUNT = BENCHMARK_AMOUNT * BENCHMARK_FEE_BPS / 10_000;
+    uint256 internal constant BENCHMARK_FEE_AMOUNT = uint256(BENCHMARK_AMOUNT) * uint256(BENCHMARK_FEE_BPS) / 10_000;
 
     AuthCaptureEscrow.PaymentInfo internal paymentInfo;
     bytes internal signature;
@@ -23,7 +23,7 @@ contract GasBenchmarkBase is AuthCaptureEscrowBase {
         mockERC3009Token.mint(payerEOA, 1e6);
         vm.startPrank(operator);
         authCaptureEscrow.authorize(warmupInfo, 1e6, address(erc3009PaymentCollector), warmupSignature);
-        authCaptureEscrow.capture(warmupInfo, 1e6, 1e6 * BENCHMARK_FEE_BPS / 10_000, feeReceiver); // make sure token store is deployed before subsequent tests
+        authCaptureEscrow.capture(warmupInfo, 1e6, (uint256(1_000_000) * uint256(BENCHMARK_FEE_BPS)) / 10_000, feeReceiver); // make sure token store is deployed before subsequent tests
         vm.stopPrank();
 
         // Create and sign payment info
