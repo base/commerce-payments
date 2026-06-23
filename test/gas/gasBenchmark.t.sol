@@ -23,7 +23,9 @@ contract GasBenchmarkBase is AuthCaptureEscrowBase {
         mockERC3009Token.mint(payerEOA, 1e6);
         vm.startPrank(operator);
         authCaptureEscrow.authorize(warmupInfo, 1e6, address(erc3009PaymentCollector), warmupSignature);
-        authCaptureEscrow.capture(warmupInfo, 1e6, (uint256(1_000_000) * uint256(BENCHMARK_FEE_BPS)) / 10_000, feeReceiver); // make sure token store is deployed before subsequent tests
+        authCaptureEscrow.capture(
+            warmupInfo, 1e6, (uint256(1_000_000) * uint256(BENCHMARK_FEE_BPS)) / 10_000, feeReceiver
+        ); // make sure token store is deployed before subsequent tests
         vm.stopPrank();
 
         // Create and sign payment info
@@ -46,7 +48,12 @@ contract ChargeGasBenchmark is GasBenchmarkBase {
     function test_charge_benchmark() public {
         vm.prank(operator);
         authCaptureEscrow.charge(
-            paymentInfo, BENCHMARK_AMOUNT, address(erc3009PaymentCollector), signature, BENCHMARK_FEE_AMOUNT, feeReceiver
+            paymentInfo,
+            BENCHMARK_AMOUNT,
+            address(erc3009PaymentCollector),
+            signature,
+            BENCHMARK_FEE_AMOUNT,
+            feeReceiver
         );
     }
 }

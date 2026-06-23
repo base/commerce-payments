@@ -382,9 +382,7 @@ contract ChargeTest is AuthCaptureEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee
-            )
+            abi.encodeWithSelector(AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee)
         );
         authCaptureEscrow.charge(
             paymentInfo, amount, address(erc3009PaymentCollector), signature, captureFeeAmount, paymentInfo.feeReceiver
@@ -410,9 +408,7 @@ contract ChargeTest is AuthCaptureEscrowBase {
 
         vm.prank(operator);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee
-            )
+            abi.encodeWithSelector(AuthCaptureEscrow.FeeAmountOutOfRange.selector, captureFeeAmount, minFee, maxFee)
         );
         authCaptureEscrow.charge(
             paymentInfo, amount, address(erc3009PaymentCollector), signature, captureFeeAmount, paymentInfo.feeReceiver
