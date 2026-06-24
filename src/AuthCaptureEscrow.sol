@@ -509,12 +509,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         internal
         pure
     {
-        uint16 minFeeBps = paymentInfo.minFeeBps;
-        uint16 maxFeeBps = paymentInfo.maxFeeBps;
         address configuredFeeReceiver = paymentInfo.feeReceiver;
 
-        uint256 minFee = amount * minFeeBps / _MAX_FEE_BPS;
-        uint256 maxFee = amount * maxFeeBps / _MAX_FEE_BPS;
+        uint256 minFee = amount * paymentInfo.minFeeBps / _MAX_FEE_BPS;
+        uint256 maxFee = amount * paymentInfo.maxFeeBps / _MAX_FEE_BPS;
 
         // Check fee amount within payer-approved bounds
         if (feeAmount < minFee || feeAmount > maxFee) revert FeeAmountOutOfRange(feeAmount, minFee, maxFee);
