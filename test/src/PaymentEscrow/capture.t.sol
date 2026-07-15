@@ -574,6 +574,28 @@ contract CaptureTest is AuthCaptureEscrowBase {
         assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount);
     }
 
+    function test_reverts_whenFeeAmountNonZero_withMinFeeAndMaxFeeZero(uint120 authorizedAmount, uint256 feeAmount)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        feeAmount = bound(feeAmount, 1, type(uint256).max);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = 0;
+        paymentInfo.maxFeeBps = 0;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AuthCaptureEscrow.FeeAmountOutOfRange.selector, feeAmount, 0, 0));
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, feeAmount, paymentInfo.feeReceiver);
+    }
+
     function test_succeeds_withFuzzedFeeAmount(
         uint120 authorizedAmount,
         uint16 minFeeBps,
