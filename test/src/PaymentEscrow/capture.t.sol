@@ -498,4 +498,111 @@ contract CaptureTest is AuthCaptureEscrowBase {
         assertEq(mockERC3009Token.balanceOf(feeReceiver), centAlignedFee);
         assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - centAlignedFee);
     }
+
+    function test_succeeds_whenFeeAmountEqualsMin(uint120 authorizedAmount, uint16 minFeeBps, uint16 maxFeeBps)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(maxFeeBps <= 10_000);
+        vm.assume(minFeeBps <= maxFeeBps);
+
+        uint256 minFee = _feeAmount(authorizedAmount, minFeeBps);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, minFee, paymentInfo.feeReceiver);
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), minFee);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - minFee);
+    }
+
+    function test_succeeds_whenFeeAmountEqualsMax(uint120 authorizedAmount, uint16 minFeeBps, uint16 maxFeeBps)
+        public
+    {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(maxFeeBps <= 10_000);
+        vm.assume(minFeeBps <= maxFeeBps);
+
+        uint256 maxFee = _feeAmount(authorizedAmount, maxFeeBps);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, maxFee, paymentInfo.feeReceiver);
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), maxFee);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - maxFee);
+    }
+
+    function test_succeeds_whenMinFeeAndMaxFeeAreZero(uint120 authorizedAmount) public {
+        vm.assume(authorizedAmount > 0);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = 0;
+        paymentInfo.maxFeeBps = 0;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, 0, paymentInfo.feeReceiver);
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), 0);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount);
+    }
+
+    function test_succeeds_withFuzzedFeeAmount(
+        uint120 authorizedAmount,
+        uint16 minFeeBps,
+        uint16 maxFeeBps,
+        uint256 feeAmount
+    ) public {
+        vm.assume(authorizedAmount > 0);
+        vm.assume(maxFeeBps <= 10_000);
+        vm.assume(minFeeBps <= maxFeeBps);
+
+        uint256 minFee = _feeAmount(authorizedAmount, minFeeBps);
+        uint256 maxFee = _feeAmount(authorizedAmount, maxFeeBps);
+        feeAmount = bound(feeAmount, minFee, maxFee);
+
+        mockERC3009Token.mint(payerEOA, authorizedAmount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, authorizedAmount);
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(paymentInfo.operator);
+        authCaptureEscrow.authorize(paymentInfo, authorizedAmount, address(erc3009PaymentCollector), signature);
+
+        vm.prank(operator);
+        authCaptureEscrow.capture(paymentInfo, authorizedAmount, feeAmount, paymentInfo.feeReceiver);
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(receiver), authorizedAmount - feeAmount);
+    }
 }

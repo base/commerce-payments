@@ -389,7 +389,7 @@ contract ChargeTest is AuthCaptureEscrowBase {
         );
     }
 
-    function test_charge_reverts_whenFeeAmountAboveMax(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps) public {
+    function test_reverts_whenFeeAmountAboveMax(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps) public {
         vm.assume(amount > 0);
         vm.assume(maxFeeBps < 10000);
         vm.assume(minFeeBps <= maxFeeBps);
@@ -478,5 +478,55 @@ contract ChargeTest is AuthCaptureEscrowBase {
 
         assertEq(mockERC3009Token.balanceOf(newFeeRecipient), captureFeeAmount);
         assertEq(mockERC3009Token.balanceOf(receiver), amount - captureFeeAmount);
+    }
+
+    /// @dev Charge $54.23 with 3% + $0.30 flat fee rounded to $1.93 (cent-aligned in 6-decimal USDC)
+    function test_succeeds_withCentAlignedFeeAmount() public {
+        uint120 amount = 54_230_000; // $54.23
+        uint256 centAlignedFee = 1_930_000; // $1.93
+
+        mockERC3009Token.mint(payerEOA, amount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        paymentInfo.minFeeBps = 300; // 3% lower bound
+        paymentInfo.maxFeeBps = 400; // 4% upper bound accommodates 3% + $0.30 flat
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        authCaptureEscrow.charge(
+            paymentInfo, amount, address(erc3009PaymentCollector), signature, centAlignedFee, paymentInfo.feeReceiver
+        );
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), centAlignedFee);
+        assertEq(mockERC3009Token.balanceOf(receiver), amount - centAlignedFee);
+    }
+
+    function test_succeeds_withFuzzedFeeAmount(uint120 amount, uint16 minFeeBps, uint16 maxFeeBps, uint256 feeAmount)
+        public
+    {
+        vm.assume(amount > 0);
+        vm.assume(maxFeeBps <= 10_000);
+        vm.assume(minFeeBps <= maxFeeBps);
+
+        uint256 minFee = _feeAmount(amount, minFeeBps);
+        uint256 maxFee = _feeAmount(amount, maxFeeBps);
+        feeAmount = bound(feeAmount, minFee, maxFee);
+
+        mockERC3009Token.mint(payerEOA, amount);
+
+        AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo(payerEOA, amount);
+        paymentInfo.minFeeBps = minFeeBps;
+        paymentInfo.maxFeeBps = maxFeeBps;
+
+        bytes memory signature = _signERC3009ReceiveWithAuthorizationStruct(paymentInfo, payer_EOA_PK);
+
+        vm.prank(operator);
+        authCaptureEscrow.charge(
+            paymentInfo, amount, address(erc3009PaymentCollector), signature, feeAmount, paymentInfo.feeReceiver
+        );
+
+        assertEq(mockERC3009Token.balanceOf(feeReceiver), feeAmount);
+        assertEq(mockERC3009Token.balanceOf(receiver), amount - feeAmount);
     }
 }
