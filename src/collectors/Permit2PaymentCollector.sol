@@ -42,9 +42,7 @@ contract Permit2PaymentCollector is TokenCollector, ERC6492SignatureHandler {
     ) internal override {
         permit2.permitTransferFrom({
             permit: ISignatureTransfer.PermitTransferFrom({
-                permitted: ISignatureTransfer.TokenPermissions({
-                    token: paymentInfo.token, amount: paymentInfo.maxAmount
-                }),
+                permitted: ISignatureTransfer.TokenPermissions({token: paymentInfo.token, amount: paymentInfo.maxAmount}),
                 nonce: uint256(_getHashPayerAgnostic(paymentInfo)),
                 deadline: paymentInfo.preApprovalExpiry
             }),

@@ -172,7 +172,11 @@ contract AuthCaptureEscrowSmartWalletBase is AuthCaptureEscrowBase {
         uint256 nonce = uint256(hashPortion);
 
         return MagicSpend.WithdrawRequest({
-            asset: address(0), amount: 0, nonce: nonce, expiry: type(uint48).max, signature: new bytes(0)
+            asset: address(0),
+            amount: 0,
+            nonce: nonce,
+            expiry: type(uint48).max,
+            signature: new bytes(0)
         });
     }
 

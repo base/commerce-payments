@@ -321,7 +321,9 @@ contract AuthorizeTest is AuthCaptureEscrowSmartWalletBase {
         vm.assume(maxAmount >= amount && amount > 0);
         mockERC3009Token.mint(address(smartWalletDeployed), amount);
         AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
-            payer: address(smartWalletDeployed), maxAmount: maxAmount, token: address(mockERC3009Token)
+            payer: address(smartWalletDeployed),
+            maxAmount: maxAmount,
+            token: address(mockERC3009Token)
         });
 
         // Create and sign the spend permission

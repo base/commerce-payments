@@ -25,7 +25,9 @@ contract SpendPermissionPaymentCollectorTest is AuthCaptureEscrowSmartWalletBase
         MockERC3009Token(address(mockERC3009Token)).mint(address(smartWalletDeployed), amount);
 
         AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
-            payer: address(smartWalletDeployed), maxAmount: amount, token: address(mockERC3009Token)
+            payer: address(smartWalletDeployed),
+            maxAmount: amount,
+            token: address(mockERC3009Token)
         });
         address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
 
@@ -45,7 +47,9 @@ contract SpendPermissionPaymentCollectorTest is AuthCaptureEscrowSmartWalletBase
         MockERC3009Token(address(mockERC3009Token)).mint(address(smartWalletDeployed), amount);
 
         AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
-            payer: address(smartWalletDeployed), maxAmount: amount, token: address(mockERC3009Token)
+            payer: address(smartWalletDeployed),
+            maxAmount: amount,
+            token: address(mockERC3009Token)
         });
         address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
 
@@ -65,7 +69,9 @@ contract SpendPermissionPaymentCollectorTest is AuthCaptureEscrowSmartWalletBase
         mockERC3009Token.mint(address(magicSpend), amount);
 
         AuthCaptureEscrow.PaymentInfo memory paymentInfo = _createPaymentInfo({
-            payer: address(smartWalletDeployed), maxAmount: amount, token: address(mockERC3009Token)
+            payer: address(smartWalletDeployed),
+            maxAmount: amount,
+            token: address(mockERC3009Token)
         });
         address tokenStore = authCaptureEscrow.getTokenStore(paymentInfo.operator);
 

@@ -39,8 +39,7 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
         uint256 maxAmount = paymentInfo.maxAmount;
 
         // Pull tokens into this contract
-        IERC3009(token)
-            .receiveWithAuthorization({
+        IERC3009(token).receiveWithAuthorization({
             from: payer,
             to: address(this),
             value: maxAmount,
