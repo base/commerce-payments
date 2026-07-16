@@ -22,7 +22,7 @@ Capture finalizes the payment by:
 function capture(
     PaymentInfo calldata paymentInfo,
     uint256 amount,
-    uint16 feeBps,
+    uint256 feeAmount,
     address feeReceiver
 ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount)
 ```
@@ -32,14 +32,14 @@ function capture(
 2. **Timing Check**: Verifies capture occurs before authorization expiry
 3. **Availability Check**: Confirms sufficient authorized funds are available
 4. **State Update**: Reduces `capturableAmount` and increases `refundableAmount` by captured `amount`
-5. **Fee Calculation**: Calculates fee amount based on basis points
+5. **Fee Bounds Check**: Confirms the provided absolute `feeAmount` falls within the bounds derived from `minFeeBps`/`maxFeeBps`
 6. **Token Distribution**: Transfers fee to recipient and remaining amount to merchant
 7. **Event Emission**: Emits `PaymentCaptured` for tracking
 
 ### Key Validations
 - Must be called before `paymentInfo.authorizationExpiry`
 - `amount` cannot exceed available `capturableAmount`
-- `feeBps` must be within `[paymentInfo.minFeeBps, paymentInfo.maxFeeBps]` range
+- `feeAmount` must be within `[amount * minFeeBps / 10000, amount * maxFeeBps / 10000]`
 - `feeReceiver` must match `paymentInfo.feeReceiver` if specified
 
 ## Parameters
@@ -48,7 +48,7 @@ function capture(
 |-----------|------|-------------|
 | `paymentInfo` | `PaymentInfo` | Original payment configuration |
 | `amount` | `uint256` | Amount to capture from escrow |
-| `feeBps` | `uint16` | Fee percentage in basis points (0-10000) |
+| `feeAmount` | `uint256` | Absolute fee in raw token units (must fall within the payer-approved bounds derived from `minFeeBps`/`maxFeeBps`) |
 | `feeReceiver` | `address` | Address to receive fee portion |
 
 ## Access Control
@@ -83,7 +83,7 @@ PaymentState {
 event PaymentCaptured(
     bytes32 indexed paymentInfoHash,
     uint256 amount,
-    uint16 feeBps,
+    uint256 feeAmount,
     address feeReceiver
 );
 ```
@@ -97,7 +97,7 @@ Track captures to monitor payment settlement and fee distribution.
 | `InvalidSender` | Caller is not the designated operator |
 | `ZeroAmount` | Attempting to capture zero amount |
 | `AmountOverflow` | Amount exceeds uint120 maximum |
-| `FeeBpsOutOfRange` | Fee outside min/max range |
+| `FeeAmountOutOfRange` | `feeAmount` outside the bounds derived from min/max fee bps |
 | `ZeroFeeReceiver` | Fee recipient is zero address with non-zero fee |
 | `InvalidFeeReceiver` | Fee recipient doesn't match payment configuration |
 | `AfterAuthorizationExpiry` | Called after authorization expired |

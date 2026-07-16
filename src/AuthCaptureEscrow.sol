@@ -41,9 +41,9 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         uint48 authorizationExpiry;
         /// @dev Timestamp when a successful payment can no longer be refunded
         uint48 refundExpiry;
-        /// @dev Minimum fee percentage in basis points
+        /// @dev Minimum fee rate in basis points; bounds the absolute fee at capture as amount * minFeeBps / 10_000
         uint16 minFeeBps;
-        /// @dev Maximum fee percentage in basis points
+        /// @dev Maximum fee rate in basis points; bounds the absolute fee at capture as amount * maxFeeBps / 10_000
         uint16 maxFeeBps;
         /// @dev Address that receives the fee portion of payments, if 0 then operator can set at capture
         address feeReceiver;
@@ -80,7 +80,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         PaymentInfo paymentInfo,
         uint256 amount,
         address tokenCollector,
-        uint16 feeBps,
+        uint256 feeAmount,
         address feeReceiver
     );
 
@@ -90,7 +90,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     );
 
     /// @notice Emitted when payment is captured from escrow
-    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount, uint16 feeBps, address feeReceiver);
+    event PaymentCaptured(bytes32 indexed paymentInfoHash, uint256 amount, uint256 feeAmount, address feeReceiver);
 
     /// @notice Emitted when an authorized payment is voided, returning any escrowed funds to the payer
     event PaymentVoided(bytes32 indexed paymentInfoHash, uint256 amount);
@@ -128,8 +128,8 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     /// @notice Fee bps range invalid due to min > max
     error InvalidFeeBpsRange(uint16 minFeeBps, uint16 maxFeeBps);
 
-    /// @notice Fee bps outside of allowed range
-    error FeeBpsOutOfRange(uint16 feeBps, uint16 minFeeBps, uint16 maxFeeBps);
+    /// @notice Fee amount outside of payer-approved bounds
+    error FeeAmountOutOfRange(uint256 feeAmount, uint256 minFee, uint256 maxFee);
 
     /// @notice Fee receiver is zero address with a non-zero fee
     error ZeroFeeReceiver();
@@ -195,21 +195,21 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     /// @param amount Amount to charge and capture
     /// @param tokenCollector Address of the token collector
     /// @param collectorData Data to pass to the token collector
-    /// @param feeBps Fee percentage to apply (must be within min/max range)
+    /// @param feeAmount Absolute fee in token units (must fall within payer-approved bounds)
     /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
     function charge(
         PaymentInfo calldata paymentInfo,
         uint256 amount,
         address tokenCollector,
         bytes calldata collectorData,
-        uint16 feeBps,
+        uint256 feeAmount,
         address feeReceiver
     ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount) {
         // Check payment info valid
         _validatePayment(paymentInfo, amount);
 
         // Check fee parameters valid
-        _validateFee(paymentInfo, feeBps, feeReceiver);
+        _validateFee(paymentInfo, amount, feeAmount, feeReceiver);
 
         // Check payment not already collected
         bytes32 paymentInfoHash = getHash(paymentInfo);
@@ -218,13 +218,13 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         // Set payment state with refundable amount
         paymentState[paymentInfoHash] =
             PaymentState({hasCollectedPayment: true, capturableAmount: 0, refundableAmount: uint120(amount)});
-        emit PaymentCharged(paymentInfoHash, paymentInfo, amount, tokenCollector, feeBps, feeReceiver);
+        emit PaymentCharged(paymentInfoHash, paymentInfo, amount, tokenCollector, feeAmount, feeReceiver);
 
         // Transfer tokens into escrow
         _collectTokens(paymentInfo, amount, tokenCollector, collectorData, TokenCollector.CollectorType.Payment);
 
         // Transfer tokens to receiver and fee receiver
-        _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
+        _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeAmount, feeReceiver);
     }
 
     /// @notice Transfers funds from payer to escrow
@@ -262,16 +262,16 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     ///
     /// @param paymentInfo PaymentInfo struct
     /// @param amount Amount to capture
-    /// @param feeBps Fee percentage to apply (must be within min/max range)
+    /// @param feeAmount Absolute fee in token units (must fall within payer-approved bounds)
     /// @param feeReceiver Address to receive fees (should match the paymentInfo.feeReceiver unless that is 0 in which case it can be any address)
-    function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint16 feeBps, address feeReceiver)
+    function capture(PaymentInfo calldata paymentInfo, uint256 amount, uint256 feeAmount, address feeReceiver)
         external
         nonReentrant
         onlySender(paymentInfo.operator)
         validAmount(amount)
     {
         // Check fee parameters valid
-        _validateFee(paymentInfo, feeBps, feeReceiver);
+        _validateFee(paymentInfo, amount, feeAmount, feeReceiver);
 
         // Check before authorization expiry
         if (block.timestamp >= paymentInfo.authorizationExpiry) {
@@ -289,10 +289,10 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         state.capturableAmount -= uint120(amount);
         state.refundableAmount += uint120(amount);
         paymentState[paymentInfoHash] = state;
-        emit PaymentCaptured(paymentInfoHash, amount, feeBps, feeReceiver);
+        emit PaymentCaptured(paymentInfoHash, amount, feeAmount, feeReceiver);
 
         // Transfer tokens to receiver and fee receiver
-        _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeBps, feeReceiver);
+        _distributeTokens(paymentInfo.token, paymentInfo.receiver, amount, feeAmount, feeReceiver);
     }
 
     /// @notice Permanently voids a payment authorization
@@ -459,13 +459,11 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     /// @param token Token to transfer
     /// @param receiver Address to receive payment
     /// @param amount Total amount to split between payment and fees
-    /// @param feeBps Fee percentage in basis points
+    /// @param feeAmount Absolute fee in token units
     /// @param feeReceiver Address to receive fees
-    function _distributeTokens(address token, address receiver, uint256 amount, uint16 feeBps, address feeReceiver)
+    function _distributeTokens(address token, address receiver, uint256 amount, uint256 feeAmount, address feeReceiver)
         internal
     {
-        uint256 feeAmount = amount * feeBps / _MAX_FEE_BPS;
-
         // Send fee portion if non-zero
         if (feeAmount > 0) _sendTokens(msg.sender, token, feeReceiver, feeAmount);
 
@@ -507,18 +505,23 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     /// @notice Validates attempted fee adheres to constraints set by payment info
     ///
     /// @param paymentInfo PaymentInfo struct
-    /// @param feeBps Fee percentage in basis points
+    /// @param amount Capture or charge amount used to compute fee bounds
+    /// @param feeAmount Absolute fee in token units
     /// @param feeReceiver Address to receive fees
-    function _validateFee(PaymentInfo calldata paymentInfo, uint16 feeBps, address feeReceiver) internal pure {
-        uint16 minFeeBps = paymentInfo.minFeeBps;
-        uint16 maxFeeBps = paymentInfo.maxFeeBps;
+    function _validateFee(PaymentInfo calldata paymentInfo, uint256 amount, uint256 feeAmount, address feeReceiver)
+        internal
+        pure
+    {
         address configuredFeeReceiver = paymentInfo.feeReceiver;
 
-        // Check fee bps within [min, max]
-        if (feeBps < minFeeBps || feeBps > maxFeeBps) revert FeeBpsOutOfRange(feeBps, minFeeBps, maxFeeBps);
+        uint256 minFee = amount * paymentInfo.minFeeBps / _MAX_FEE_BPS;
+        uint256 maxFee = amount * paymentInfo.maxFeeBps / _MAX_FEE_BPS;
 
-        // Check fee recipient only zero address if zero fee bps
-        if (feeReceiver == address(0) && feeBps > 0) revert ZeroFeeReceiver();
+        // Check fee amount within payer-approved bounds
+        if (feeAmount < minFee || feeAmount > maxFee) revert FeeAmountOutOfRange(feeAmount, minFee, maxFee);
+
+        // Check fee recipient only zero address if zero fee
+        if (feeReceiver == address(0) && feeAmount > 0) revert ZeroFeeReceiver();
 
         // Check fee receiver matches payment info if non-zero
         if (configuredFeeReceiver != address(0) && configuredFeeReceiver != feeReceiver) {

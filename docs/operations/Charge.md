@@ -24,7 +24,7 @@ function charge(
     uint256 amount,
     address tokenCollector,
     bytes calldata collectorData,
-    uint16 feeBps,
+    uint256 feeAmount,
     address feeReceiver
 ) external nonReentrant onlySender(paymentInfo.operator) validAmount(amount)
 ```
@@ -46,7 +46,7 @@ function charge(
 | `amount` | `uint256` | Amount to charge (must be ≤ maxAmount) |
 | `tokenCollector` | `address` | Contract that will pull tokens from payer |
 | `collectorData` | `bytes` | Data passed to token collector |
-| `feeBps` | `uint16` | Fee percentage in basis points |
+| `feeAmount` | `uint256` | Absolute fee in raw token units (must fall within the payer-approved bounds derived from `minFeeBps`/`maxFeeBps`) |
 | `feeReceiver` | `address` | Address to receive fee portion |
 
 ## Access Control
@@ -83,7 +83,7 @@ event PaymentCharged(
     PaymentInfo paymentInfo,
     uint256 amount,
     address tokenCollector,
-    uint16 feeBps,
+    uint256 feeAmount,
     address feeReceiver
 );
 ```
@@ -100,9 +100,9 @@ The `PaymentCharged` event includes more details than `PaymentCaptured` since it
 | `ExceedsMaxAmount` | Amount exceeds paymentInfo.maxAmount |
 | `AfterPreApprovalExpiry` | Called after signature expiry |
 | `InvalidExpiries` | Expiry timestamps are improperly ordered |
-| `FeeBpsOverFlow` | maxFeeBps exceeds maximum value |
+| `FeeBpsOverflow` | maxFeeBps exceeds maximum value |
 | `InvalidFeeBpsRange` | minFeeBps exceeds maxFeeBps |
-| `FeeBpsOutOfRange` | Fee outside min/max range |
+| `FeeAmountOutOfRange` | `feeAmount` outside the bounds derived from min/max fee bps |
 | `ZeroFeeReceiver` | Fee recipient is zero address with non-zero fee |
 | `InvalidFeeReceiver` | Fee recipient doesn't match payment configuration |
 | `PaymentAlreadyCollected` | Payment already authorized or charged |

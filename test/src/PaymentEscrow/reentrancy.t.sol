@@ -62,10 +62,10 @@ contract ReentrancyApproveTest is AuthCaptureEscrowSmartWalletBase {
 
         console.log("After authorize attempt");
         vm.expectRevert(); // expect revert because authorize never happened
-        authCaptureEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, 10 ether, 0, paymentInfo.feeReceiver);
         paymentInfo.salt += 1; // set up the second unique paymentInfo
         vm.expectRevert(); // expect revert because we've fixed the reentrancy
-        authCaptureEscrow.capture(paymentInfo, 10 ether, paymentInfo.minFeeBps, paymentInfo.feeReceiver);
+        authCaptureEscrow.capture(paymentInfo, 10 ether, 0, paymentInfo.feeReceiver);
         vm.stopPrank();
 
         console.log("After attack Attacker Balance:", mockERC3009Token.balanceOf(attacker));

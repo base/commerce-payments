@@ -9,7 +9,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  BASE_RPC_URL: "https://mainnet.base.org"
+  BASE_RPC_URL: "https://base.publicnode.com"
 
 jobs:
   check:

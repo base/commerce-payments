@@ -203,4 +203,8 @@ contract AuthCaptureEscrowBase is Test, DeployPermit2 {
         paymentInfo.payer = payer;
         return hash;
     }
+
+    function _feeAmount(uint256 amount, uint16 feeBps) internal pure returns (uint256) {
+        return amount * feeBps / 10_000;
+    }
 }
