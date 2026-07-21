@@ -130,10 +130,13 @@ PaymentInfo memory payment = PaymentInfo({
 ```
 
 **Operator Options at Capture/Charge (for a `1000e6` capture ⇒ bounds are `0`–`100e6`):**
-- ✅ `feeAmount: 0, feeReceiver: address(0)` (no fee, receiver ignored)
+- ✅ `feeAmount: 0, feeReceiver: 0x123...456` (no fee, but the configured recipient must still be supplied)
 - ✅ `feeAmount: 25e6, feeReceiver: 0x123...456` (2.5% to fixed recipient)
 - ✅ `feeAmount: 100e6, feeReceiver: 0x123...456` (maximum fee)
 - ❌ `feeAmount: 25e6, feeReceiver: 0x789...abc` (wrong recipient)
+- ❌ `feeAmount: 0, feeReceiver: address(0)` (fixed recipient enforced even when the fee is 0)
+
+> **Note.** When `PaymentInfo.feeReceiver` is a non-zero fixed address, `_validateFee` requires the caller-supplied `feeReceiver` to match it **unconditionally** — including when `feeAmount == 0`. Passing `address(0)` alongside a zero fee against a fixed-recipient payment reverts with `InvalidFeeReceiver`. Receiver matching is only skipped when `PaymentInfo.feeReceiver == address(0)` (flexible recipient), as in Example 3.
 
 
 ## Multiple Captures with Different Fees
@@ -198,3 +201,36 @@ The protocol treats this as an accepted risk under the current operator-trust mo
 If a future deployment weakens the operator-trust assumption (for example by allowing arbitrary fee receivers distinct from the operator), integrators should re-evaluate this trade-off. Tightening the guarantee on-chain would require either per-payment aggregate fee accounting or a minimum-capture-size rule, both of which change the two-phase escrow's flexibility and would be handled as separate design work.
 
 The protocol uses integer division which truncates decimals, slightly favoring the merchant in `maxFee` rounding and the operator in `minFee` rounding.
+
+## Event Migration: `topic0` Changes for `PaymentCharged` and `PaymentCaptured`
+
+The absolute-fee migration changed the type of the fee field in both events from `uint16 feeBps` to `uint256 feeAmount`. Solidity derives an event's log `topic0` from `keccak256("EventName(param1,param2,...)")`, so both signature changes produced brand-new `topic0` values. Off-chain indexers filtering by the previous `topic0` will silently observe zero matching logs from any deployment that carries the new signature — no error is raised.
+
+The current mainnet/Sepolia deployment (`0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff`) is immutable and continues to emit the **old** signatures. Any future redeployment of `AuthCaptureEscrow` at a different address will emit the **new** signatures. Consumers migrating across the redeployment boundary must add filters for the new `topic0` values keyed on the new contract address, while continuing to accept the old `topic0` from the existing address for as long as authorizations against it remain in flight.
+
+Additionally, the third `data` field (immediately after `amount`) changes meaning: previously `uint16 feeBps` (right-padded to 32 bytes as a rate in basis points), now `uint256 feeAmount` (an absolute token-unit fee). ABIs from before the migration will decode without error against the new logs but will misinterpret the value (for example, reading a `25e6` USDC fee as `25,000,000 bps`). Integrators must upgrade ABIs alongside the contract address, not lazily.
+
+### Canonical signatures
+
+| Event | Version | Full signature (used to derive `topic0`) |
+|---|---|---|
+| `PaymentCharged` | old (deployed at `0xBdEA...cff`) | `PaymentCharged(bytes32,(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256),uint256,address,uint16,address)` |
+| `PaymentCharged` | new (post-#90) | `PaymentCharged(bytes32,(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256),uint256,address,uint256,address)` |
+| `PaymentCaptured` | old (deployed at `0xBdEA...cff`) | `PaymentCaptured(bytes32,uint256,uint16,address)` |
+| `PaymentCaptured` | new (post-#90) | `PaymentCaptured(bytes32,uint256,uint256,address)` |
+
+### `topic0` values
+
+| Event | Version | `topic0` |
+|---|---|---|
+| `PaymentCharged` | old | `0x943ae4341dd799d7aeedc501f616cd26b134639e0bc2ec059581ba3ebbf1e7d0` |
+| `PaymentCharged` | new | `0x137b0e73e4453f43c2e1ad2552980a0e0c7e988764619974ca26d37a7159940c` |
+| `PaymentCaptured` | old | `0xe749f7bbd01b49bb05abf26ca492cb4dfdea6bedeada8a40fdccd478c73a74e2` |
+| `PaymentCaptured` | new | `0xac1e0db1957daedbc6944bcb4c8dc947ff8101d710671ac2ec26309f7f38d58e` |
+
+### Migration checklist for integrators
+
+1. Update ABI JSON alongside the redeployment; do not mix an old ABI with the new contract address.
+2. Subscribe to both `topic0` values during any overlap period where authorizations against `0xBdEA...cff` may still capture or refund.
+3. Route logs by `(address, topic0)` rather than `topic0` alone; the two signatures will coexist across the two deployed addresses.
+4. Confirm all downstream reconciliation, monitoring, and dashboarding pipelines have been redeployed with the new ABI before the new address begins receiving production traffic.
