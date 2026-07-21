@@ -165,4 +165,36 @@ The protocol will revert with specific errors for invalid fee configurations:
 | `ZeroFeeReceiver` | Non-zero fee with zero recipient | `25e6` fee, address(0) recipient |
 | `InvalidFeeReceiver` | Wrong recipient for fixed fee | Different address than PaymentInfo.feeReceiver |
 
-The protocol uses integer division which truncates decimals, slightly favoring the merchant in rounding scenarios.
+## Per-Capture Semantics and Rounding
+
+`minFeeBps` and `maxFeeBps` are **per-capture** rate bounds — they are evaluated independently against each `capture()` (or `charge()`) call's `amount`. They are not aggregate, payment-level guarantees over the full authorized amount.
+
+Because the bounds are computed with integer division:
+
+```
+minFee = amount * minFeeBps / 10_000
+maxFee = amount * maxFeeBps / 10_000
+```
+
+both `minFee` and `maxFee` round toward zero. When `amount * minFeeBps < 10_000`, `minFee` rounds to `0` and the operator may supply `feeAmount = 0` for that capture even if `minFeeBps > 0`. Rounding favors the merchant/payer at `maxFee` and favors the operator at `minFee`.
+
+### Fragmentation implication
+
+Because the minimum is per-capture, an operator with capture-amount discretion can, in principle, fragment a large payment into many small captures whose individual `minFee` values each round to zero, reducing the total fee paid below what a single equivalently-sized capture would require. Example: a zero-decimal token authorization of `100` units with `minFeeBps = maxFeeBps = 100` (1%) yields:
+
+- One capture of `100` → `minFee = maxFee = 1` → operator must supply `feeAmount = 1`.
+- One hundred captures of `1` each → `minFee = maxFee = 0` → operator may supply `feeAmount = 0` on every one.
+
+This behavior is **pre-existing** — it is a property of per-capture bps-based bounds and integer division, not something introduced by moving the concrete fee amount off-chain. Absolute-fee validation preserves the same per-capture rounding semantics as the previous `feeBps` API.
+
+### Accepted risk
+
+The protocol treats this as an accepted risk under the current operator-trust model:
+
+- Operators are trusted counterparties in the payment flow and, in current deployments, are typically also the fee receiver — fragmenting fees away from themselves has no benefit.
+- Per-capture gas costs make fragmenting economically pointless except for low-decimal, high-unit-value tokens.
+- Integrators that need aggregate-level fee guarantees should either (a) issue authorizations whose minimum meaningful capture size makes rounding irrelevant, (b) use tokens with sufficient decimals (e.g. USDC's 6 decimals push the rounding gap below one cent for typical bps rates), or (c) constrain operator behavior off-chain.
+
+If a future deployment weakens the operator-trust assumption (for example by allowing arbitrary fee receivers distinct from the operator), integrators should re-evaluate this trade-off. Tightening the guarantee on-chain would require either per-payment aggregate fee accounting or a minimum-capture-size rule, both of which change the two-phase escrow's flexibility and would be handled as separate design work.
+
+The protocol uses integer division which truncates decimals, slightly favoring the merchant in `maxFee` rounding and the operator in `minFee` rounding.
