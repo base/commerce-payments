@@ -11,7 +11,7 @@ Audited by [Spearbit](https://spearbit.com/) and Coinbase Protocol Security.
 | Spearbit audit 1 | 04/01/2025 | [Report](/audits/Cantina-Report-04-01-2025.pdf) |
 | Coinbase Protocol Security audit 3 | 04/15/2025 | [Report](/audits/CommercePaymentsAudit3CoinbaseProtoSec.pdf) |
 | Spearbit audit 2 | 04/22/2025 | [Report](/audits/Cantina-Report-04-22-2025.pdf) |
-| Spearbit audit 3 (rounding and billing fix, #90) | 07/22/2026 | [Report](/audits/report-cli-cantina-eb1cc8bc-577c-422d-ad76-db7495f29a5a-2026-07-22-coinbase-commerce-payments-pr-90.pdf) |
+| Spearbit audit 3 (rounding and billing change, v1.1.0, #90) | 07/22/2026 | [Report](/audits/report-cli-cantina-eb1cc8bc-577c-422d-ad76-db7495f29a5a-2026-07-22-coinbase-commerce-payments-pr-90.pdf) |
 
 # Security Analysis
 
