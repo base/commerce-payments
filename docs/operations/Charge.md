@@ -31,7 +31,7 @@ function charge(
 
 ### Process Flow
 1. **Payment Validation**: Ensures payment info is valid and timing constraints are met
-2. **Fee Validation**: Confirms fee parameters are within allowed ranges (see [Fees](Fees.md))
+2. **Fee Validation**: Confirms fee parameters are within allowed ranges (see [Fees](../Fees.md))
 3. **Uniqueness Check**: Verifies this payment hasn't already been collected
 4. **State Update**: Records payment as collected with `refundableAmount`
 5. **Token Collection**: Uses token collector to pull funds from payer
