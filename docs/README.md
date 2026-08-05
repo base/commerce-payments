@@ -34,7 +34,7 @@ The protocol provides six main functions that handle the complete payment lifecy
 - **[Capture](operations/Capture.md)** - Transfer previously authorized funds from escrow to merchants. Supports partial captures and flexible fee distribution.
 
 ### Payment Cancellation
-- **[Void](operations/Void.md)** - Cancel payment authorizations and return escrowed funds to payerss. Only callable by the operator, but can be used to cancel a payment at any time.
+- **[Void](operations/Void.md)** - Cancel payment authorizations and return escrowed funds to payers. Only callable by the operator, but can be used to cancel a payment at any time.
 
 - **[Reclaim](operations/Reclaim.md)** - Allow payers to recover funds from expired authorizations. Payer-initiated safety mechanism callable only after authorization expiry.
 
