@@ -18,7 +18,20 @@ The Commerce Payments Protocol facilitates secure escrow-based payments with fle
 
 ## Deployment Addresses
 
-### Base Mainnet & Base Sepolia
+Deployed via CREATE2, so each contract has the **same address on Base Mainnet and Base Sepolia**.
+
+### v1.1.0 (latest)
+
+| Contract | Address |
+|----------|---------|
+| AuthCaptureEscrow | [`0xf96815976523E00e65Be8f34cA5e64b4f41EB19c`](https://basescan.org/address/0xf96815976523E00e65Be8f34cA5e64b4f41EB19c#code) |
+| ERC3009PaymentCollector | [`0x8612dfdc421f80336cd14E8EF9cb1E765dB5ab88`](https://basescan.org/address/0x8612dfdc421f80336cd14E8EF9cb1E765dB5ab88#code) |
+| Permit2PaymentCollector | [`0xD69831Aed5bfe262067ec4c751f4F830EcdD446e`](https://basescan.org/address/0xD69831Aed5bfe262067ec4c751f4F830EcdD446e#code) |
+| PreApprovalPaymentCollector | [`0xF1F9C408C787B2bC6CAEB91e5BbEc434a5c8d2Ea`](https://basescan.org/address/0xF1F9C408C787B2bC6CAEB91e5BbEc434a5c8d2Ea#code) |
+| SpendPermissionPaymentCollector | [`0xB508c1C0a13849693DC175307667653C5977a408`](https://basescan.org/address/0xB508c1C0a13849693DC175307667653C5977a408#code) |
+| OperatorRefundCollector | [`0x7a03443724d14798c4AB4622F1DAAcA761Fea486`](https://basescan.org/address/0x7a03443724d14798c4AB4622F1DAAcA761Fea486#code) |
+
+### v1.0.0
 
 | Contract | Address |
 |----------|---------|
