@@ -392,9 +392,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
     /// @return The operator's token store address
     function getTokenStore(address operator) public view returns (address) {
         return LibClone.predictDeterministicAddress({
-            implementation: tokenStoreImplementation,
-            salt: bytes32(bytes20(operator)),
-            deployer: address(this)
+            implementation: tokenStoreImplementation, salt: bytes32(bytes20(operator)), deployer: address(this)
         });
     }
 
@@ -440,8 +438,7 @@ contract AuthCaptureEscrow is ReentrancyGuardTransient {
         } else if (tokenStore.code.length == 0) {
             // Call failed from undeployed TokenStore, deploy and try again
             tokenStore = LibClone.cloneDeterministic({
-                implementation: tokenStoreImplementation,
-                salt: bytes32(bytes20(operator))
+                implementation: tokenStoreImplementation, salt: bytes32(bytes20(operator))
             });
             emit TokenStoreCreated(operator, tokenStore);
             TokenStore(tokenStore).sendTokens(token, recipient, amount);
