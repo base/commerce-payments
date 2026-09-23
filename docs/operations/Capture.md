@@ -28,7 +28,7 @@ function capture(
 ```
 
 ### Process Flow
-1. **Fee Validation**: Ensures fee parameters are within allowed ranges and recipient is valid (see [Fees](Fees.md))
+1. **Fee Validation**: Ensures fee parameters are within allowed ranges and recipient is valid (see [Fees](../Fees.md))
 2. **Timing Check**: Verifies capture occurs before authorization expiry
 3. **Availability Check**: Confirms sufficient authorized funds are available
 4. **State Update**: Reduces `capturableAmount` and increases `refundableAmount` by captured `amount`

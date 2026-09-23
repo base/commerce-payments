@@ -97,7 +97,7 @@ Track authorizations using the `paymentInfoHash` which uniquely identifies each 
 | `ExceedsMaxAmount` | Amount exceeds paymentInfo.maxAmount |
 | `AfterPreApprovalExpiry` | Called after signature expiry |
 | `InvalidExpiries` | Expiry timestamps are improperly ordered |
-| `FeeBpsOverFlow` | maxFeeBps exceeds maximum value |
+| `FeeBpsOverflow` | maxFeeBps exceeds maximum value |
 | `InvalidFeeBpsRange` | minFeeBps exceeds maxFeeBps |
 | `PaymentAlreadyCollected` | Payment already authorized or charged |
 | `InvalidCollectorForOperation` | Wrong collector type specified |
