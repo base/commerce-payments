@@ -161,8 +161,9 @@ contract AuthCaptureEscrowBase is Test, DeployPermit2 {
         uint256 validBefore,
         bytes32 nonce
     ) internal view returns (bytes32) {
-        bytes32 structHash =
-            keccak256(abi.encode(_RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce));
+        bytes32 structHash = keccak256(
+            abi.encode(_RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)
+        );
         return keccak256(abi.encodePacked("\x19\x01", IERC3009(token).DOMAIN_SEPARATOR(), structHash));
     }
 

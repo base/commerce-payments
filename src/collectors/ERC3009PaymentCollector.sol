@@ -39,15 +39,16 @@ contract ERC3009PaymentCollector is TokenCollector, ERC6492SignatureHandler {
         uint256 maxAmount = paymentInfo.maxAmount;
 
         // Pull tokens into this contract
-        IERC3009(token).receiveWithAuthorization({
-            from: payer,
-            to: address(this),
-            value: maxAmount,
-            validAfter: 0,
-            validBefore: paymentInfo.preApprovalExpiry,
-            nonce: _getHashPayerAgnostic(paymentInfo),
-            signature: _handleERC6492Signature(collectorData)
-        });
+        IERC3009(token)
+            .receiveWithAuthorization({
+                from: payer,
+                to: address(this),
+                value: maxAmount,
+                validAfter: 0,
+                validBefore: paymentInfo.preApprovalExpiry,
+                nonce: _getHashPayerAgnostic(paymentInfo),
+                signature: _handleERC6492Signature(collectorData)
+            });
 
         // Return any excess tokens to payer
         if (maxAmount > amount) SafeERC20.safeTransfer(IERC20(token), payer, maxAmount - amount);
